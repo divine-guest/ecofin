@@ -2,25 +2,35 @@
 /* ИИ встроен в сервис. Это единая точка вызова для всех инструментов.
    Чтобы подключить своего ИИ-агента — замените помеченный блок ниже. */
 const AI = {
+  /* URL вашего бэкенда с Render — вставьте после деплоя, например:
+     "https://pravofin-ai.onrender.com" (без слэша на конце) */
+  BACKEND_URL: "",
+
   async complete(prompt, fallback) {
     /* ================================================================
-       ТОЧКА ИНТЕГРАЦИИ ИИ-АГЕНТА
-       Замените код между комментариями на вызов вашего API/агента, например:
-
-       const res = await fetch("/api/ai", {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ prompt }),
-       });
-       if (res.ok) {
-         const data = await res.json();
-         return data.text; // ответ вашего агента строкой
-       }
+       ИИ-АГЕНТ ПОДКЛЮЧЁН ЧЕРЕЗ БЭКЕНД (backend/server.js на Render)
+       1) Задеплойте backend: инструкция в backend/README.md
+       2) Впишите URL выше в AI.BACKEND_URL — и весь сайт (инструменты,
+          чат-виджет, личный чат) начнёт отвечать через настоящий ИИ.
+       Ключ хранится только на сервере. При недоступности бэкенда
+       срабатывают встроенные ответы — сайт не ломается.
        ================================================================ */
-    await new Promise(r => setTimeout(r, 700)); // имитация «размышления»
-    /* ================== конец блока интеграции ================== */
+    if (this.BACKEND_URL) {
+      try {
+        const res = await fetch(this.BACKEND_URL + "/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, maxTokens: 1200 }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.text) return data.text;
+        }
+      } catch (e) { /* сервер недоступен — уходим на встроенные ответы */ }
+    }
 
-    // Пока агент не подключён — используем встроенный результат
+    // Пока бэкенд не подключён — встроенные ответы
+    await new Promise(r => setTimeout(r, 700)); // имитация «размышления»
     return typeof fallback === "function" ? fallback() : fallback;
   },
 };
