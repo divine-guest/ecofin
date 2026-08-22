@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Поиск — ПравоФин</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="section">
+  <div class="container">
+    <div class="section-title">
+      <h2>Поиск по <span>сервису</span></h2>
+      <div class="line"></div>
+      <p class="subtitle">Статьи, курсы, шаблоны, тесты и глоссарий — в одном месте</p>
+    </div>
+    <input type="text" id="gSearch" placeholder="Например: НПД, неустойка, УСН, счёт..." oninput="doSearch(this.value)" style="margin-bottom:20px">
+    <div id="gResults"></div>
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/knowledge.js"></script>
+<script src="js/courses.js"></script>
+<script src="js/templates.js"></script>
+<script>
+initPage("search.html");
+
+const GLOSSARY = [
+  ["НПД", "Налог на профессиональный доход — режим для самозанятых: 4–6%, лимит 2,4 млн ₽/год"],
+  ["УСН", "Упрощённая система налогообложения: «Доходы» 6% или «Доходы − расходы» 15%"],
+  ["НДС", "Налог на добавленную стоимость 20%/10%; с 2025 платят и УСН с доходом свыше 60 млн ₽"],
+  ["КУДиР", "Книга учёта доходов и расходов — основной регистр на УСН"],
+  ["Неустойка", "Штраф за неисполнение обязательства; снижается по ст. 333 ГК РФ при несоразмерности"],
+  ["Субсидиарная ответственность", "Личная ответственность контролирующих лиц по долгам компании при банкротстве"],
+  ["Оферта", "Публичное предложение заключить договор; оплата = акцепт"],
+  ["Акцепт", "Согласие заключить договор на условиях оферты"],
+  ["Претензия", "Досудебное требование; обязательна перед арбитражным иском"],
+  ["Форс-мажор", "Чрезвычайные обстоятельства, освобождающие от ответственности; курс валют к ним не относится"],
+  ["ЭДО", "Электронный документооборот — юридически равен бумаге при квалифицированной подписи"],
+  ["ОФД", "Оператор фискальных данных — передаёт чеки ККТ в налоговую"],
+  ["ИП", "Индивидуальный предприниматель — физлицо с правом ведения бизнеса"],
+  ["АО / ДДС", "Актив баланса (имущество) / дебиторская задолженность (долги вам)"],
+  ["АУСН", "Автоматизированная УСН без отчётности — для малого бизнеса с сотрудниками"],
+  ["ПСН", "Патентная система: фиксированный налог, только для ИП с доходом до 60 млн ₽"],
+  ["НДФЛ", "Налог на доходы физлиц 13% (15% с прогрессией свыше 2,4 млн ₽)"],
+  ["Исковая давность", "3 года на защиту права через суд (ст. 196 ГК РФ)"],
+  ["СФР", "Социальный фонд России — больничные, декретные, пособия"],
+  ["Первоначалка", "Разговорное: первичные документы — подтверждение каждой операции"],
+];
+
+function buildIndex() {
+  const idx = [];
+  ARTICLES.forEach(a => idx.push({ t: a.title, d: "Статья · " + a.code, url: "knowledge.html", text: a.title + " " + a.code + " " + a.body }));
+  Object.entries(TESTS).forEach(([k, t]) => idx.push({ t: t.title, d: "Тест · " + t.questions.length + " вопросов", url: "knowledge.html", text: t.title }));
+  COURSES.forEach(c => c.lessons.forEach((l, i) => idx.push({ t: "Урок: " + l.title, d: "Курс · " + c.title, url: "courses.html", text: l.title + " " + l.body })));
+  Object.keys(TEMPLATES).forEach(t => idx.push({ t: "Шаблон: " + t, d: "Документ без ИИ", url: "tools.html", text: t }));
+  GLOSSARY.forEach(([term, def]) => idx.push({ t: term, d: def, url: "search.html#g" + term, text: term + " " + def, gloss: true }));
+  return idx;
+}
+const INDEX = buildIndex();
+
+function doSearch(q) {
+  q = q.trim().toLowerCase();
+  if (q.length < 2) { document.getElementById("gResults").innerHTML = "<p style='color:var(--muted)'>Введите минимум 2 символа…</p>"; return; }
+  const hits = INDEX.filter(x => x.text.toLowerCase().includes(q)).slice(0, 20);
+  document.getElementById("gResults").innerHTML = hits.length
+    ? hits.map(h => `<div class="article-item" onclick="location.href='${h.url}'">
+        <b>${h.t}</b> <span class="badge">${h.d.split(" · ")[0]}</span>
+        <div class="meta">${h.d}</div>
+      </div>`).join("")
+    : "<p style='color:var(--muted)'>Ничего не найдено. Попробуйте другой запрос.</p>";
+}
+
+document.getElementById("gResults").innerHTML =
+  "<h3 style='margin:14px 0 10px'>Глоссарий</h3>" + GLOSSARY.map(([t, d]) =>
+    `<div class="article-item"><b>${t}</b> — ${d}</div>`).join("");
+</script>
+</body>
+</html>

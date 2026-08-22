@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькуляторы и счета — ПравоФин</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  @media print {
+    .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
+    .tab-panel { display: none !important; }
+    #invoicePanel { display: block !important; }
+    body::before, body::after { display: none; }
+    #invoicePaper { box-shadow: none; border: none; }
+  }
+  .calc-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .calc-result {
+    background: var(--surface-2); border-radius: 14px; padding: 18px; min-width: 240px; flex: 1;
+  }
+  .calc-result .big {
+    font-size: 1.6rem; font-weight: 800;
+    background: var(--grad-primary); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .cmp-table { width: 100%; border-collapse: collapse; font-size: .9rem; margin-top: 10px; }
+  .cmp-table th, .cmp-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+  .cmp-table tr.best td { background: color-mix(in srgb, var(--primary) 12%, transparent); font-weight: 700; }
+  #invoicePaper {
+    background: #fff; color: #111; border-radius: 8px; padding: 36px;
+    max-width: 720px; margin: 20px auto; box-shadow: var(--shadow);
+  }
+  [data-theme="dark"] #invoicePaper { background: #fff; color: #111; }
+  .inv-pos-row { display: grid; grid-template-columns: 1fr 70px 110px 110px 36px; gap: 8px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<main class="section tint-navy">
+  <div class="container">
+    <div class="section-title">
+      <h2>Калькуляторы и <span>счета</span></h2>
+      <div class="line"></div>
+      <p class="subtitle">Быстрые расчёты для бизнеса и физлиц · без лимитов и подписок</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchCalc(0,this)">Налоговые режимы</button>
+      <button class="tab" onclick="switchCalc(1,this)">Пеня и неустойка</button>
+      <button class="tab" onclick="switchCalc(2,this)">Отпускные</button>
+      <button class="tab" onclick="switchCalc(3,this)">Больничные</button>
+      <button class="tab" onclick="switchCalc(4,this)">Дивиденды</button>
+      <button class="tab" onclick="switchCalc(5,this)">Налоговые вычеты</button>
+      <button class="tab" onclick="switchCalc(6,this)">Счёт на оплату</button>
+      <button class="tab" onclick="switchCalc(7,this)">Календарь отчётности</button>
+    </div>
+
+    <!-- 1. Налоговые режимы -->
+    <div class="tab-panel active game-stage" id="calc0">
+      <div class="calc-row">
+        <div style="flex:1;min-width:240px">
+          <div class="form-group"><label>Доход за год, ₽</label><input type="number" id="txIn" value="1200000" oninput="calcTax()"></div>
+          <div class="form-group"><label>Расходы за год, ₽</label><input type="number" id="txExp" value="300000" oninput="calcTax()"></div>
+          <div class="form-group"><label>Есть работники?</label>
+            <select id="txEmp" onchange="calcTax()"><option value="no">Нет</option><option value="yes">Да</option></select>
+          </div>
+        </div>
+        <div class="calc-result" id="txOut"></div>
+      </div>
+      <p style="color:var(--muted);font-size:.8rem;margin-top:14px">Расчёт ориентировочный: страховые взносы ИП за себя ≈ 53 658 ₽/год + 1% с дохода свыше 300 000 ₽. НДС при доходе свыше 60 млн ₽ не учтён.</p>
+    </div>
+
+    <!-- 2. Пеня -->
+    <div class="tab-panel game-stage" id="calc1">
+      <div class="calc-row">
+        <div style="flex:1;min-width:240px">
+          <div class="form-group"><label>Сумма долга, ₽</label><input type="number" id="pnSum" value="100000" oninput="calcPenalty()"></div>
+          <div class="form-group"><label>Ставка, % в день</label><input type="number" step="0.01" id="pnRate" value="0.1" oninput="calcPenalty()"></div>
+          <div class="form-group"><label>Дней просрочки</label><input type="number" id="pnDays" value="30" oninput="calcPenalty()"></div>
+        </div>
+        <div class="calc-result" id="pnOut"></div>
+      </div>
+    </div>
+
+    <!-- 3. Отпускные -->
+    <div class="tab-panel game-stage" id="calc2">
+      <div class="calc-row">
+        <div style="flex:1;min-width:240px">
+          <div class="form-group"><label>Зарплата за 12 месяцев, ₽</label><input type="number" id="vpSum" value="840000" oninput="calcVacation()"></div>
+          <div class="form-group"><label>Дней отпуска</label><input type="number" id="vpDays" value="14" oninput="calcVacation()"></div>
+        </div>
+        <div class="calc-result" id="vpOut"></div>
+      </div>
+    </div>
+
+    <!-- 4. Больничные -->
+    <div class="tab-panel game-stage" id="calc3">
+      <div class="calc-row">
+        <div style="flex:1;min-width:240px">
+          <div class="form-group"><label>Зарплата за 2 года, ₽</label><input type="number" id="blSum" value="1200000" oninput="calcSick()"></div>
+          <div class="form-group"><label>Страховой стаж</label>
+            <select id="blExp" onchange="calcSick()">
+              <option value="0.6">Менее 5 лет (60%)</option>
+              <option value="0.8">5–8 лет (80%)</option>
+              <option value="1">Более 8 лет (100%)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Дней больничного</label><input type="number" id="blDays" value="10" oninput="calcSick()"></div>
+        </div>
+        <div class="calc-result" id="blOut"></div>
+      </div>
+    </div>
+
+    <!-- 5. Дивиденды -->
+    <div class="tab-panel game-stage" id="calc4">
+      <div class="calc-row">
+        <div style="flex:1;min-width:240px">
+          <div class="form-group"><label>Сумма к распределению, ₽</label><input type="number" id="dvSum" value="1000000" oninput="calcDiv()"></div>
+        </div>
+        <div class="calc-result" id="dvOut"></div>
+      </div>
+    </div>
+
+    <!-- 6. Вычеты -->
+    <div class="tab-panel game-stage" id="calc5">
+      <div class="calc-row">
+        <div style="flex:1;min-width:240px">
+          <div class="form-group"><label>Расходы на лечение/обучение, ₽</label><input type="number" id="vdExp" value="100000" oninput="calcDeduction()"></div>
+          <div class="form-group"><label>Уплаченный НДФЛ за год, ₽</label><input type="number" id="vdTax" value="80000" oninput="calcDeduction()"></div>
+        </div>
+        <div class="calc-result" id="vdOut"></div>
+      </div>
+    </div>
+
+    <!-- 7. Счёт на оплату -->
+    <div class="tab-panel game-stage" id="calc6">
+      <div class="grid cols-2 no-print">
+        <div>
+          <h4>Продавец</h4>
+          <div class="form-group"><input type="text" id="ivSeller" placeholder="Название / ФИО" oninput="renderInvoice()"></div>
+          <div class="form-group"><input type="text" id="ivSellerInn" placeholder="ИНН" oninput="renderInvoice()"></div>
+          <div class="form-group"><input type="text" id="ivSellerAcc" placeholder="Р/с" oninput="renderInvoice()"></div>
+          <div class="form-group"><input type="text" id="ivSellerBank" placeholder="Банк, БИК" oninput="renderInvoice()"></div>
+        </div>
+        <div>
+          <h4>Покупатель</h4>
+          <div class="form-group"><input type="text" id="ivBuyer" placeholder="Название / ФИО" oninput="renderInvoice()"></div>
+          <div class="form-group"><input type="text" id="ivBuyerInn" placeholder="ИНН" oninput="renderInvoice()"></div>
+          <div class="form-group"><label>Номер и дата счёта</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="ivNum" placeholder="№ 1" oninput="renderInvoice()">
+              <input type="date" id="ivDate" onchange="renderInvoice()">
+            </div>
+          </div>
+          <div class="form-group"><label>НДС 20%?</label>
+            <select id="ivVat" onchange="renderInvoice()"><option value="no">Не облагается / УСН</option><option value="yes">Включить НДС 20%</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="no-print">
+        <h4 style="margin:14px 0 10px">Позиции</h4>
+        <div id="ivPositions"></div>
+        <button class="btn small secondary no-print" onclick="addPosRow()">+ Добавить позицию</button>
+      </div>
+      <div class="no-print" style="margin:16px 0">
+        <button class="btn gold no-print" onclick="window.print()">Скачать / печать PDF</button>
+        <button class="btn secondary no-print" onclick="saveInvoice()">Сохранить в мои документы</button>
+      </div>
+      <div id="invoicePanel"><div id="invoicePaper"></div></div>
+
+    <!-- 8. Календарь отчётности 2026 -->
+    <div class="tab-panel game-stage" id="calc7">
+      <p style="color:var(--muted);margin-bottom:14px">Ключевые даты налогового календаря на 2026 год. Нажмите «+ в сроки» — событие появится в напоминаниях кабинета.</p>
+      <div id="taxCal"></div>
+    </div>
+    </div>
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+<script src="js/ai.js"></script>
+<script>
+initPage("calc.html");
+
+function switchCalc(i, btn) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll(".tab-panel").forEach((p, j) => p.classList.toggle("active", i === j));
+}
+const fmt = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
+
+/* --- 1. Налоговые режимы --- */
+function calcTax() {
+  const income = +document.getElementById("txIn").value || 0;
+  const exp = +document.getElementById("txExp").value || 0;
+  const emp = document.getElementById("txEmp").value === "yes";
+  const fixed = 53658, over = Math.max(0, income - 300000) * 0.01;
+
+  const npdOk = !emp && income <= 2400000;
+  const npd = npdOk ? income * 0.06 : null;
+  const usn6 = income * 0.06 - (emp ? (fixed + over) / 2 : (fixed + over)); // вычет взносов: 50% с работниками, 100% без
+  const usn15raw = (income - exp) * 0.15;
+  const usn15 = Math.max(usn15raw, income * 0.01) + fixed + over;
+
+  const rows = [
+    { name: "НПД (самозанятость)", val: npd, note: npdOk ? "6% с юрлиц, без взносов" : "недоступно: работники или лимит 2,4 млн" },
+    { name: "УСН «Доходы» 6%", val: Math.max(0, usn6), note: "минус взносы " + (emp ? "(50%)" : "(100%)") },
+    { name: "УСН «Доходы − расходы» 15%", val: usn15, note: "включая взносы; мин. налог 1%" },
+  ];
+  const valid = rows.filter(r => r.val !== null);
+  const best = valid.reduce((a, b) => (a.val <= b.val ? a : b));
+
+  document.getElementById("txOut").innerHTML = `
+    <table class="cmp-table">
+      ${rows.map(r => `<tr class="${r === best ? "best" : ""}">
+        <td>${r.name}<br><span style="font-size:.76rem;color:var(--muted)">${r.note}</span></td>
+        <td style="text-align:right;white-space:nowrap"><b>${r.val === null ? "—" : fmt(r.val)}</b></td>
+      </tr>`).join("")}
+    </table>
+    <p style="margin-top:12px"><b>Рекомендация:</b> ${best.name} — экономия ${fmt(valid.reduce((a, b) => Math.max(a, b.val), 0) - best.val)} против худшего варианта.</p>`;
+}
+
+/* --- 2. Пеня --- */
+function calcPenalty() {
+  const sum = +document.getElementById("pnSum").value || 0;
+  const rate = +document.getElementById("pnRate").value || 0;
+  const days = +document.getElementById("pnDays").value || 0;
+  const pen = sum * (rate / 100) * days;
+  document.getElementById("pnOut").innerHTML = `
+    <p>Пеня за ${days} дн. по ставке ${rate}%/день:</p>
+    <div class="big">${fmt(pen)}</div>
+    <p style="color:var(--muted);font-size:.82rem;margin-top:8px">
+      Это ${((pen / sum) * 100).toFixed(1)}% от долга. Пеня выше 10–15% суммы долга обычно снижается судом по ст. 333 ГК РФ.
+    </p>`;
+}
+
+/* --- 3. Отпускные --- */
+function calcVacation() {
+  const s = +document.getElementById("vpSum").value || 0;
+  const d = +document.getElementById("vpDays").value || 0;
+  const day = s / 12 / 29.3;
+  const gross = day * d, ndfl = gross * 0.13;
+  document.getElementById("vpOut").innerHTML = `
+    <p>Среднедневной заработок:</p><div class="big">${fmt(day)}</div>
+    <p style="margin-top:10px">Начислено за ${d} дн.: <b>${fmt(gross)}</b></p>
+    <p>К выплате (− НДФЛ 13%): <b>${fmt(gross - ndfl)}</b></p>`;
+}
+
+/* --- 4. Больничные --- */
+function calcSick() {
+  const s = +document.getElementById("blSum").value || 0;
+  const k = +document.getElementById("blExp").value;
+  const d = +document.getElementById("blDays").value || 0;
+  const day = Math.min(s / 730, 2735.33); // предельная база 2025-2026
+  const pay = day * k * d;
+  document.getElementById("blOut").innerHTML = `
+    <p>Среднедневной (с учётом стажа ${k * 100}%):</p><div class="big">${fmt(day * k)}</div>
+    <p style="margin-top:10px">Пособие за ${d} дн.: <b>${fmt(pay)}</b></p>
+    <p style="color:var(--muted);font-size:.82rem">Первые 3 дня оплачивает работодатель, остальные — СФР.</p>`;
+}
+
+/* --- 5. Дивиденды --- */
+function calcDiv() {
+  const s = +document.getElementById("dvSum").value || 0;
+  const LIMIT = 2400000;
+  const ndfl = s <= LIMIT ? s * 0.13 : LIMIT * 0.13 + (s - LIMIT) * 0.15;
+  document.getElementById("dvOut").innerHTML = `
+    <p>К распределению:</p><div class="big">${fmt(s)}</div>
+    <p style="margin-top:10px">НДФЛ (13%${s > LIMIT ? " / 15% свыше 2,4 млн" : ""}): <b>${fmt(ndfl)}</b></p>
+    <p><b>К выплате на руки: ${fmt(s - ndfl)}</b></p>`;
+}
+
+/* --- 6. Вычеты --- */
+function calcDeduction() {
+  const exp = Math.min(+document.getElementById("vdExp").value || 0, 150000);
+  const tax = +document.getElementById("vdTax").value || 0;
+  const ret = Math.min(exp * 0.13, tax);
+  document.getElementById("vdOut").innerHTML = `
+    <p>Социальный вычет (лимит 150 000 ₽/год):</p><div class="big">${fmt(ret)}</div>
+    <p style="color:var(--muted);font-size:.82rem;margin-top:8px">
+      Возврат ограничен уплаченным НДФЛ (${fmt(tax)}). Подать можно за 3 предыдущих года через личный кабинет ФНС.
+    </p>`;
+}
+
+/* --- 7. Счёт --- */
+let posRows = [{ name: "Услуга по договору № ___", qty: 1, price: 10000 }];
+function addPosRow() { posRows.push({ name: "", qty: 1, price: 0 }); renderPosInputs(); renderInvoice(); }
+function delPosRow(i) { posRows.splice(i, 1); renderPosInputs(); renderInvoice(); }
+function updPos(i, f, v) { posRows[i][f] = f === "name" ? v : (+v || 0); renderInvoice(); }
+function renderPosInputs() {
+  document.getElementById("ivPositions").innerHTML = posRows.map((p, i) => `
+    <div class="inv-pos-row">
+      <input type="text" value="${escapeHtml(p.name)}" placeholder="Наименование" oninput="updPos(${i},'name',this.value)">
+      <input type="number" value="${p.qty}" placeholder="кол-во" oninput="updPos(${i},'qty',this.value)">
+      <input type="number" value="${p.price}" placeholder="цена, ₽" oninput="updPos(${i},'price',this.value)">
+      <div style="align-self:center;font-weight:700">${fmt((p.qty || 0) * (p.price || 0))}</div>
+      <button class="btn small danger no-print" onclick="delPosRow(${i})">✕</button>
+    </div>`).join("");
+}
+function renderInvoice() {
+  const g = id => (document.getElementById(id)?.value || "").trim();
+  const vat = document.getElementById("ivVat").value === "yes";
+  let total = 0;
+  const rowsHtml = posRows.map(p => {
+    const s = (p.qty || 0) * (p.price || 0); total += s;
+    return `<tr><td style="padding:7px 8px;border:1px solid #ccc">${escapeHtml(p.name || "—")}</td>
+      <td style="padding:7px 8px;border:1px solid #ccc;text-align:center">${p.qty}</td>
+      <td style="padding:7px 8px;border:1px solid #ccc;text-align:right">${(p.price || 0).toLocaleString("ru-RU")}</td>
+      <td style="padding:7px 8px;border:1px solid #ccc;text-align:right">${s.toLocaleString("ru-RU")}</td></tr>`;
+  }).join("");
+  const vatSum = vat ? total * 0.2 : 0;
+  document.getElementById("invoicePaper").innerHTML = `
+    <div style="text-align:center;font-weight:800;font-size:1.2rem">СЧЁТ № ${escapeHtml(g("ivNum") || "1")} от ${g("ivDate") || "___.___.20__"}</div>
+    <table style="width:100%;margin:18px 0;font-size:.9rem">
+      <tr><td style="width:90px;vertical-align:top"><b>Поставщик:</b></td><td>${escapeHtml(g("ivSeller") || "—")}<br>ИНН ${escapeHtml(g("ivSellerInn") || "—")}<br>Р/с ${escapeHtml(g("ivSellerAcc") || "—")}<br>${escapeHtml(g("ivSellerBank") || "—")}</td></tr>
+      <tr><td style="vertical-align:top;padding-top:8px"><b>Покупатель:</b></td><td style="padding-top:8px">${escapeHtml(g("ivBuyer") || "—")}<br>ИНН ${escapeHtml(g("ivBuyerInn") || "—")}</td></tr>
+    </table>
+    <table style="width:100%;border-collapse:collapse;font-size:.9rem">
+      <tr style="background:#f2f2f2"><th style="padding:7px 8px;border:1px solid #ccc;text-align:left">Наименование</th><th style="border:1px solid #ccc;padding:7px 8px">Кол-во</th><th style="border:1px solid #ccc;padding:7px 8px">Цена, ₽</th><th style="border:1px solid #ccc;padding:7px 8px">Сумма, ₽</th></tr>
+      ${rowsHtml}
+    </table>
+    <div style="text-align:right;margin-top:14px;font-size:1.05rem">
+      ${vat ? `НДС 20%: <b>${vatSum.toLocaleString("ru-RU")} ₽</b><br>` : "Без НДС (УСН)<br>"}
+      <span style="font-size:1.25rem">Итого: <b>${total.toLocaleString("ru-RU")} ₽</b></span>
+    </div>
+    <div style="display:flex;gap:18px;align-items:center;margin-top:20px">
+      <img id="invQr" alt="QR для оплаты" style="width:120px;height:120px;border:1px solid #ccc;border-radius:8px"
+        src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+          'ST00012|Name=' + (g('ivSeller') || '—') + '|PersonalAcc=' + (g('ivSellerAcc') || '—') +
+          '|BankName=' + (g('ivSellerBank') || '—') + '|Sum=' + Math.round(total * 100) +
+          '|Purpose=Оплата по счёту ' + (g('ivNum') || '1'))}">
+      <p style="color:#555;font-size:.85rem">Оплата по QR (СБП): наведите камеру телефона.<br>Счёт действителен 5 банковских дней.</p>
+    </div>`;
+}
+function saveInvoice() {
+  const text = document.getElementById("invoicePaper").innerText;
+  PF.saveDoc("Счёт " + (document.getElementById("ivNum").value || "1"), text);
+  toast("Счёт сохранён в моих документах");
+}
+
+/* --- Календарь отчётности --- */
+const TAX_CAL = [
+  ["28 января", "УСН: итоговый платёж за 2025 (ООО) и НДС за IV кв."],
+  ["2 марта", "НДФЛ с зарплаты за февраль (при выплате) — 28 число каждого месяца"],
+  ["28 апреля", "Декларация УСН за 2025 (ИП) + аванс УСН I кв. + НДС I кв."],
+  ["28 июля", "Авансовый платёж УСН за полугодие + НДС II кв."],
+  ["28 октября", "Авансовый платёж УСН за 9 месяцев + НДС III кв."],
+  ["1 июля", "Взнос ИП 1% с дохода свыше 300 000 ₽"],
+  ["28 декабря", "Фиксированные взносы ИП за себя + НДС IV кв."],
+];
+document.getElementById("taxCal").innerHTML = `<table class="cmp-table">` + TAX_CAL.map(([d, t]) => `
+  <tr><td style="white-space:nowrap"><b>${d}</b></td><td>${t}</td>
+  <td style="text-align:right"><button class="btn small secondary" onclick="addTaxDeadline('${d}','${t.slice(0, 40)}')">+ в сроки</button></td></tr>`).join("") + `</table>`;
+function addTaxDeadline(day, title) {
+  const p = day.split(" ");
+  const months = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+  const d = new Date(new Date().getFullYear(), months.indexOf(p[1]), +p[0]);
+  const key = "pf_deadlines_" + (PF.user() ? PF.user().email : "guest");
+  const list = JSON.parse(localStorage.getItem(key) || "[]");
+  if (list.some(x => x.title.startsWith(title.slice(0, 15)))) return toast("Уже добавлено");
+  localStorage.setItem(key, JSON.stringify([...list, { title, date: d.toISOString().slice(0, 10) }]));
+  PF.logAction("Из календаря добавлен срок: " + title.slice(0, 30));
+  toast("Добавлено в сроки кабинета");
+}
+calcTax(); calcPenalty(); calcVacation(); calcSick(); calcDiv(); calcDeduction();
+renderPosInputs(); renderInvoice();
+document.getElementById("ivDate").valueAsDate = new Date();
+renderInvoice();
+trackEvent("calc_page");
+</script>
+</body>
+</html>

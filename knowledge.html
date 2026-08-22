@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>База знаний — ПравоФин</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="section tint-navy">
+  <div class="container">
+    <div class="section-title">
+      <h2>База <span>знаний</span></h2>
+      <div class="line"></div>
+      <p class="subtitle">Статьи по УК РФ, НК РФ, ГК РФ, ТК РФ и ФЗ-115 + тесты для самопроверки</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchKb(0,this)">📚 Статьи</button>
+      <button class="tab" onclick="switchKb(1,this)">📝 Тесты</button>
+    </div>
+
+    <!-- Статьи -->
+    <div class="tab-panel active" id="kb0">
+      <input type="text" id="articleSearch" placeholder="🔍 Поиск по статьям..." oninput="renderArticles(this.value)" style="margin-bottom:16px">
+      <div id="articleList"></div>
+      <div class="article-full card" id="articleFull" style="margin-top:16px"></div>
+    </div>
+
+    <!-- Тесты -->
+    <div class="tab-panel" id="kb1">
+      <div class="grid cols-4" id="testList"></div>
+      <div class="game-stage" id="testStage" style="display:none;margin-top:20px"></div>
+    </div>
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/competencies.js"></script>
+<script src="js/knowledge.js"></script>
+<script>
+initPage("knowledge.html");
+
+function switchKb(i, btn) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll(".tab-panel").forEach((p, j) => p.classList.toggle("active", i === j));
+}
+
+/* --- Статьи --- */
+function renderArticles(filter = "") {
+  const list = ARTICLES.map((a, i) => ({ ...a, i }))
+    .filter(a => !filter || (a.title + a.code + a.body).toLowerCase().includes(filter.toLowerCase()));
+  document.getElementById("articleList").innerHTML = list.length
+    ? list.map(a => `<div class="article-item" onclick="openArticle(${a.i})">
+        <b>${a.title}</b> <span class="badge">${a.code}</span>
+        <div class="meta">${a.body.slice(0, 120)}…</div>
+      </div>`).join("")
+    : `<p style="color:var(--muted)">Ничего не найдено</p>`;
+}
+function openArticle(i) {
+  const a = ARTICLES[i];
+  const el = document.getElementById("articleFull");
+  el.classList.add("show");
+  el.innerHTML = `<span class="badge">${a.code}</span><h3 style="margin:10px 0">${a.title}</h3>
+    <div class="body">${escapeHtml(a.body)}</div><br>
+    <button class="btn small secondary" onclick="document.getElementById('articleFull').classList.remove('show')">Закрыть</button>`;
+  el.scrollIntoView({ behavior: "smooth" });
+  COMP.award(COMP.articleArea(a.code), 2);
+  PF.logAction("Чтение статьи: " + a.title);
+}
+renderArticles();
+
+/* --- Тесты --- */
+document.getElementById("testList").innerHTML = Object.entries(TESTS).map(([key, t]) =>
+  `<div class="card" onclick="startTest('${key}')">
+     <h3>${t.title}</h3>
+     <p>${t.questions.length} вопросов · ~5 минут</p>
+   </div>`).join("");
+
+let test = null, testKey = null, qIdx = 0, correct = 0;
+
+function startTest(key) {
+  test = TESTS[key]; testKey = key; qIdx = 0; correct = 0;
+  document.getElementById("testStage").style.display = "block";
+  document.getElementById("testStage").scrollIntoView({ behavior: "smooth" });
+  renderQuestion();
+}
+function renderQuestion() {
+  const c = test.questions[qIdx];
+  document.getElementById("testStage").innerHTML = `
+    <p class="badge">${test.title} · вопрос ${qIdx + 1} из ${test.questions.length}</p>
+    <div class="progress-bar" style="margin:12px 0"><div style="width:${(qIdx / test.questions.length) * 100}%"></div></div>
+    <h3 style="margin-bottom:16px">${c.text}</h3>
+    ${c.opts.map((o, i) => `<button class="quiz-option" onclick="answerTest(${i})">${o}</button>`).join("")}`;
+}
+function answerTest(i) {
+  const c = test.questions[qIdx];
+  const btns = document.querySelectorAll("#testStage .quiz-option");
+  btns.forEach((b, j) => {
+    b.disabled = true;
+    if (j === c.correct) b.classList.add("correct");
+    else if (j === i) b.classList.add("wrong");
+  });
+  if (i === c.correct) correct++;
+  setTimeout(() => {
+    qIdx++;
+    if (qIdx >= test.questions.length) finishTest(); else renderQuestion();
+  }, 900);
+}
+function finishTest() {
+  const pct = Math.round((correct / test.questions.length) * 100);
+  PF.addScore("quiz", pct);
+  const grown = COMP.award(COMP.testArea[testKey] || "contracts", Math.round(pct * 0.15));
+  PF.logAction(`Тест «${test.title}»: ${pct}%`);
+  document.getElementById("testStage").innerHTML = `
+    <div style="text-align:center">
+      <h3>${pct >= 80 ? "Отличный результат" : pct >= 50 ? "Неплохо" : "Есть куда расти"}</h3>
+      <p class="stat-value">${pct}%</p>
+      <p style="color:var(--muted)">Верно ${correct} из ${test.questions.length} · компетенция +${grown}%</p><br>
+      <button class="btn" onclick="startTest('${testKey}')">Пройти ещё раз</button>
+    </div>`;
+}
+</script>
+</body>
+</html>

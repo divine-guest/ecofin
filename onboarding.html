@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Знакомство — ПравоФин</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="section tint-green">
+  <div class="container" style="max-width:640px">
+    <div class="section-title">
+      <h2>Давайте <span>познакомимся</span></h2>
+      <div class="line"></div>
+      <p class="subtitle">3 вопроса — и кабинет подстроится под вас</p>
+    </div>
+    <div class="card" id="wizard">
+      <div class="progress-bar" style="margin-bottom:22px"><div id="wzBar" style="width:33%"></div></div>
+      <div id="wzBody"></div>
+    </div>
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+<script src="js/ai.js"></script>
+<script>
+initPage("onboarding.html");
+
+if (!PF.user()) location.href = "auth.html";
+
+const STEPS = [
+  {
+    q: "Кто вы?",
+    key: "status",
+    opts: [
+      ["self", "Самозанятый"], ["ip", "ИП"], ["ooo", "ООО"],
+      ["person", "Физлицо"], ["start", "Только планирую бизнес"],
+    ],
+  },
+  {
+    q: "Ваша сфера?",
+    key: "sphere",
+    opts: [["services", "Услуги"], ["trade", "Торговля"], ["it", "IT"], ["build", "Строительство"], ["other", "Другое"]],
+  },
+  {
+    q: "Что важнее всего?",
+    key: "goal",
+    opts: [
+      ["tax", "Разобраться с налогами"], ["docs", "Составлять документы"],
+      ["money", "Вести учёт и финансы"], ["learn", "Учиться (курсы)"],
+    ],
+  },
+];
+const answers = {};
+let step = 0;
+
+function render() {
+  const s = STEPS[step];
+  document.getElementById("wzBar").style.width = ((step + 1) / STEPS.length * 100) + "%";
+  document.getElementById("wzBody").innerHTML = `
+    <h3 style="margin-bottom:16px">${step + 1}. ${s.q}</h3>
+    <div class="grid cols-2" style="gap:10px">
+      ${s.opts.map(([id, label]) =>
+        `<button class="btn secondary" style="justify-content:flex-start" onclick="pick('${s.key}','${id}')">${label}</button>`).join("")}
+    </div>
+    ${step > 0 ? `<br><button class="btn small secondary" onclick="step--;render()">← Назад</button>` : ""}
+  `;
+}
+function pick(key, val) {
+  answers[key] = val;
+  step++;
+  if (step < STEPS.length) return render();
+  PF.updateUser({ profile: answers });
+  PF.logAction("Пройден онбординг");
+  trackEvent("onboarding_done");
+  location.href = "dashboard.html";
+}
+render();
+</script>
+</body>
+</html>

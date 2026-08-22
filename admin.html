@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Админ-панель — ПравоФин</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="section tint-navy">
+  <div class="container" id="content">
+    <div class="card" style="text-align:center">
+      <p>Доступ только для администратора.</p><br>
+      <a href="auth.html" class="btn">Войти как админ</a>
+    </div>
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+<script src="js/ai.js"></script>
+<script>
+initPage("admin.html");
+
+function renderAdmin() {
+  const me = PF.user();
+  const users = Object.values(PF.users()).sort((a, b) => a.registered - b.registered);
+  const proCount = users.filter(x => x.plan === "pro" || x.isAdmin).length;
+  const totalActions = users.reduce((s, x) => s + (x.actions || []).length, 0);
+  const totalAiUses = users.reduce((s, x) => s + (x.aiUses || 0), 0);
+  const revenue = users.reduce((s, x) => s + (x.payments || []).reduce((a, p) => a + p.amount, 0), 0);
+
+  document.getElementById("content").innerHTML = `
+    <div class="section-title">
+      <h2>Админ-<span>панель</span></h2>
+      <div class="line"></div>
+      <p class="subtitle">Управление пользователями и подписками</p>
+    </div>
+
+    <div class="grid cols-4" style="margin-bottom:28px">
+      <div class="card"><div class="stat-value">${users.length}</div><div class="stat-label">пользователей</div></div>
+      <div class="card"><div class="stat-value">${proCount}</div><div class="stat-label">с подпиской Pro</div></div>
+      <div class="card"><div class="stat-value">${revenue.toLocaleString("ru-RU")} ₽</div><div class="stat-label">выручка всего</div></div>
+      <div class="card"><div class="stat-value">${totalAiUses}</div><div class="stat-label">использований ИИ</div></div>
+    </div>
+
+    <div class="card" style="overflow-x:auto">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Пользователь</th><th>Email</th><th>Тариф</th><th>ИИ</th>
+            <th>Действий</th><th>Регистрация</th><th>Управление</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${users.map(x => `
+            <tr>
+              <td><b>${escapeHtml(x.name)}</b>${x.isAdmin ? ' <span class="badge">админ</span>' : ""}</td>
+              <td style="color:var(--muted)">${escapeHtml(x.email)}</td>
+              <td><span class="badge ${x.plan === "pro" || x.isAdmin ? "pro" : ""}">${x.plan === "pro" || x.isAdmin ? "PRO" : "Free"}</span></td>
+              <td>${x.isAdmin ? "∞" : (x.aiUses || 0) + " / " + FREE_AI_LIMIT}</td>
+              <td>${(x.actions || []).length}</td>
+              <td style="color:var(--muted)">${new Date(x.registered).toLocaleDateString("ru-RU")}</td>
+              <td>
+                <button class="btn small ${x.plan === "pro" ? "secondary" : "gold"}" onclick="togglePro('${x.email}')" ${x.isAdmin ? "disabled" : ""}>
+                  ${x.plan === "pro" ? "Снять Pro" : "Выдать Pro"}
+                </button>
+                <button class="btn small danger" onclick="deleteUser('${x.email}')" ${x.isAdmin ? "disabled" : ""}>Удалить</button>
+              </td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+    <br>
+    <div class="card">
+      <h3>💡 Как это работает</h3>
+      <p>Пользователи хранятся в localStorage браузера, поэтому список виден только на этом устройстве.
+      Когда появится бэкенд — эта страница подключится к базе данных через API.
+      Первый зарегистрированный аккаунт автоматически становится админом и владельцем.</p>
+    </div>`;
+}
+
+function togglePro(email) {
+  const users = PF.users();
+  users[email].plan = users[email].plan === "pro" ? "free" : "pro";
+  PF.saveUsers(users);
+  toast(users[email].plan === "pro" ? "👑 Pro выдан: " + email : "Pro снят: " + email);
+  renderAdmin();
+}
+
+function deleteUser(email) {
+  if (!confirm("Удалить пользователя " + email + "?")) return;
+  const users = PF.users();
+  delete users[email];
+  PF.saveUsers(users);
+  toast("Пользователь удалён");
+  renderAdmin();
+}
+
+if (PF.user() && PF.user().isAdmin) renderAdmin();
+</script>
+</body>
+</html>

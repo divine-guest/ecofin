@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Практикум — ПравоФин</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="section tint-gold">
+  <div class="container">
+    <div class="section-title">
+      <h2>Практикум: разбор <span>реальных ситуаций</span></h2>
+      <div class="line"></div>
+      <p class="subtitle">Кейсы из судебной практики и экспресс-тесты — проверка знаний на реальных сценариях</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchGame(0,this)">Разбор кейсов</button>
+      <button class="tab" onclick="switchGame(1,this)">Экспресс-тест</button>
+      <button class="tab" onclick="switchGame(2,this)">Кейс-клуб</button>
+      <button class="tab" onclick="switchGame(3,this)">Найди ошибку в договоре</button>
+      <button class="tab" onclick="switchGame(4,this)">Верно / неверно</button>
+    </div>
+
+    <!-- Разбор кейсов -->
+    <div class="tab-panel active game-stage" id="game0">
+      <p id="detProgress" class="badge">Кейс 1 / 5 · Верно: 0</p>
+      <h3 id="detTitle" style="margin:14px 0 8px"></h3>
+      <p id="detStory" style="color:var(--muted);margin-bottom:18px"></p>
+      <div id="detOptions"></div>
+      <div class="ai-result" id="detExplain"></div>
+      <br><button class="btn" id="detNext" style="display:none" onclick="DETECTIVE.next()">Следующий кейс →</button>
+    </div>
+
+    <!-- Экспресс-тест -->
+    <div class="tab-panel game-stage" id="game1">
+      <div id="wuStart" style="text-align:center">
+        <h3>Экспресс-тест: 60 секунд</h3>
+        <p style="color:var(--muted)">10 вопросов по налогам и праву · оценка по проценту верных ответов</p><br>
+        <button class="btn" onclick="WARMUP.start()">Начать тест</button>
+      </div>
+      <div id="wuQuiz" style="display:none">
+        <div class="game-hud">
+          <div class="stat"><b id="wuTime">60</b>секунд</div>
+          <div class="stat"><b id="wuScore">0</b>очков</div>
+        </div>
+        <h3 id="wuQ" style="margin-bottom:16px"></h3>
+        <div id="wuOpts"></div>
+      </div>
+    </div>
+
+    <!-- Кейс-клуб -->
+    <div class="tab-panel game-stage" id="game2">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <span class="badge pro" id="ccField"></span>
+        <span class="badge" id="ccNum"></span>
+      </div>
+      <p id="ccText" style="font-size:1.05rem;margin:16px 0"></p>
+      <button class="btn secondary" onclick="CASECLUB.reveal()">Показать разбор</button>
+      <div class="ai-result" id="ccAnswer"></div>
+      <br>
+      <button class="btn small secondary" onclick="CASECLUB.next(-1)">← Предыдущий</button>
+      <button class="btn small" onclick="CASECLUB.next(1)">Следующий кейс →</button>
+    </div>
+
+    <!-- Найди ошибку -->
+    <div class="tab-panel game-stage" id="game3">
+      <p class="badge" id="ehStatus"></p>
+      <h3 id="ehTitle" style="margin:14px 0 8px"></h3>
+      <p style="color:var(--muted);font-size:.88rem;margin-bottom:14px">Кликайте по фрагментам, которые кажутся опасными. Найдите все 5 ловушек.</p>
+      <div id="ehText" style="background:var(--surface-2);border-radius:12px;padding:18px;line-height:2"></div>
+      <div class="ai-result" id="ehResult"></div>
+      <br>
+      <button class="btn small secondary" onclick="ERRHUNT.start(0)">Договор услуг</button>
+      <button class="btn small secondary" onclick="ERRHUNT.start(1)">Договор поставки</button>
+    </div>
+
+    <!-- Верно / неверно -->
+    <div class="tab-panel game-stage" id="game4">
+      <div id="tfStart" style="text-align:center">
+        <h3>Миф или факт: налоги и право</h3>
+        <p style="color:var(--muted)">8 утверждений · быстро проверьте, что из слухов — правда</p><br>
+        <button class="btn" onclick="TRUEFALSE.start()">Начать</button>
+      </div>
+      <div id="tfQuiz" style="display:none;text-align:center">
+        <p class="badge" id="tfNum"></p>
+        <h3 id="tfQ" style="margin:18px 0 22px"></h3>
+        <button class="btn secondary" style="min-width:130px" onclick="TRUEFALSE.answer(true)">Это правда</button>
+        <button class="btn secondary" style="min-width:130px" onclick="TRUEFALSE.answer(false)">Это миф</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/competencies.js"></script>
+<script src="js/games.js"></script>
+<script>
+initPage("games.html");
+
+function switchGame(i, btn) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll(".tab-panel").forEach((p, j) => p.classList.toggle("active", i === j));
+}
+
+DETECTIVE.render();
+CASECLUB.render();
+ERRHUNT.start(0);
+</script>
+</body>
+</html>

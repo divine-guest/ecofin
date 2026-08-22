@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ИИ-Инструменты — ПравоФин</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="section tint-green">
+  <div class="container">
+    <div class="section-title">
+      <h2>ИИ-<span>Инструменты</span></h2>
+      <div class="line"></div>
+      <p class="subtitle">Документы, анализ договоров, налоги и чек-листы — с встроенным ИИ сервиса</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTool(0,this)">Генератор документов</button>
+      <button class="tab" onclick="switchTool(1,this)">Анализ договоров</button>
+      <button class="tab" onclick="switchTool(2,this)">Налоговый помощник</button>
+      <button class="tab" onclick="switchTool(3,this)">Генератор чек-листов</button>
+      <button class="tab" onclick="switchTool(4,this)">Шаблоны без ИИ</button>
+    </div>
+
+    <!-- Генератор документов -->
+    <div class="tab-panel active game-stage" id="tool0">
+      <div class="form-group">
+        <label>Тип документа</label>
+        <select id="docType">
+          <option>Договор оказания услуг</option>
+          <option>Договор аренды</option>
+          <option>Договор подряда</option>
+          <option>Претензия</option>
+          <option>Заявление</option>
+          <option>Акт выполненных работ</option>
+        </select>
+      </div>
+      <div class="grid cols-2">
+        <div class="form-group"><label>Сторона 1 (исполнитель)</label><input type="text" id="docSide1" placeholder="ИП Иванов И.И."></div>
+        <div class="form-group"><label>Сторона 2 (заказчик)</label><input type="text" id="docSide2" placeholder="ООО «Ромашка»"></div>
+        <div class="form-group"><label>Предмет договора</label><input type="text" id="docSubject" placeholder="Консультационные услуги"></div>
+        <div class="form-group"><label>Сумма (₽)</label><input type="number" id="docSum" placeholder="50000"></div>
+      </div>
+      <button class="btn" onclick="genDoc()">Сгенерировать</button>
+      <div class="ai-result" id="docResult"></div>
+    </div>
+
+    <!-- Анализ договоров -->
+    <div class="tab-panel game-stage" id="tool1">
+      <div class="form-group">
+        <label>Текст договора (вставьте полностью или ключевые разделы)</label>
+        <textarea id="contractText" rows="10" placeholder="ДОГОВОР ОКАЗАНИЯ УСЛУГ..."></textarea>
+      </div>
+      <button class="btn" onclick="analyzeContract()">Проанализировать</button>
+      <div class="ai-result" id="contractResult"></div>
+    </div>
+
+    <!-- Налоговый помощник -->
+    <div class="tab-panel game-stage" id="tool2">
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>Ваш статус</label>
+          <select id="taxRole">
+            <option>Самозанятый (НПД)</option>
+            <option>ИП на УСН «Доходы»</option>
+            <option>ИП на патенте</option>
+            <option>ООО на УСН</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Годовой доход (₽)</label><input type="number" id="taxIncome" placeholder="1200000"></div>
+      </div>
+      <div class="form-group">
+        <label>Есть ли работники / расходы?</label>
+        <textarea id="taxExtra" rows="3" placeholder="Например: 2 сотрудника, расходы ~30% дохода"></textarea>
+      </div>
+      <button class="btn" onclick="taxHelp()">Рассчитать и получить рекомендации</button>
+      <div class="ai-result" id="taxResult"></div>
+    </div>
+
+    <!-- Чек-листы -->
+    <div class="tab-panel game-stage" id="tool3">
+      <div class="form-group">
+        <label>Тема чек-листа</label>
+        <select id="clTopic">
+          <option>Проверка контрагента перед сделкой</option>
+          <option>Регистрация ИП</option>
+          <option>Переход на самозанятость</option>
+          <option>Открытие расчётного счёта</option>
+          <option>Подготовка к налоговой проверке</option>
+          <option>Приём сотрудника на работу</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Уточнения (необязательно)</label>
+        <input type="text" id="clExtra" placeholder="Например: сфера — строительство">
+      </div>
+      <button class="btn" onclick="genChecklist()">Сгенерировать чек-лист</button>
+      <div class="ai-result" id="clResult"></div>
+    </div>
+
+    <!-- Шаблоны без ИИ -->
+    <div class="tab-panel game-stage" id="tool4">
+      <p style="color:var(--muted);margin-bottom:16px">
+        Готовые формы по российскому праву: заполните поля — документ составится автоматически.
+        Не расходуют лимит ИИ. Составленный документ можно сохранить в «Мои документы» в кабинете.
+      </p>
+      <div class="form-group">
+        <label>Шаблон</label>
+        <select id="tplSelect" onchange="renderTplForm()"></select>
+      </div>
+      <div class="grid cols-2" id="tplFields"></div>
+      <br>
+      <button class="btn" onclick="makeTemplate()">Составить документ</button>
+      <button class="btn secondary" id="tplSave" style="display:none" onclick="saveTemplate()">Сохранить в мои документы</button>
+      <div class="ai-result" id="tplResult"></div>
+    </div>
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/templates.js"></script>
+<script>
+initPage("tools.html");
+
+// Индикатор оставшихся использований
+function renderQuota() {
+  let el = document.getElementById("quotaBadge");
+  if (!el) {
+    el = document.createElement("span");
+    el.id = "quotaBadge";
+    document.querySelector(".tabs").prepend(el);
+  }
+  if (!PF.user()) {
+    el.className = "badge";
+    el.innerHTML = "Войдите, чтобы использовать ИИ";
+    return false;
+  }
+  if (PF.isPro()) {
+    el.className = "badge pro";
+    el.innerHTML = "Pro — безлимит";
+    return true;
+  }
+  const left = PF.aiLeft();
+  el.className = left > 0 ? "badge ok" : "badge";
+  el.innerHTML = left > 0
+    ? `Бесплатно осталось: ${left} из ${FREE_AI_LIMIT}`
+    : "Бесплатные использования закончились";
+  return left > 0;
+}
+renderQuota();
+
+function switchTool(i, btn) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll(".tab-panel").forEach((p, j) => p.classList.toggle("active", i === j));
+}
+
+function showResult(id, text) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.classList.add("show");
+}
+
+async function runAI(prompt, offlineFn, resultId, action) {
+  if (!PF.user()) { toast("Войдите, чтобы использовать ИИ-инструменты"); return location.href = "auth.html"; }
+  if (PF.aiLeft() <= 0) { showPaywall(); return; }
+
+  const el = document.getElementById(resultId);
+  el.textContent = "⏳ Генерация…";
+  el.classList.add("show");
+  PF.consumeAIUse();
+  try {
+    const r = await AI.complete(prompt, offlineFn);
+    showResult(resultId, r);
+  } catch (e) {
+    showResult(resultId, "Ошибка: " + e.message);
+  }
+  PF.logAction(action);
+  trackEvent("tool_use");
+  renderQuota();
+}
+
+function genDoc() {
+  const type = document.getElementById("docType").value;
+  const fields = {
+    "Сторона 1": document.getElementById("docSide1").value,
+    "Сторона 2": document.getElementById("docSide2").value,
+    "Предмет": document.getElementById("docSubject").value,
+    "Сумма, ₽": document.getElementById("docSum").value,
+  };
+  runAI(
+    `Составь полноценный юридически грамотный документ на русском языке: «${type}». Данные: ${JSON.stringify(fields)}. Структура: предмет, права и обязанности, стоимость и расчёты, ответственность, сроки, разрешение споров, заключительные положения, реквизиты и подписи. В конце добавь пометку, что это проект и требуется проверка юристом.`,
+    () => OFFLINE.document(type, fields), "docResult", "Генерация документа: " + type
+  );
+}
+
+function analyzeContract() {
+  const text = document.getElementById("contractText").value.trim();
+  if (!text) return toast("Вставьте текст договора");
+  runAI(
+    `Проанализируй договор на русском языке. Найди: 1) риски для стороны-исполнителя; 2) невыгодные или двусмысленные условия; 3) отсутствующие важные пункты (персональные данные, форс-мажор, неустойки, подсудность); 4) дай рекомендации по исправлению. Текст договора:\n\n${text}`,
+    () => OFFLINE.analysis(text), "contractResult", "Анализ договора"
+  );
+}
+
+function taxHelp() {
+  const role = document.getElementById("taxRole").value;
+  const income = document.getElementById("taxIncome").value;
+  const extra = document.getElementById("taxExtra").value;
+  runAI(
+    `Ты — налоговый консультант. Статус: ${role}. Годовой доход: ${income} ₽. Дополнительно: ${extra}. Рассчитай налоговую нагрузку по подходящим режимам (НПД, УСН, патент, АУСН), сравни их, дай рекомендацию по выбору режима и напомни о ключевых сроках уплаты и лимитах на 2026 год.`,
+    () => OFFLINE.tax(role, income), "taxResult", "Налоговый расчёт (" + role + ")"
+  );
+}
+
+function genChecklist() {
+  const topic = document.getElementById("clTopic").value;
+  const extra = document.getElementById("clExtra").value;
+  runAI(
+    `Составь практичный чек-лист на русском языке по теме: «${topic}». ${extra ? "Контекст: " + extra + "." : ""} 8–12 пунктов, каждый с коротким пояснением, сгруппируй по этапам.`,
+    () => OFFLINE.checklist(topic), "clResult", "Чек-лист: " + topic
+  );
+}
+
+/* --- Шаблоны без ИИ --- */
+const tplSelect = document.getElementById("tplSelect");
+tplSelect.innerHTML = Object.keys(TEMPLATES).map(t => `<option>${t}</option>`).join("");
+renderTplForm();
+
+function renderTplForm() {
+  const tpl = TEMPLATES[tplSelect.value];
+  document.getElementById("tplFields").innerHTML = tpl.fields.map(([id, label]) =>
+    `<div class="form-group"><label>${label}</label><input type="text" id="tpl_${id}" placeholder="Введите значение"></div>`
+  ).join("");
+  document.getElementById("tplResult").classList.remove("show");
+  document.getElementById("tplSave").style.display = "none";
+}
+let lastTemplateDoc = null;
+function makeTemplate() {
+  const name = tplSelect.value;
+  const tpl = TEMPLATES[name];
+  const values = {};
+  tpl.fields.forEach(([id]) => (values[id] = document.getElementById("tpl_" + id).value));
+  const text = fillTemplate(tpl.body, values);
+  lastTemplateDoc = { title: name, content: text };
+  const el = document.getElementById("tplResult");
+  el.textContent = text;
+  el.classList.add("show");
+  document.getElementById("tplSave").style.display = "inline-flex";
+  PF.logAction("Составлен шаблон: " + name);
+}
+function saveTemplate() {
+  if (!lastTemplateDoc) return;
+  PF.saveDoc(lastTemplateDoc.title, lastTemplateDoc.content);
+  toast("Документ сохранён в кабинете");
+}
+</script>
+</body>
+</html>

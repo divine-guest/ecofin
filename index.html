@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ПравоФин — право, налоги и финансы в одном сервисе</title>
+<meta name="description" content="AI-инструменты, игры, тесты и база знаний по праву, налогам и финансам.">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <!-- ===== Герой с весами правосудия ===== -->
+  <section class="hero">
+    <!-- Видео-фон: положите файл video/hero-bg.mp4 — он подхватится автоматически -->
+    <video class="hero-video" src="video/hero-bg.mp4" autoplay muted loop playsinline onerror="this.remove()"></video>
+
+    <!-- Анимированные весы правосудия (детализированные) -->
+    <svg class="hero-scales" viewBox="0 0 500 540" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#f4dd8f"/>
+          <stop offset=".45" stop-color="#d9b437"/>
+          <stop offset="1" stop-color="#9a7c16"/>
+        </linearGradient>
+        <linearGradient id="goldSoft" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#eed688"/>
+          <stop offset="1" stop-color="#b18f1f"/>
+        </linearGradient>
+      </defs>
+      <g stroke="url(#goldGrad)" class="scales-glow">
+        <!-- Пьедестал: три ступени -->
+        <path d="M133 530 h234" stroke-width="10" stroke-linecap="round"/>
+        <path d="M163 514 h174 l-11 -15 h-152 z" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M185 499 h130 l-9 -13 h-112 z" stroke-width="4" stroke-linejoin="round"/>
+        <!-- Капитель и база колонны -->
+        <path d="M234 486 h32 l-5 -11 h-22 z" stroke-width="3" stroke-linejoin="round"/>
+        <ellipse cx="250" cy="473" rx="17" ry="4.5" stroke-width="3"/>
+        <!-- Колонна с каннелюрами -->
+        <line x1="250" y1="470" x2="250" y2="122" stroke-width="10" stroke-linecap="round"/>
+        <line x1="245.5" y1="464" x2="245.5" y2="130" stroke-width="1.5" opacity=".65"/>
+        <line x1="254.5" y1="464" x2="254.5" y2="130" stroke-width="1.5" opacity=".65"/>
+        <ellipse cx="250" cy="128" rx="14" ry="4" stroke-width="3"/>
+        <!-- Навершие: шпиль и шар -->
+        <path d="M250 80 v12" stroke-width="4"/>
+        <circle cx="250" cy="66" r="13" stroke-width="5"/>
+        <circle cx="250" cy="66" r="4.5" fill="#eed688" stroke="none"/>
+        <!-- Коромысло с чашами (качается) -->
+        <g class="scales-sway">
+          <path d="M95 97 Q250 77 405 97" stroke-width="7" stroke-linecap="round"/>
+          <!-- Центральный ромб-орнамент -->
+          <path d="M250 81 l7 8 -7 8 -7 -8 z" stroke-width="2.5" stroke-linejoin="round" fill="rgba(217,180,55,.2)"/>
+          <!-- Декоративные концы коромысла -->
+          <path d="M95 97 l-8 6 M95 97 l-8 -6" stroke-width="3" stroke-linecap="round"/>
+          <path d="M405 97 l8 6 M405 97 l8 -6" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="95" cy="97" r="6" fill="#d9b437" stroke="none"/>
+          <circle cx="405" cy="97" r="6" fill="#d9b437" stroke="none"/>
+          <!-- Цепи (звенья) -->
+          <line x1="95" y1="103" x2="63" y2="194" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="0.1 9"/>
+          <line x1="95" y1="103" x2="127" y2="194" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="0.1 9"/>
+          <line x1="95" y1="103" x2="95" y2="192" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="0.1 9"/>
+          <line x1="405" y1="103" x2="373" y2="194" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="0.1 9"/>
+          <line x1="405" y1="103" x2="437" y2="194" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="0.1 9"/>
+          <line x1="405" y1="103" x2="405" y2="192" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="0.1 9"/>
+          <!-- Левая чаша: блюдце с бортиком и бликом -->
+          <path d="M49 195 a46 46 0 0 0 92 0" stroke-width="6" stroke-linejoin="round" fill="rgba(217,180,55,.10)"/>
+          <path d="M56 197 a39 39 0 0 0 78 0" stroke-width="1.8" opacity=".75"/>
+          <ellipse cx="95" cy="195" rx="46" ry="6" stroke-width="3" stroke="url(#goldSoft)"/>
+          <!-- Правая чаша -->
+          <path d="M359 195 a46 46 0 0 0 92 0" stroke-width="6" stroke-linejoin="round" fill="rgba(217,180,55,.10)"/>
+          <path d="M366 197 a39 39 0 0 0 78 0" stroke-width="1.8" opacity=".75"/>
+          <ellipse cx="405" cy="195" rx="46" ry="6" stroke-width="3" stroke="url(#goldSoft)"/>
+        </g>
+        <circle cx="250" cy="97" r="12" stroke-width="3"/>
+        <circle cx="250" cy="97" r="7" fill="#eed688" stroke="none"/>
+      </g>
+    </svg>
+
+    <div class="container hero-inner">
+      <span class="badge">⚖ Экосистема права и финансов</span>
+      <h1>Юриспруденция, бухгалтерия и финансы — <em>в одном месте</em></h1>
+      <p>Помощь бизнесу с налогами, юридическая консультация и поддержка в финансовых вопросах — быстро и в одном месте.</p>
+      <div class="hero-actions">
+        <a href="auth.html" class="btn auth-cta">Начать бесплатно</a>
+        <a href="tools.html" class="btn gold">ИИ-инструменты</a>
+        <a href="games.html" class="btn ghost">Практикум</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hs"><b>3</b><span>курса с сертификатами</span></div>
+        <div class="hs"><b>12</b><span>шаблонов документов</span></div>
+        <div class="hs"><b>13</b><span>статей в базе знаний</span></div>
+        <div class="hs"><b>100%</b><span>бесплатный старт</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Возможности ===== -->
+  <section class="section tint-green">
+    <div class="container">
+      <div class="section-title">
+        <h2>Что <span>внутри</span></h2>
+        <div class="line"></div>
+        <p class="subtitle">Бесплатные инструменты, геймификация и знания — без воды</p>
+      </div>
+      <div class="grid cols-3">
+        <a class="card" href="tools.html">
+          <span class="icon">📄</span>
+          <h3>Генератор документов</h3>
+          <p>Договоры, заявления, претензии и акты за минуту — с помощью встроенного ИИ сервиса.</p>
+        </a>
+        <a class="card" href="tools.html">
+          <span class="icon">🔍</span>
+          <h3>Анализ договоров</h3>
+          <p>Вставьте текст договора — AI найдёт риски, невыгодные условия и пропущенные пункты.</p>
+        </a>
+        <a class="card" href="tools.html">
+          <span class="icon">🧮</span>
+          <h3>Налоговый помощник</h3>
+          <p>Подберёт режим налогообложения (НПД, УСН, патент) и рассчитает нагрузку по вашим данным.</p>
+        </a>
+        <a class="card" href="courses.html">
+          <span class="icon">🎓</span>
+          <h3>Курсы и сертификаты</h3>
+          <p>Финансовая грамотность — бесплатно. Бухучёт и юриспруденция в бизнесе — по подписке Pro.</p>
+        </a>
+        <a class="card" href="games.html">
+          <span class="icon">🧩</span>
+          <h3>Практикум</h3>
+          <p>Разбор кейсов из судебной практики, экспресс-тесты и кейс-клуб для проверки знаний.</p>
+        </a>
+        <a class="card" href="knowledge.html">
+          <span class="icon">📚</span>
+          <h3>База знаний</h3>
+          <p>13 статей по УК РФ, НК РФ, ГК РФ, ТК РФ и ФЗ-115. Тесты по налогам, праву, финансам и бухучёту.</p>
+        </a>
+        <a class="card" href="dashboard.html">
+          <span class="icon">👤</span>
+          <h3>Личный кабинет</h3>
+          <p>Статистика, история действий, рекорды в играх и прогресс обучения — всё сохраняется.</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Тарифы ===== -->
+  <section class="section tint-gold">
+    <div class="container">
+      <div class="section-title">
+        <h2>Тарифы</h2>
+        <div class="line"></div>
+        <p class="subtitle">Freemium: бесплатно — базовые инструменты, платно — AI и B2B</p>
+      </div>
+      <div class="grid cols-3">
+        <div class="card">
+          <h3>Бесплатно</h3>
+          <p class="stat-value">0 ₽</p>
+          <p>Офлайн-шаблоны документов, все игры, база знаний, тесты, чат-виджет.</p>
+          <br><a href="auth.html" class="btn secondary">Регистрация</a>
+        </div>
+        <div class="card" style="border-color: var(--gold)">
+          <h3>Pro <span class="badge pro">Популярный</span></h3>
+          <p class="stat-value">490 ₽<span class="stat-label">/мес</span></p>
+          <p>AI-генерация документов, глубокий анализ договоров, персональные чек-листы, приоритетная поддержка.</p>
+          <br><a href="auth.html" class="btn gold">Подключить</a>
+        </div>
+        <div class="card">
+          <h3>B2B</h3>
+          <p class="stat-value">Индивидуально</p>
+          <p>Корпоративные аккаунты, обучение команд, API-доступ и белая маркировка для юрфирм.</p>
+          <br><a href="#" class="btn secondary">Связаться</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Как это работает ===== -->
+  <section class="section tint-navy">
+    <div class="container">
+      <div class="section-title">
+        <h2>Как это <span>работает</span></h2>
+        <div class="line"></div>
+        <p class="subtitle">Три шага до первого документа</p>
+      </div>
+      <div class="grid cols-3">
+        <div class="card"><span class="icon">1️⃣</span><h3>Зарегистрируйтесь</h3><p>30 секунд — данные хранятся локально в вашем браузере.</p></div>
+        <div class="card"><span class="icon">2️⃣</span><h3>Попробуйте ИИ бесплатно</h3><p>Первая генерация документа, анализ или расчёт — бесплатно, без карты.</p></div>
+        <div class="card"><span class="icon">3️⃣</span><h3>Подключите Pro</h3><p>Безлимитные ИИ-инструменты, персональные чек-листы и будущие курсы.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CTA ===== -->
+  <section class="section">
+    <div class="container">
+      <div class="card" style="text-align:center; background: var(--grad-hero); border: none; padding: 48px 28px;">
+        <h3 style="color:#fff; font-family:'Playfair Display',Georgia,serif; font-size:1.6rem; margin-bottom:10px">Готовы навести порядок в праве и финансах?</h3>
+        <p style="color:rgba(240,247,243,.8); margin-bottom:22px">Регистрация занимает 30 секунд. Начните с бесплатных инструментов уже сегодня.</p>
+        <a href="auth.html" class="btn gold bottom-cta">Создать аккаунт</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="js/app.js"></script>
+<script src="js/ai.js"></script>
+<script>
+initPage("index.html");
+spawnHeroParticles();
+
+// Авторизованным — «Перейти в кабинет» вместо «Создать аккаунт»
+if (PF.user()) {
+  document.querySelectorAll(".auth-cta, .bottom-cta").forEach(btn => {
+    btn.textContent = "Перейти в кабинет";
+    btn.href = "dashboard.html";
+  });
+}
+</script>
+</body>
+</html>

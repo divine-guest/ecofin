@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Личный кабинет — ПравоФин</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="section">
+  <div class="container" id="content">
+    <div class="card" style="text-align:center">
+      <p>Вы не авторизованы.</p><br>
+      <a href="auth.html" class="btn">Войти или зарегистрироваться</a>
+    </div>
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/competencies.js"></script>
+<script src="js/courses.js"></script>
+<script>
+initPage("dashboard.html");
+
+/* ============ Календарь «Копилка» (стиль Google Calendar) ============ */
+const CAL = (() => {
+  const HABITS_LIST = [
+    { id: "money", icon: "💰", label: "Отложил деньги", active: true },
+    { id: "expenses", icon: "📊", label: "Внёс траты", active: false },
+    { id: "learn", icon: "📚", label: "Почитал статью", active: false },
+  ];
+  let view = null; // просматриваемый месяц {y, m}
+
+  function key() { const x = PF.user(); return "pf_habits_" + (x ? x.email : "guest"); }
+  function daysArr() { return JSON.parse(localStorage.getItem(key()) || "{}").money || []; }
+  function setDaysArr(arr) {
+    const s = JSON.parse(localStorage.getItem(key()) || "{}");
+    s.money = arr;
+    localStorage.setItem(key(), JSON.stringify(s));
+  }
+  function iso(y, m, d) { return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`; }
+  function todayISO() { const t = new Date(); return iso(t.getFullYear(), t.getMonth(), t.getDate()); }
+
+  function streaks() {
+    const set = new Set(daysArr());
+    const sorted = [...set].sort();
+    let best = 0, run = 0, prev = null;
+    for (const d of sorted) {
+      run = prev && (new Date(d) - new Date(prev)) / 86400000 === 1 ? run + 1 : 1;
+      best = Math.max(best, run);
+      prev = d;
+    }
+    let cur = 0;
+    const t = new Date();
+    if (!set.has(iso(t.getFullYear(), t.getMonth(), t.getDate()))) t.setDate(t.getDate() - 1);
+    while (set.has(iso(t.getFullYear(), t.getMonth(), t.getDate()))) { cur++; t.setDate(t.getDate() - 1); }
+    return { best, cur, total: sorted.length };
+  }
+
+  function render() {
+    const grid = document.getElementById("calGrid");
+    if (!grid) return;
+    const now = new Date();
+    if (!view) view = { y: now.getFullYear(), m: now.getMonth() };
+    const { y, m } = view;
+    const titleEl = document.querySelector(".cal-header h3");
+    titleEl.textContent = "Копилка · " + new Date(y, m, 1).toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+
+    const set = new Set(daysArr());
+    const tISO = todayISO();
+    const first = new Date(y, m, 1);
+    const cursor = new Date(y, m, 1 - (first.getDay() + 6) % 7); // с понедельника перед 1-м числом
+
+    let html = "";
+    for (let i = 0; i < 42; i++) {
+      const cy = cursor.getFullYear(), cm = cursor.getMonth(), cd = cursor.getDate();
+      const dISO = iso(cy, cm, cd);
+      const isOther = cm !== m, isFuture = dISO > tISO;
+      let cls = "cal-cell";
+      if (isOther) cls += " other";
+      if (isFuture) cls += " future"; else cls += " clickable";
+      if (set.has(dISO)) cls += " done";
+      if (dISO === tISO) cls += " today";
+      const action = isOther ? `CAL.goto(${cy},${cm})` : (isFuture ? "" : `CAL.toggle('${dISO}')`);
+      html += `<div class="${cls}" title="${dISO}" ${action ? `onclick="${action}"` : ""}>
+        <span class="d">${cd}</span>${set.has(dISO) ? '<span class="mark">💰</span>' : ""}</div>`;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    grid.innerHTML = html;
+
+    // Кнопки привычек
+    const markedToday = set.has(tISO);
+    document.getElementById("habitActions").innerHTML = HABITS_LIST.map(h =>
+      h.active
+        ? `<button class="habit-btn ${markedToday ? "active" : ""}" onclick="CAL.toggleToday()">${h.icon} ${h.label} ${markedToday ? "✓" : ""}</button>`
+        : `<button class="habit-btn" disabled>${h.icon} ${h.label} <span class="soon">скоро</span></button>`
+    ).join("");
+
+    // Статистика
+    const st = streaks();
+    document.getElementById("calStats").innerHTML =
+      `<span class="badge">Всего: ${st.total} дн.</span>
+       <span class="badge ok">🔥 Серия: ${st.cur} дн.</span>
+       <span class="badge pro">🏆 Рекорд: ${st.best} дн.</span>`;
+
+    // Прогресс просматриваемого месяца
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const inMonth = daysArr().filter(d => {
+      const [yy, mm] = d.split("-");
+      return +yy === y && +mm === m + 1;
+    }).length;
+    const pct = Math.round((inMonth / daysInMonth) * 100);
+    document.getElementById("calBar").style.width = pct + "%";
+    document.getElementById("calPct").textContent = pct + "% месяца";
+  }
+
+  function toggle(dISO) {
+    if (dISO > todayISO()) return toast("Будущий день отметить нельзя");
+    const arr = daysArr();
+    const i = arr.indexOf(dISO);
+    if (i >= 0) arr.splice(i, 1);
+    else { arr.push(dISO); PF.logAction("«Копилка»: отложил деньги " + dISO); }
+    setDaysArr(arr);
+    render();
+    checkStreakReward();
+  }
+
+  /* Награды за серию: 7 дней = неделя Pro, 30 дней = месяц Pro, 90 дней = 2 месяца */
+  function checkStreakReward() {
+    const REWARDS = { 7: 7, 30: 30, 90: 60 };
+    const cur = streaks().cur;
+    const user = PF.user();
+    if (!user || !REWARDS[cur]) return;
+    const claimed = user.streakRewards || [];
+    if (claimed.includes(cur)) return;
+    const base = user.proUntil && user.proUntil > Date.now() ? user.proUntil : Date.now();
+    const until = base + REWARDS[cur] * 86400000;
+    PF.updateUser({ plan: "pro", proUntil: until, streakRewards: [...claimed, cur] });
+    PF.logAction(`Награда за серию ${cur} дней: +${REWARDS[cur]} дней Pro`);
+    trackEvent("streak_reward");
+    toast(`Награда за серию ${cur} дней: +${REWARDS[cur]} дней Pro!`);
+  }
+  function toggleToday() { toggle(todayISO()); }
+  function shift(dir) { const d = new Date(view.y, view.m + dir, 1); view = { y: d.getFullYear(), m: d.getMonth() }; render(); }
+  function goToday() { const t = new Date(); view = { y: t.getFullYear(), m: t.getMonth() }; render(); }
+  function goto(y, m) { view = { y, m }; render(); }
+
+  return { render, toggle, toggleToday, shift, goToday, goto };
+})();
+
+function recoLinks(p) {
+  const byStatus = {
+    self: [["calc.html", "Сравнить налоговые режимы"], ["knowledge.html", "Гид по самозанятости (НПД)"], ["tools.html", "Чек-лист: переход на НПД"]],
+    ip: [["calc.html", "Рассчитать УСН против патента"], ["courses.html", "Курс: бухучёт для бизнеса"], ["knowledge.html", "УСН: «Доходы» против «Д−Р»"]],
+    ooo: [["knowledge.html", "НДС для УСН с 2025 года"], ["knowledge.html", "Субсидиарная ответственность"], ["courses.html", "Курс: юриспруденция в бизнесе"]],
+    person: [["calc.html", "Калькулятор налоговых вычетов"], ["courses.html", "Курс: финансовая грамотность"], ["knowledge.html", "Налоговые вычеты физлиц"]],
+    start: [["courses.html", "Курс: финансовая грамотность"], ["knowledge.html", "Регистрация ИП: чек-лист"], ["calc.html", "Какой налоговый режим выбрать"]],
+  };
+  const byGoal = {
+    tax: [["calc.html", "Налоговые калькуляторы"]],
+    docs: [["tools.html", "Шаблоны документов"], ["tools.html", "ИИ-генератор документов"]],
+    money: [["calc.html", "Счёт на оплату"], ["dashboard.html", "Календарь привычек"]],
+    learn: [["courses.html", "Все курсы"]],
+  };
+  const links = [...(byStatus[p.status] || []), ...(byGoal[p.goal] || [])];
+  return [...new Map(links.map(l => [l[1], l])).values()].slice(0, 4);
+}
+const u = PF.user();
+if (u) {
+  const hist = PF.history();
+  const scores = u.scores || {};
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+  const habitsStore = JSON.parse(localStorage.getItem("pf_habits_" + u.email) || "{}");
+  const habitDone = (habitsStore.money || []).length;
+  const quota = PF.isPro() ? "👑 Безлимит" : `${PF.aiLeft()} из ${FREE_AI_LIMIT}`;
+
+  document.getElementById("content").innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:24px">
+      <div>
+        <h2>Привет, ${escapeHtml(u.name)}! 👋</h2>
+        <p style="color:var(--muted)">
+          Тариф: <span class="badge ${u.plan === "pro" || u.isAdmin ? "pro" : ""}">${u.plan === "pro" || u.isAdmin ? "PRO" : "Бесплатный"}</span>
+          ${u.isAdmin ? '<span class="badge">Админ</span>' : ""}
+        </p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="tools.html" class="btn">ИИ-инструменты</a>
+        <button class="btn secondary" onclick="SETTINGS.open()">Настройки профиля</button>
+        <button class="btn danger" onclick="PF.logout()">Выйти</button>
+      </div>
+    </div>
+
+    <div class="grid cols-4" style="margin-bottom:28px">
+      <div class="card"><div class="stat-value">${hist.length}</div><div class="stat-label">действий всего</div></div>
+      <div class="card"><div class="stat-value">${COMP.index()}%</div><div class="stat-label">индекс грамотности</div></div>
+      <div class="card"><div class="stat-value">${habitDone}</div><div class="stat-label">дней в «Копилке»</div></div>
+      <div class="card"><div class="stat-value">${new Date(u.registered).toLocaleDateString("ru-RU")}</div><div class="stat-label">с нами с</div></div>
+    </div>
+
+    ${u.profile ? `
+    <div class="card" style="margin-bottom:28px">
+      <h3>Рекомендуем для вас</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${recoLinks(u.profile).map(([href, label]) =>
+          `<a href="${href}" class="btn small secondary">${label}</a>`).join("")}
+      </div>
+    </div>` : ""}
+
+    <!-- Копилка: календарь привычек -->
+    <div class="card" style="margin-bottom:28px">
+      <div class="cal-header">
+        <div>
+          <h3 style="margin-bottom:6px">Копилка — «Отложил деньги»</h3>
+          <div id="calStats" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        </div>
+        <div class="cal-nav">
+          <button class="cal-nav-btn" onclick="CAL.shift(-1)" title="Прошлый месяц">‹</button>
+          <button class="cal-today-btn" onclick="CAL.goToday()">Сегодня</button>
+          <button class="cal-nav-btn" onclick="CAL.shift(1)" title="Следующий месяц">›</button>
+        </div>
+      </div>
+      <div class="habit-actions" id="habitActions" style="margin-bottom:14px"></div>
+      <div class="cal-weekdays">
+        <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+        <div class="progress-bar" style="flex:1"><div id="calBar" style="width:0"></div></div>
+        <span id="calPct" style="color:var(--muted);font-size:.84rem;font-weight:600;min-width:90px;text-align:right"></span>
+      </div>
+      <p style="color:var(--muted);font-size:.84rem;margin-top:8px">
+        Клик по прошедшему дню — отметить или снять. Стрелками ‹ › листайте историю прошлых месяцев.
+      </p>
+    </div>
+
+    <div class="grid cols-2" style="margin-bottom:28px">
+      <div class="card">
+        <h3>Подписка и ИИ</h3>
+        <p>Использований ИИ-инструментов осталось: <b>${quota}</b></p>
+        ${PF.isPro()
+          ? `<p style="color:var(--muted)">${u.proUntil
+              ? `Pro активна до <b>${new Date(u.proUntil).toLocaleDateString("ru-RU")}</b>`
+              : "Pro активна без ограничения срока"}</p><br>
+             <div style="display:flex;gap:10px;flex-wrap:wrap">
+               <button class="btn gold" onclick="PAY.open()">Продлить</button>
+               <button class="btn secondary" onclick="PAY.cancel()">Отменить подписку</button>
+             </div>`
+          : `<br><button class="btn gold" onclick="PAY.open()">Оформить Pro · 490 ₽/мес</button>`}
+        ${(u.payments || []).length ? `
+          <br><h4 style="margin-bottom:8px">История платежей</h4>
+          <div style="max-height:150px;overflow-y:auto">
+            ${[...u.payments].reverse().map(p => `<p style="padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem">
+              ${p.plan === "year" ? "Pro на год" : "Pro на месяц"} — <b>${p.amount} ₽</b>
+              <span style="color:var(--muted)">· ${p.method === "sbp" ? "СБП" : "карта"} · ${new Date(p.date).toLocaleDateString("ru-RU")}</span>
+            </p>`).join("")}
+          </div>` : ""}
+        <br><br>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a href="tools.html" class="btn small secondary">Документ</a>
+          <a href="tools.html" class="btn small secondary">Анализ</a>
+          <a href="games.html" class="btn small secondary">Игры</a>
+          <a href="knowledge.html" class="btn small secondary">Статьи</a>
+          <a href="expenses.html" class="btn small secondary">Дневник трат</a>
+          <a href="search.html" class="btn small secondary">Поиск</a>
+        </div>
+        <br>
+        <p style="font-size:.88rem;color:var(--muted)">Реферальный код: <b style="color:var(--text)">${PF.referralCode()}</b>
+          <button class="btn small secondary" onclick="copyRef()">Копировать</button>
+        </p>
+        <p style="font-size:.8rem;color:var(--muted)">Друг регистрируется по вашему коду — вы оба получаете месяц Pro в подарок (после запуска бэкенда).</p>
+      </div>
+      <div class="card">
+        <h3>Профиль компетенций</h3>
+        <p style="margin-bottom:4px">Индекс грамотности: <b style="font-size:1.2rem;color:var(--primary)">${COMP.index()}%</b>
+          · ${COMP.level(COMP.index())}</p>
+        ${Object.entries(COMP.AREAS).map(([id, name]) => {
+          const v = COMP.all()[id] || 0;
+          return `<div style="margin:9px 0">
+            <div style="display:flex;justify-content:space-between;font-size:.82rem">
+              <span>${name}</span><span style="color:var(--muted)">${v}% · ${COMP.level(v)}</span>
+            </div>
+            <div class="progress-bar" style="margin-top:4px"><div style="width:${v}%"></div></div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+
+    <!-- Индивидуальный план развития -->
+    <div class="card" style="margin-bottom:28px">
+      <h3>Индивидуальный план развития</h3>
+      <p style="color:var(--muted);font-size:.86rem">Подобран по вашему профилю. Проходите материалы — компетенции растут автоматически.</p>
+      <div class="grid cols-3" style="margin-top:14px">
+        ${COURSES.map(c => {
+          const done = (JSON.parse(localStorage.getItem("pf_course_" + u.email) || "{}")[c.id] || []).length;
+          const pct = Math.round(done / c.lessons.length * 100);
+          const status = pct === 100 ? '<span class="badge ok">Сертификат</span>' : pct > 0 ? '<span class="badge">В процессе</span>' : '<span class="badge">Не начато</span>';
+          return `<a class="card" href="courses.html" style="padding:18px">
+            <h3 style="font-size:.98rem">${c.title} ${c.free ? "" : '<span class="badge pro">Pro</span>'}</h3>
+            <p style="font-size:.8rem;color:var(--muted)">${COMP.AREAS[COMP.courseArea[c.id]]} · ${c.lessons.length} уроков</p>
+            <div class="progress-bar" style="margin:8px 0 4px"><div style="width:${pct}%"></div></div>
+            <p style="font-size:.78rem">${status} ${pct}%</p>
+          </a>`;
+        }).join("")}
+        <a class="card" href="knowledge.html" style="padding:18px">
+          <h3 style="font-size:.98rem">Аттестационные тесты</h3>
+          <p style="font-size:.8rem;color:var(--muted)">4 теста: налоги, право, финансы, бухучёт</p>
+          <p style="font-size:.78rem;margin-top:8px"><span class="badge">Проверка знаний</span></p>
+        </a>
+      </div>
+    </div>
+
+    <!-- Документы и сроки -->
+    <div class="grid cols-2" style="margin-bottom:28px">
+      <div class="card">
+        <h3>Мои документы</h3>
+        <p style="color:var(--muted);font-size:.86rem">Сохранённые шаблоны и генерации. Скачиваются в один клик.</p><br>
+        <div id="docsList"></div>
+      </div>
+      <div class="card">
+        <h3>Сроки и напоминания</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px">
+          <input type="text" id="dlTitle" placeholder="Например: Аванс УСН" style="flex:1;min-width:140px">
+          <input type="date" id="dlDate" style="width:auto">
+          <button class="btn small" onclick="dlAdd()">Добавить</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn small secondary" onclick="dlPreset(28)">Аванс УСН (28-е)</button>
+          <button class="btn small secondary" onclick="dlPreset(25)">Декларация (25-е)</button>
+          <button class="btn small secondary" id="notifBtn" onclick="NOTIF.enable().then(on => on && NOTIF.checkDeadlines())">Включить уведомления</button>
+        </div>
+        <div id="dlList"></div>
+      </div>
+    </div>
+
+    <div class="grid cols-2">
+      <div class="card">
+        <h3>Личный чат с ИИ</h3>
+        <p style="color:var(--muted);margin-bottom:12px">Приватная переписка с ИИ-консультантом — без ограничений подписки</p>
+        <div class="chat-panel">
+          <div class="chat-messages" id="pcMessages"></div>
+          <div class="chat-input">
+            <input type="text" id="pcInput" placeholder="Спросите что угодно..." onkeydown="if(event.key==='Enter')pcSend()">
+            <button class="btn" onclick="pcSend()">➤</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>История действий</h3>
+        ${hist.length ? `<div style="max-height:420px;overflow-y:auto">
+          ${hist.slice(0, 20).map(h => `<p style="padding:7px 0;border-bottom:1px solid var(--border);font-size:.88rem">${escapeHtml(h.text)}<br><span style="color:var(--muted);font-size:.78rem">${new Date(h.date).toLocaleString("ru-RU")}</span></p>`).join("")}
+        </div>` : `<p style="color:var(--muted)">История пуста</p>`}
+      </div>
+    </div>`;
+
+  // Личный чат: приветствие
+  if (!document.getElementById("pcMessages").children.length) {
+    const hello = document.createElement("div");
+    hello.className = "chat-msg bot";
+    hello.textContent = "Это ваш личный кабинет. Спросите меня о налогах, договорах или финансах — я подскажу.";
+    document.getElementById("pcMessages").appendChild(hello);
+  }
+  CAL.render();
+  renderDocs();
+  dlRender();
+  NOTIF.checkDeadlines();
+  const nb = document.getElementById("notifBtn");
+  if (nb && NOTIF.enabled()) nb.style.display = "none";
+}
+
+/* ============ Мои документы ============ */
+function renderDocs() {
+  const docs = PF.docs();
+  document.getElementById("docsList").innerHTML = docs.length
+    ? docs.map((d, i) => `
+      <p style="padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem">
+        <b>${escapeHtml(d.title)}</b>
+        <span style="color:var(--muted);font-size:.78rem"> · ${new Date(d.date).toLocaleDateString("ru-RU")}</span><br>
+        <button class="btn small secondary" onclick="docView(${i})">Открыть</button>
+        <button class="btn small secondary" onclick="docDownload(${i})">Скачать</button>
+        <button class="btn small danger" onclick="docDelete(${i})">Удалить</button>
+      </p>`).join("")
+    : `<p style="color:var(--muted)">Пока пусто. Составьте документ во вкладке «Шаблоны без ИИ» и сохраните его здесь.</p>`;
+}
+function docView(i) {
+  const d = PF.docs()[i];
+  alert(d.title + "\n\n" + d.content);
+}
+function docDownload(i) {
+  const d = PF.docs()[i];
+  const blob = new Blob([d.content], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = d.title.replace(/[\\/:*?"<>|]/g, "") + ".txt";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function docDelete(i) {
+  if (!confirm("Удалить документ?")) return;
+  PF.deleteDoc(i);
+  renderDocs();
+}
+
+/* ============ Сроки и напоминания ============ */
+function dlKey() { return "pf_deadlines_" + (PF.user() ? PF.user().email : "guest"); }
+function dlAll() { return JSON.parse(localStorage.getItem(dlKey()) || "[]"); }
+function dlSave(list) { localStorage.setItem(dlKey(), JSON.stringify(list)); dlRender(); }
+function dlAdd() {
+  const title = document.getElementById("dlTitle").value.trim();
+  const date = document.getElementById("dlDate").value;
+  if (!title || !date) return toast("Заполните название и дату");
+  dlSave([...dlAll(), { title, date }]);
+  document.getElementById("dlTitle").value = "";
+  PF.logAction("Добавлен срок: " + title);
+}
+function dlPreset(day) {
+  const t = new Date();
+  const d = new Date(t.getFullYear(), t.getMonth() + 1, day);
+  dlSave([...dlAll(), { title: day === 28 ? "Авансовый платёж УСН" : "Сдать декларацию", date: d.toISOString().slice(0, 10) }]);
+}
+function dlDelete(i) { const l = dlAll(); l.splice(i, 1); dlSave(l); }
+function dlRender() {
+  const list = dlAll().sort((a, b) => a.date.localeCompare(b.date));
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById("dlList").innerHTML = list.length
+    ? list.map((d, i) => {
+        const days = Math.ceil((new Date(d.date) - new Date(today)) / 86400000);
+        const cls = days < 0 ? "badge" : days <= 7 ? "badge pro" : "badge ok";
+        const label = days < 0 ? `просрочен на ${-days} дн.` : days === 0 ? "сегодня!" : `через ${days} дн.`;
+        return `<p style="padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem;display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <span><b>${escapeHtml(d.title)}</b><br><span style="color:var(--muted);font-size:.78rem">${new Date(d.date).toLocaleDateString("ru-RU")}</span></span>
+          <span style="white-space:nowrap"><span class="${cls}">${label}</span> <button class="btn small danger" onclick="dlDelete(${i})">✕</button></span>
+        </p>`;
+      }).join("")
+    : `<p style="color:var(--muted)">Сроков нет. Добавьте налоговые дедлайны или окончание договора.</p>`;
+}
+
+function copyRef() {
+  navigator.clipboard.writeText(PF.referralCode()).then(() => toast("Код скопирован")).catch(() => toast(PF.referralCode()));
+}
+
+/* ============ Личный чат ============ */
+function pcAdd(role, text) {
+  const d = document.createElement("div");
+  d.className = "chat-msg " + role;
+  d.textContent = text;
+  document.getElementById("pcMessages").appendChild(d);
+  document.getElementById("pcMessages").scrollTop = 1e9;
+}
+async function pcSend() {
+  const input = document.getElementById("pcInput");
+  const text = input.value.trim();
+  if (!text || !PF.user()) return;
+  input.value = "";
+  pcAdd("user", text);
+  const thinking = document.createElement("div");
+  thinking.className = "chat-msg bot";
+  thinking.textContent = "…";
+  document.getElementById("pcMessages").appendChild(thinking);
+  try {
+    const reply = await AI.complete(
+      `Ты — личный ИИ-консультант пользователя в кабинете сервиса «ПравоФин». Отвечай кратко, по делу, на русском. Вопрос: ${text}`,
+      () => OFFLINE.chat(text)
+    );
+    thinking.textContent = reply;
+  } catch (e) { thinking.textContent = "Ошибка: " + e.message; }
+  PF.logAction("Личный чат: " + text.slice(0, 60));
+  document.getElementById("pcMessages").scrollTop = 1e9;
+}
+</script>
+</body>
+</html>

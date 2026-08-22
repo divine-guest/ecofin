@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Курсы — ПравоФин</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="section tint-green">
+  <div class="container">
+    <div class="section-title">
+      <h2>Обучающие <span>курсы</span></h2>
+      <div class="line"></div>
+      <p class="subtitle">Финансовая грамотность — бесплатно · Бухучёт и юриспруденция — по подписке Pro</p>
+    </div>
+    <div id="coursesView"></div>
+    <div id="lessonView"></div>
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/competencies.js"></script>
+<script src="js/courses.js"></script>
+<script>
+initPage("courses.html");
+
+function renderCourses() {
+  document.getElementById("lessonView").innerHTML = "";
+  const prog = COURSE_PROGRESS.get();
+  document.getElementById("coursesView").innerHTML = `<div class="grid cols-3">` + COURSES.map(c => {
+    const done = (prog[c.id] || []).length;
+    const pct = Math.round((done / c.lessons.length) * 100);
+    const locked = !c.free && !PF.isPro();
+    return `
+      <div class="card" onclick="${locked ? `showPaywall()` : `openCourse('${c.id}')`}" style="cursor:pointer">
+        <h3>${c.title} ${c.free ? '<span class="badge ok">Бесплатно</span>' : '<span class="badge pro">Pro</span>'}</h3>
+        <p>${c.desc}</p><br>
+        <p style="font-size:.84rem;color:var(--muted)">${c.lessons.length} уроков · ${c.lessons.reduce((s, l) => s + l.mins, 0)} минут</p>
+        <div class="progress-bar" style="margin:10px 0 6px"><div style="width:${pct}%"></div></div>
+        <p style="font-size:.8rem;color:var(--muted)">${locked ? "Откроется по подписке" : `Пройдено ${pct}%`}</p>
+      </div>`;
+  }).join("") + `</div>`;
+}
+
+function openCourse(id) {
+  const c = COURSES.find(x => x.id === id);
+  const prog = new Set(COURSE_PROGRESS.get()[id] || []);
+  document.getElementById("coursesView").innerHTML = "";
+  const view = document.getElementById("lessonView");
+  view.innerHTML = `
+    <button class="btn small secondary" onclick="renderCourses()" style="margin-bottom:18px">← Все курсы</button>
+    <div class="section-title" style="margin-bottom:24px">
+      <h2>${c.title} ${c.free ? '<span class="badge ok">Бесплатно</span>' : '<span class="badge pro">Pro</span>'}</h2>
+      <p class="subtitle">${c.desc}</p>
+    </div>
+    <div class="grid cols-2">
+      <div class="card">
+        <h3>Программа</h3>
+        ${c.lessons.map((l, i) => `
+          <div class="article-item" onclick="openLesson('${id}', ${i})" style="${prog.has(i) ? "border-color:var(--primary)" : ""}">
+            <b>Урок ${i + 1}. ${l.title}</b> ${prog.has(i) ? '<span class="badge ok">✓</span>' : ""}
+            <div class="meta">≈ ${l.mins} мин чтения</div>
+          </div>`).join("")}
+      </div>
+      <div class="card" id="lessonBox">
+        <h3>Выберите урок слева</h3>
+        <p style="color:var(--muted)">Откройте первый урок и отмечайте изученное — прогресс сохраняется автоматически.</p>
+      </div>
+    </div>`;
+}
+
+function openLesson(id, i) {
+  const c = COURSES.find(x => x.id === id);
+  const l = c.lessons[i];
+  const prog = new Set(COURSE_PROGRESS.get()[id] || []);
+  document.getElementById("lessonBox").innerHTML = `
+    <h3>Урок ${i + 1}. ${l.title}</h3>
+    <p style="color:var(--muted);font-size:.82rem">≈ ${l.mins} минут</p>
+    <div class="ai-result show" style="border-image:none">${escapeHtml(l.body)}</div>
+    <br>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      ${i > 0 ? `<button class="btn small secondary" onclick="openLesson('${id}', ${i - 1})">← Предыдущий</button>` : ""}
+      <button class="btn small ${prog.has(i) ? "secondary" : ""}" onclick="completeLesson('${id}', ${i})">
+        ${prog.has(i) ? "Пройден ✓" : "Отметить пройденным"}
+      </button>
+      ${i < c.lessons.length - 1
+        ? `<button class="btn small" onclick="openLesson('${id}', ${i + 1})">Следующий →</button>`
+        : `<button class="btn gold" onclick="finishCourse('${id}')">Завершить курс</button>`}
+    </div>`;
+  PF.logAction("Урок курса: " + l.title);
+}
+
+function completeLesson(id, i) {
+  COURSE_PROGRESS.done(id, i);
+  COMP.award(COMP.courseArea[id] || "contracts", 8);
+  PF.logAction("Пройден урок " + (i + 1) + " курса " + id);
+  openCourse(id);
+  openLesson(id, i);
+  checkCertificate(id);
+}
+
+function finishCourse(id) {
+  const c = COURSES.find(x => x.id === id);
+  c.lessons.forEach((_, i) => COURSE_PROGRESS.done(id, i));
+  COMP.award(COMP.courseArea[id] || "contracts", 8);
+  openCourse(id);
+  checkCertificate(id);
+}
+
+function checkCertificate(id) {
+  const c = COURSES.find(x => x.id === id);
+  const prog = new Set(COURSE_PROGRESS.get()[id] || []);
+  if (prog.size < c.lessons.length) return;
+  const u = PF.user();
+  let bd = document.getElementById("certBackdrop");
+  if (!bd) {
+    bd = document.createElement("div");
+    bd.id = "certBackdrop";
+    bd.className = "modal-backdrop";
+    document.body.appendChild(bd);
+  }
+  bd.classList.add("open");
+  bd.innerHTML = `
+    <div class="modal" style="text-align:center;border:6px double var(--gold)">
+      <p style="letter-spacing:2px;color:var(--gold);font-weight:800">СЕРТИФИКАТ</p>
+      <p style="color:var(--muted);font-size:.85rem">ПравоФин подтверждает, что</p>
+      <h3 style="font-family:'Playfair Display',Georgia,serif;margin:8px 0">${escapeHtml(u ? u.name : "Пользователь")}</h3>
+      <p style="color:var(--muted);font-size:.85rem">успешно завершил(а) курс</p>
+      <h4 style="margin:8px 0">«${c.title}»</h4>
+      <p style="color:var(--muted);font-size:.85rem">${c.lessons.length} уроков · ${new Date().toLocaleDateString("ru-RU")}</p>
+      <br>
+      <button class="btn" onclick="window.print()">Скачать / печать</button>
+      <button class="btn secondary" onclick="document.getElementById('certBackdrop').classList.remove('open')">Закрыть</button>
+    </div>`;
+  PF.logAction("Сертификат за курс: " + c.title);
+  PF.addScore("quiz", 100);
+}
+
+renderCourses();
+</script>
+</body>
+</html>
