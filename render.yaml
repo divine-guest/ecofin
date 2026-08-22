@@ -11,6 +11,6 @@ services:
       - key: AI_API_KEY
         sync: false
       - key: AI_BASE_URL
-        value: https://api.deepseek.com/v1
+        value: https://api.aitunnel.ru/v1
       - key: AI_MODEL
         value: deepseek-chat
