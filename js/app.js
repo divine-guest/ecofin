@@ -169,7 +169,7 @@ function renderHeader(active) {
   header.innerHTML = `
     <div class="container nav">
       <a href="index.html" class="logo"><span class="logo-mark">⚖</span>Право<b>Фин</b></a>
-      <button class="nav-burger" onclick="this.closest('.site-header').classList.toggle('menu-open')" aria-label="Меню">☰</button>
+      <button class="nav-burger" onclick="this.closest('.site-header').classList.toggle('menu-open')" aria-label="Меню">Меню</button>
       <nav class="nav-links">${links}</nav>
       <button class="theme-toggle" onclick="toggleTheme()" title="Сменить тему">${themeLabel}</button>
       ${auth}
