@@ -4,7 +4,7 @@
 const AI = {
   /* URL вашего бэкенда с Render — вставьте после деплоя, например:
      "https://pravofin-ai.onrender.com" (без слэша на конце) */
-  BACKEND_URL: "",
+  BACKEND_URL: "https://pravofin-ai.onrender.com",
 
   async complete(prompt, fallback) {
     /* ================================================================
