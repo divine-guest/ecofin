@@ -353,12 +353,12 @@ if (u) {
       </div>
     </div>`;
 
-  // Личный чат: приветствие
-  if (!document.getElementById("pcMessages").children.length) {
-    const hello = document.createElement("div");
-    hello.className = "chat-msg bot";
-    hello.textContent = "Это ваш личный кабинет. Спросите меня о налогах, договорах или финансах — я подскажу.";
-    document.getElementById("pcMessages").appendChild(hello);
+  // Личный чат: восстановление сохранённой истории
+  const pcSaved = JSON.parse(localStorage.getItem("pf_pchat_" + u.email) || "[]");
+  if (pcSaved.length) {
+    pcSaved.forEach(m => pcAdd(m.role === "user" ? "user" : "bot", m.text));
+  } else {
+    pcAdd("bot", "Это ваш личный кабинет. Спросите меня о налогах, договорах или финансах — я подскажу. История переписки сохраняется.");
   }
   CAL.render();
   renderDocs();
@@ -457,12 +457,16 @@ async function pcSend() {
   thinking.className = "chat-msg bot";
   thinking.textContent = "…";
   document.getElementById("pcMessages").appendChild(thinking);
+  const key = "pf_pchat_" + PF.user().email;
+  const hist = JSON.parse(localStorage.getItem(key) || "[]");
+  const context = hist.slice(-6).map(m => (m.role === "user" ? "Пользователь: " : "Консультант: ") + m.text).join("\n");
   try {
     const reply = await AI.complete(
-      `Ты — личный ИИ-консультант пользователя в кабинете сервиса «ПравоФин». Отвечай кратко, по делу, на русском. Вопрос: ${text}`,
+      `Ты — личный ИИ-консультант пользователя в кабинете сервиса «ПравоФин». Отвечай кратко, по делу, на русском. ${context ? "Контекст диалога:\n" + context + "\n\n" : ""}Вопрос: ${text}`,
       () => OFFLINE.chat(text)
     );
     thinking.textContent = reply;
+    localStorage.setItem(key, JSON.stringify([...hist, { role: "user", text }, { role: "bot", text: reply }].slice(-30)));
   } catch (e) { thinking.textContent = "Ошибка: " + e.message; }
   PF.logAction("Личный чат: " + text.slice(0, 60));
   document.getElementById("pcMessages").scrollTop = 1e9;

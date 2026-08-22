@@ -205,7 +205,7 @@ function renderChatWidget() {
   w.className = "chat-widget";
   w.innerHTML = `
     <div class="chat-box" id="chatBox">
-      <div class="chat-header">🤖 AI-консультант <button onclick="chatToggle()">✕</button></div>
+      <div class="chat-header">ИИ-консультант <button onclick="clearChat()" title="Очистить историю" style="margin-right:10px;font-size:.85rem">Очистить</button><button onclick="chatToggle()">✕</button></div>
       <div class="chat-messages" id="chatMessages"></div>
       <div class="chat-input">
         <input type="text" id="chatInput" placeholder="Задайте вопрос..." onkeydown="if(event.key==='Enter')chatSend()">
@@ -215,13 +215,37 @@ function renderChatWidget() {
     <button class="chat-toggle" onclick="chatToggle()">💬</button>`;
   document.body.appendChild(w);
 }
+function chatStore() {
+  const u = PF.user();
+  return "pf_chat_" + (u ? u.email : "guest");
+}
+function chatHistory() { return JSON.parse(localStorage.getItem(chatStore()) || "[]"); }
+function chatSave(msgs) { localStorage.setItem(chatStore(), JSON.stringify(msgs.slice(-30))); }
+function restoreChat() {
+  const box = document.getElementById("chatBox");
+  if (!box || box.dataset.restored) return;
+  box.dataset.restored = "1";
+  const msgs = chatHistory();
+  if (msgs.length) {
+    msgs.forEach(m => addMsg(m.role === "user" ? "user" : "bot", m.text));
+  } else {
+    addMsg("bot", "Здравствуйте! Я ИИ-консультант ПравоФин. Задайте вопрос по праву, налогам или финансам — отвечу кратко и по делу.");
+  }
+}
+function clearChat() {
+  localStorage.removeItem(chatStore());
+  document.getElementById("chatMessages").innerHTML = "";
+  addMsg("bot", "История очищена. Задайте новый вопрос.");
+}
+function chatContext(text) {
+  const hist = chatHistory().slice(-6)
+    .map(m => (m.role === "user" ? "Пользователь: " : "Консультант: ") + m.text).join("\n");
+  return hist ? "Контекст предыдущего диалога (учти его при ответе):\n" + hist + "\n\nНовый вопрос: " + text : text;
+}
 function chatToggle() {
   const box = document.getElementById("chatBox");
   box.classList.toggle("open");
-  if (box.classList.contains("open") && !box.dataset.hello) {
-    addMsg("bot", "Здравствуйте! Я ИИ-консультант ПравоФин. Задайте вопрос по праву, налогам или финансам — отвечу кратко и по делу.");
-    box.dataset.hello = "1";
-  }
+  restoreChat();
 }
 function addMsg(role, text) {
   const d = document.createElement("div");
@@ -242,10 +266,11 @@ async function chatSend() {
   document.getElementById("chatMessages").appendChild(thinking);
   try {
     const reply = await AI.complete(
-      `Ты — юридическо-финансовый консультант сервиса «ПравоФин». Отвечай кратко и по делу на русском языке, делая оговорку, что это не официальная консультация. Вопрос: ${text}`,
+      `Ты — юридическо-финансовый консультант сервиса «ПравоФин». Отвечай кратко и по делу на русском языке, делая оговорку, что это не официальная консультация. Вопрос: ${chatContext(text)}`,
       () => OFFLINE.chat(text)
     );
     thinking.textContent = reply;
+    chatSave([...chatHistory(), { role: "user", text }, { role: "bot", text: reply }]);
   } catch (e) {
     thinking.remove();
     addMsg("bot", "Ошибка: " + e.message);
