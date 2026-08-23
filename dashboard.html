@@ -180,8 +180,9 @@ function recoLinks(p) {
   const links = [...(byStatus[p.status] || []), ...(byGoal[p.goal] || [])];
   return [...new Map(links.map(l => [l[1], l])).values()].slice(0, 4);
 }
-const u = PF.user();
-if (u) {
+function renderCabinet() {
+  const u = PF.user();
+  if (!u) return;
   const hist = PF.history();
   const scores = u.scores || {};
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
@@ -213,7 +214,7 @@ if (u) {
       <div class="card"><div class="stat-value">${hist.length}</div><div class="stat-label">действий всего</div></div>
       <div class="card"><div class="stat-value">${COMP.index()}%</div><div class="stat-label">индекс грамотности</div></div>
       <div class="card"><div class="stat-value">${habitDone}</div><div class="stat-label">дней в «Копилке»</div></div>
-      <div class="card"><div class="stat-value">${new Date(u.registered).toLocaleDateString("ru-RU")}</div><div class="stat-label">с нами с</div></div>
+      <div class="card"><div class="stat-value">${u.createdAt ? new Date(u.createdAt).toLocaleDateString("ru-RU") : "—"}</div><div class="stat-label">с нами с</div></div>
     </div>
 
     ${u.profile ? `
@@ -262,10 +263,12 @@ if (u) {
               : "Pro активна без ограничения срока"}</p><br>
              <div style="display:flex;gap:10px;flex-wrap:wrap">
                <button class="btn gold" onclick="PAY.open()">Продлить</button>
-               <button class="btn secondary" onclick="PAY.cancel()">Отменить подписку</button>
-             </div>`
+             </div>
+             <p style="color:var(--muted);font-size:.8rem;margin-top:8px">
+               Автосписаний нет: подписка разовая и просто заканчивается в указанную дату.
+             </p>`
           : `<br><button class="btn gold" onclick="PAY.open()">Оформить Pro · 490 ₽/мес</button>`}
-        ${(u.payments || []).length ? `
+        ${(PF.payments || []).length ? `
           <br><h4 style="margin-bottom:8px">История платежей</h4>
           <div style="max-height:150px;overflow-y:auto">
             ${[...u.payments].reverse().map(p => `<p style="padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem">
@@ -372,7 +375,9 @@ if (u) {
     </div>`;
 
   // Личный чат: восстановление сохранённой истории
+  const pcBox = document.getElementById("pcMessages");
   const pcSaved = JSON.parse(localStorage.getItem("pf_pchat_" + u.email) || "[]");
+  if (pcBox) pcBox.innerHTML = "";
   if (pcSaved.length) {
     pcSaved.forEach(m => pcAdd(m.role === "user" ? "user" : "bot", m.text));
   } else {
@@ -385,6 +390,15 @@ if (u) {
   const nb = document.getElementById("notifBtn");
   if (nb && NOTIF.enabled()) nb.style.display = "none";
 }
+
+/* Рисуем сразу по кэшу — чтобы не мигало, — и перерисовываем, когда сервер
+   подтвердит роль, план и остатки. Подделанный кэш живёт до этого момента
+   и исчезает сам. */
+renderCabinet();
+document.addEventListener("pf:ready", ({ detail }) => {
+  if (!detail.user) { location.href = "auth.html"; return; }
+  renderCabinet();
+});
 
 /* ============ Мои документы ============ */
 function renderDocs() {
