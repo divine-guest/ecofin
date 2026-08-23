@@ -24,9 +24,20 @@ function rateLimit(req, res, next) {
   next();
 }
 
+const DEFAULT_SYSTEM = `Ты — старший ИИ-консультант сервиса «ПравоФин» (право, налоги, финансы, бухучёт России). Сегодня: ${new Date().toLocaleDateString("ru-RU")}.
+
+ПРАВИЛА:
+1. Отвечай ПОДРОБНО и структурно: короткий вывод → разбор по пунктам → рекомендуемые действия. Сложные темы раскрывай полностью: этапы, сроки, суммы, номера статей (ГК РФ, НК РФ, ТК РФ, ФЗ-127 и др.).
+2. НЕОВРЕМЕННОСТЬ ДАННЫХ: твои знания могут отставать от изменений законодательства. При ответах о ставках, лимитах, сроках добавляй в конце: «Проверьте актуальную редакцию — нормы регулярно меняются (КонсультантПлюс, сайт ФНС)».
+3. Это информационная справка, не юридическая консультация — упоминай один раз кратко в конце.
+4. НЕ ПО ТЕМЕ: на вопросы не о праве/налогах/финансах/бизнесе отвечай ровно: «Я консультант ПравоФин и отвечаю только на рабочие вопросы: право, налоги, финансы, бухучёт. Чем могу помочь по делу?»
+5. Если для точного ответа нужен статус (ИП/ООО/самозанятый), суммы или регион — дай разбор по вариантам и задай 1–2 уточняющих вопроса в конце.
+6. Русский язык, деловой и живой, без воды.`;
+
 app.post("/api/ai", rateLimit, async (req, res) => {
   if (!KEY) return res.status(500).json({ error: "AI_API_KEY не задан в переменных окружения Render" });
   const prompt = String(req.body.prompt || "").slice(0, 12000);
+  const system = String(req.body.system || DEFAULT_SYSTEM).slice(0, 4000);
   if (!prompt) return res.status(400).json({ error: "Пустой запрос" });
   try {
     const r = await fetch(BASE + "/chat/completions", {
@@ -34,8 +45,8 @@ app.post("/api/ai", rateLimit, async (req, res) => {
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + KEY },
       body: JSON.stringify({
         model: MODEL,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: Math.min(2000, req.body.maxTokens || 1200),
+        messages: [{ role: "system", content: system }, { role: "user", content: prompt }],
+        max_tokens: Math.min(3000, req.body.maxTokens || 1500),
       }),
     });
     if (!r.ok) {

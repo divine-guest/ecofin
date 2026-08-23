@@ -6,7 +6,7 @@ const AI = {
      "https://pravofin-ai.onrender.com" (без слэша на конце) */
   BACKEND_URL: "https://pravofin-ai.onrender.com",
 
-  async complete(prompt, fallback) {
+  async complete(prompt, fallback, system) {
     /* ================================================================
        ИИ-АГЕНТ ПОДКЛЮЧЁН ЧЕРЕЗ БЭКЕНД (backend/server.js на Render)
        1) Задеплойте backend: инструкция в backend/README.md
@@ -20,7 +20,7 @@ const AI = {
         const res = await fetch(this.BACKEND_URL + "/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt, maxTokens: 1200 }),
+          body: JSON.stringify({ prompt, system, maxTokens: 2000 }),
         });
         if (res.ok) {
           const data = await res.json();
