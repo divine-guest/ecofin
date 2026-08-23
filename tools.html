@@ -1,91 +1,3 @@
-async function analyzeContract() {
-  if (!PF.user()) {
-    toast("Войдите, чтобы использовать ИИ-инструменты");
-    return setTimeout(() => (location.href = "auth.html"), 1200);
-  }
-  const typed = document.getElementById("contractText").value.trim();
-  const scanned = DOCUI.payload && DOCUI.payload.images.length ? DOCUI.payload : null;
-
-  if (!typed && !scanned) return toast("Вставьте текст договора или приложите файл");
-
-  /* Скан идёт в /api/analyze — там зрячая модель. Текст, откуда бы он ни взялся,
-     разбирает обычный текстовый инструмент. */
-  if (scanned) {
-    const el = document.getElementById("contractResult");
-    el.textContent = "⏳ Читаем документ по изображению…";
-    el.classList.add("show");
-    try {
-      const res = await API.analyze({
-        text: typed,
-        images: scanned.images,
-        fileName: scanned.fileName,
-      });
-      PF.quota = res.quota || PF.quota;
-      showResult("contractResult", res.text);
-      trackEvent("tool_use");
-    } catch (e) {
-      if (e.isPaywall) { el.classList.remove("show"); showPaywall(e.message); }
-      else showResult("contractResult", "Не получилось: " + e.message);
-    }
-    renderQuota();
-    return;
-  }
-
-  runAI(
-    `Проанализируй договор на русском языке. Найди: 1) риски для стороны-исполнителя; 2) невыгодные или двусмысленные условия; 3) отсутствующие важные пункты (персональные данные, форс-мажор, неустойки, подсудность); 4) дай рекомендации по исправлению. Текст договора:
-
-${typed}`,
-    () => OFFLINE.analysis(typed), "contractResult", "Анализ договора",
-    "Ты — юрист по договорной работе с 15-летним опытом аудита. Сделай детальный аудит договора: 1) таблица рисков по убыванию серьёзности (риск → статья закона → как исправить формулировку); 2) отсутствующие важные пункты; 3) переговорная позиция — что требовать в первую очередь. Пиши конкретно, с номерами статей."
-  );
-}
-
-/* --- Загрузка документа файлом или фотографией --- */
-const DOCUI = {
-  payload: null,   // { text, images, fileName } — результат разбора файла
-
-  status(msg, kind = "") {
-    const el = document.getElementById("docStatus");
-    el.className = "doc-status " + kind;
-    el.textContent = msg;
-  },
-
-  onDrop(e) {
-    e.preventDefault();
-    document.getElementById("docDrop").classList.remove("over");
-    const f = e.dataTransfer.files[0];
-    if (f) this.onPick(f);
-  },
-
-  async onPick(file) {
-    if (!file) return;
-    if (!PF.user()) {
-      toast("Войдите, чтобы разбирать документы");
-      return setTimeout(() => (location.href = "auth.html"), 1200);
-    }
-    this.payload = null;
-    this.status("Открываем файл…");
-    try {
-      const data = await DOCSCAN.read(file, msg => this.status(msg));
-      this.payload = data;
-      if (data.text) {
-        document.getElementById("contractText").value = data.text;
-        this.status(`${file.name} — распознано ${data.text.length} символов. Можно править текст и запускать разбор.`, "ok");
-      } else {
-        this.status(`${file.name} — подготовлено страниц: ${data.images.length}. Текстового слоя нет, разберём по изображению.`, "ok");
-      }
-    } catch (e) {
-      this.status(e.message, "err");
-    }
-  },
-
-  clear() {
-    this.payload = null;
-    document.getElementById("docFile").value = "";
-    this.status("");
-  },
-};
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -322,28 +234,106 @@ function genDoc() {
     "Предмет": document.getElementById("docSubject").value,
     "Сумма, ₽": document.getElementById("docSum").value,
   };
-  runAI(
+  return runAI(
     `Составь полноценный юридически грамотный документ на русском языке: «${type}». Данные: ${JSON.stringify(fields)}. Структура: предмет, права и обязанности, стоимость и расчёты, ответственность, сроки, разрешение споров, заключительные положения, реквизиты и подписи. В конце добавь пометку, что это проект и требуется проверка юристом.`,
     () => OFFLINE.document(type, fields), "docResult", "Генерация документа: " + type,
     "Ты — опытный российский юрист-составитель. Верни ГОТОВЫЙ документ целиком (не план и не комментарии): все разделы с номерами, поля для реквизитов, подписи. Формат — чистый текст, готовый к копированию в Word. В конце — примечание об обязательной проверке юристом."
   );
 }
 
-function analyzeContract() {
-  const text = document.getElementById("contractText").value.trim();
-  if (!text) return toast("Вставьте текст договора или приложите файл");
-  runAI(
-    `Проанализируй договор на русском языке. Найди: 1) риски для стороны-исполнителя; 2) невыгодные или двусмысленные условия; 3) отсутствующие важные пункты (персональные данные, форс-мажор, неустойки, подсудность); 4) дай рекомендации по исправлению. Текст договора:\n\n${text}`,
-    () => OFFLINE.analysis(text), "contractResult", "Анализ договора",
+async function analyzeContract() {
+  if (!PF.user()) {
+    toast("Войдите, чтобы использовать ИИ-инструменты");
+    return setTimeout(() => (location.href = "auth.html"), 1200);
+  }
+  const typed = document.getElementById("contractText").value.trim();
+  const scanned = DOCUI.payload && DOCUI.payload.images.length ? DOCUI.payload : null;
+
+  if (!typed && !scanned) return toast("Вставьте текст договора или приложите файл");
+
+  /* Скан идёт в /api/analyze — там зрячая модель. Текст, откуда бы он ни взялся,
+     разбирает обычный текстовый инструмент. */
+  if (scanned) {
+    const el = document.getElementById("contractResult");
+    el.textContent = "⏳ Читаем документ по изображению…";
+    el.classList.add("show");
+    try {
+      const res = await API.analyze({
+        text: typed,
+        images: scanned.images,
+        fileName: scanned.fileName,
+      });
+      PF.quota = res.quota || PF.quota;
+      showResult("contractResult", res.text);
+      trackEvent("tool_use");
+    } catch (e) {
+      if (e.isPaywall) { el.classList.remove("show"); showPaywall(e.message); }
+      else showResult("contractResult", "Не получилось: " + e.message);
+    }
+    renderQuota();
+    return;
+  }
+
+  return runAI(
+    `Проанализируй договор на русском языке. Найди: 1) риски для стороны-исполнителя; 2) невыгодные или двусмысленные условия; 3) отсутствующие важные пункты (персональные данные, форс-мажор, неустойки, подсудность); 4) дай рекомендации по исправлению. Текст договора:
+
+${typed}`,
+    () => OFFLINE.analysis(typed), "contractResult", "Анализ договора",
     "Ты — юрист по договорной работе с 15-летним опытом аудита. Сделай детальный аудит договора: 1) таблица рисков по убыванию серьёзности (риск → статья закона → как исправить формулировку); 2) отсутствующие важные пункты; 3) переговорная позиция — что требовать в первую очередь. Пиши конкретно, с номерами статей."
   );
 }
+
+/* --- Загрузка документа файлом или фотографией --- */
+const DOCUI = {
+  payload: null,   // { text, images, fileName } — результат разбора файла
+
+  status(msg, kind = "") {
+    const el = document.getElementById("docStatus");
+    el.className = "doc-status " + kind;
+    el.textContent = msg;
+  },
+
+  onDrop(e) {
+    e.preventDefault();
+    document.getElementById("docDrop").classList.remove("over");
+    const f = e.dataTransfer.files[0];
+    if (f) this.onPick(f);
+  },
+
+  async onPick(file) {
+    if (!file) return;
+    if (!PF.user()) {
+      toast("Войдите, чтобы разбирать документы");
+      return setTimeout(() => (location.href = "auth.html"), 1200);
+    }
+    this.payload = null;
+    this.status("Открываем файл…");
+    try {
+      const data = await DOCSCAN.read(file, msg => this.status(msg));
+      this.payload = data;
+      if (data.text) {
+        document.getElementById("contractText").value = data.text;
+        this.status(`${file.name} — распознано ${data.text.length} символов. Можно править текст и запускать разбор.`, "ok");
+      } else {
+        this.status(`${file.name} — подготовлено страниц: ${data.images.length}. Текстового слоя нет, разберём по изображению.`, "ok");
+      }
+    } catch (e) {
+      this.status(e.message, "err");
+    }
+  },
+
+  clear() {
+    this.payload = null;
+    document.getElementById("docFile").value = "";
+    this.status("");
+  },
+};
 
 function taxHelp() {
   const role = document.getElementById("taxRole").value;
   const income = document.getElementById("taxIncome").value;
   const extra = document.getElementById("taxExtra").value;
-  runAI(
+  return runAI(
     `Ты — налоговый консультант. Статус: ${role}. Годовой доход: ${income} ₽. Дополнительно: ${extra}. Рассчитай налоговую нагрузку по подходящим режимам (НПД, УСН, патент, АУСН), сравни их, дай рекомендацию по выбору режима и напомни о ключевых сроках уплаты и лимитах на 2026 год.`,
     () => OFFLINE.tax(role, income), "taxResult", "Налоговый расчёт (" + role + ")",
     "Ты — налоговый консультант-практик. Дай полный расчёт по каждому подходящему режиму (НПД, УСН 6%, УСН 15%, ПСН, АУСН, НДС-пороги) с формулами и суммами, сравнительную таблицу, итоговую рекомендацию и календарь ключевых дат уплаты. Все изменения законодательства учитывай с оговоркой о проверке актуальности."
@@ -353,7 +343,7 @@ function taxHelp() {
 function genChecklist() {
   const topic = document.getElementById("clTopic").value;
   const extra = document.getElementById("clExtra").value;
-  runAI(
+  return runAI(
     `Составь практичный чек-лист на русском языке по теме: «${topic}». ${extra ? "Контекст: " + extra + "." : ""} 8–12 пунктов, каждый с коротким пояснением, сгруппируй по этапам.`,
     () => OFFLINE.checklist(topic), "clResult", "Чек-лист: " + topic,
     "Ты — практикующий консультант по бизнесу. Составь actionable чек-лист: этапы, в каждом 3–6 конкретных действий с пояснениями, где нужен специалист, сроки и стоимость шагов. Формат — чистый текст с чекбоксами (☐)."
