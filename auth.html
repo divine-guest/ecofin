@@ -11,7 +11,12 @@
   <div class="container" style="max-width: 460px">
     <div class="card">
       <h2 style="margin-bottom:6px">Вход в ПравоФин</h2>
-      <p style="color:var(--muted);margin-bottom:20px">Данные хранятся локально в вашем браузере</p>
+      <p style="color:var(--muted);margin-bottom:14px">Данные хранятся локально в вашем браузере</p>
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:.82rem;color:var(--muted);margin-bottom:20px">
+        Входите с нового устройства (телефон, другой браузер)? Аккаунт там не появится сам —
+        зарегистрируйтесь заново с тем же email и перенесите данные: на старом устройстве
+        «Настройки → Скачать все мои данные», здесь — «Настройки → Импорт».
+      </div>
       <div class="tabs">
         <button class="tab active" id="tabLogin" onclick="switchAuth('login')">Вход</button>
         <button class="tab" id="tabReg" onclick="switchAuth('reg')">Регистрация</button>
@@ -66,7 +71,7 @@ function doLogin(e) {
     PF.login(document.getElementById("loginEmail").value.trim(), document.getElementById("loginPass").value);
     toast("Добро пожаловать!");
     setTimeout(() => location.href = "dashboard.html", 600);
-  } catch (err) { toast("❌ " + err.message); }
+  } catch (err) { toast(err.message, "error"); }
 }
 
 function doRegister(e) {
@@ -79,7 +84,7 @@ function doRegister(e) {
     );
     toast("Аккаунт создан!");
     setTimeout(() => location.href = "onboarding.html", 600);
-  } catch (err) { toast("❌ " + err.message); }
+  } catch (err) { toast(err.message, "error"); }
 }
 
 if (PF.user()) location.href = "dashboard.html";

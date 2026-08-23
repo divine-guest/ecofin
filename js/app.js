@@ -34,7 +34,8 @@ const PF = {
   },
   login(email, pass) {
     const u = this.users()[email];
-    if (!u || u.pass !== pass) throw new Error("Неверный email или пароль");
+    if (!u) throw new Error("Аккаунт не найден на этом устройстве. Данные хранятся в браузере компьютера, где вы регистрировались. Войдите там или зарегистрируйтесь заново здесь — прогресс можно перенести файлом (кабинет старого устройства → Настройки → «Скачать все мои данные», здесь → Импорт)");
+    if (u.pass !== pass) throw new Error("Неверный пароль. Проверьте раскладку клавиатуры и Caps Lock");
     localStorage.setItem(this.sessionKey, email);
     this.logAction("Вход в аккаунт");
     trackEvent("login");
@@ -133,17 +134,18 @@ function toggleTheme() {
 }
 
 /* ============ Утилиты ============ */
-function toast(msg) {
+function toast(msg, type = "") {
   let el = document.querySelector(".toast");
   if (!el) {
     el = document.createElement("div");
-    el.className = "toast";
     document.body.appendChild(el);
   }
   el.textContent = msg;
+  el.className = "toast " + type;
+  void el.offsetWidth; // перезапуск анимации
   el.classList.add("show");
   clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove("show"), 2600);
+  el._t = setTimeout(() => el.classList.remove("show"), type === "error" ? 5000 : 2800);
 }
 
 function escapeHtml(s) {
