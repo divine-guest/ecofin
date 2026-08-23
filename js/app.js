@@ -701,11 +701,16 @@ const SETTINGS = {
   },
 };
 
-/* Список устройств подгружаем после отрисовки вкладки «Безопасность». */
+/* Догружаем то, что нужно конкретной вкладке, после её отрисовки. */
 const _settingsRender = SETTINGS.render.bind(SETTINGS);
 SETTINGS.render = function () {
   _settingsRender();
   if (this._tab === "security") this.loadSessions();
+  if (this._tab === "subscription" && !PF.quota) {
+    /* Остатки могли ещё не приехать — тянем и перерисовываем вкладку,
+       иначе человек видит «проверяем…» и не понимает, что у него есть. */
+    PF.refreshQuota().then(() => { if (this._tab === "subscription") _settingsRender(); });
+  }
 };
 
 document.addEventListener("keydown", e => {

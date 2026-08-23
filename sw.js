@@ -1,17 +1,17 @@
 /* ПравоФин — service worker (офлайн-кэш).
    Версию поднимаем при каждом релизе: иначе у вернувшихся посетителей
    останется старый кэш и новый фронтенд не подхватится. */
-const CACHE = "pravofin-v5";
+const CACHE = "pravofin-v6";
 
 const ASSETS = [
   "index.html", "tools.html", "calc.html", "courses.html", "games.html",
   "knowledge.html", "dashboard.html", "auth.html", "expenses.html",
   "search.html", "faq.html", "about.html", "legal.html", "onboarding.html",
   "404.html",
-  "css/style.css?v=5",
-  "js/api.js?v=5", "js/app.js?v=5", "js/ai.js?v=5", "js/rates.js?v=5", "js/docscan.js?v=5",
-  "js/games.js?v=5", "js/knowledge.js?v=5", "js/templates.js?v=5", "js/courses.js?v=5",
-  "js/competencies.js?v=5",
+  "css/style.css?v=6",
+  "js/api.js?v=6", "js/app.js?v=6", "js/ai.js?v=6", "js/rates.js?v=6", "js/docscan.js?v=6",
+  "js/games.js?v=6", "js/knowledge.js?v=6", "js/templates.js?v=6", "js/courses.js?v=6",
+  "js/competencies.js?v=6",
   "manifest.webmanifest", "icon.svg",
 ];
 
