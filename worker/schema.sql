@@ -54,3 +54,12 @@ CREATE TABLE IF NOT EXISTS actions (
   at      INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_actions_email ON actions(email, at DESC);
+
+-- Счётчики частоты запросов: защита от перебора пароля и массовой регистрации.
+-- Хранятся в базе, а не в памяти: воркер работает во множестве изолятов.
+CREATE TABLE IF NOT EXISTS ratelimit (
+  bucket   TEXT PRIMARY KEY,   -- 'login:ip:1.2.3.4', 'login:key:user@mail'
+  n        INTEGER NOT NULL,
+  reset_at INTEGER NOT NULL    -- unix-секунды
+);
+CREATE INDEX IF NOT EXISTS idx_ratelimit_reset ON ratelimit(reset_at);

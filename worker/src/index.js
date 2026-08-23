@@ -6,6 +6,7 @@ import * as auth from "./auth.js";
 import * as ai from "./ai.js";
 import * as admin from "./admin.js";
 import * as billing from "./billing.js";
+import { checkLimits, sweep as sweepLimits } from "./ratelimit.js";
 
 /* Маршруты: [метод, путь, обработчик, доступ] */
 const ROUTES = [
@@ -45,6 +46,44 @@ const ROUTES = [
 async function maybeSweep(env, ctx) {
   if (Math.random() > 0.01) return;
   ctx.waitUntil(env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now()).run().catch(() => {}));
+  ctx.waitUntil(sweepLimits(env).catch(() => {}));
+}
+
+/* Какие публичные действия ограничиваем по частоте и по какому признаку.
+   Без этого пароль перебирается без помех, а боты штампуют аккаунты
+   и тратят бесплатные обращения к ИИ — то есть деньги владельца. */
+const THROTTLED = {
+  "/api/auth/login": "login",
+  "/api/auth/register": "register",
+  "/api/billing/promo": "promo",
+  "/api/admin/reset-password": "reset",
+};
+
+async function throttle(request, env, origin, path) {
+  const action = THROTTLED[path];
+  if (!action) return null;
+
+  /* Ключ второго уровня достаём из тела, не ломая его для обработчика. */
+  let key = "";
+  if (action === "login" || action === "register" || action === "promo") {
+    const clone = request.clone();
+    const body = await clone.json().catch(() => ({}));
+    key = String(body.email || body.code || "").trim().toLowerCase().slice(0, 120);
+  }
+
+  const retryAfter = await checkLimits(env, request, action, key);
+  if (retryAfter === null) return null;
+
+  const minutes = Math.ceil(retryAfter / 60);
+  const message = action === "login"
+    ? `Слишком много попыток входа. Попробуйте через ${minutes} мин. Забыли пароль — напишите в поддержку`
+    : action === "register"
+      ? `С этого адреса уже создано много аккаунтов. Попробуйте через ${minutes} мин.`
+      : `Слишком много попыток. Попробуйте через ${minutes} мин.`;
+
+  const res = fail(env, origin, message, 429);
+  res.headers.set("Retry-After", String(retryAfter));
+  return res;
 }
 
 export default {
@@ -87,6 +126,9 @@ export default {
       return fail(env, origin, "Origin не разрешён", 403);
 
     if (!env.DB) return fail(env, origin, "База не подключена: добавьте binding DB", 500);
+
+    const throttled = await throttle(request, env, origin, path);
+    if (throttled) return throttled;
 
     if (access === "public") return handler(request, env, origin);
 
