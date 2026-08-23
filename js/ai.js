@@ -15,18 +15,26 @@ const AI = {
        Ключ хранится только на сервере. При недоступности бэкенда
        срабатывают встроенные ответы — сайт не ломается.
        ================================================================ */
+    this.lastError = null;
     if (this.BACKEND_URL) {
       try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 25000);
         const res = await fetch(this.BACKEND_URL + "/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt, system, maxTokens: 2000 }),
+          signal: ctrl.signal,
         });
+        clearTimeout(timer);
         if (res.ok) {
           const data = await res.json();
           if (data.text) return data.text;
         }
-      } catch (e) { /* сервер недоступен — уходим на встроенные ответы */ }
+        this.lastError = "ИИ-сервер ответил ошибкой (" + res.status + ")";
+      } catch (e) {
+        this.lastError = "нет связи с ИИ-сервером";
+      }
     }
 
     // Пока бэкенд не подключён — встроенные ответы

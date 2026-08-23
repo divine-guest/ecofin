@@ -271,8 +271,13 @@ async function chatSend() {
       `Ты — юридическо-финансовый консультант сервиса «ПравоФин». Отвечай кратко и по делу на русском языке, делая оговорку, что это не официальная консультация. Вопрос: ${chatContext(text)}`,
       () => OFFLINE.chat(text)
     );
-    thinking.textContent = reply;
-    chatSave([...chatHistory(), { role: "user", text }, { role: "bot", text: reply }]);
+    const finalText = AI.lastError
+      ? "ИИ-сервер сейчас недоступен (проблема сети). Ниже — краткий встроенный ответ, попробуйте полный позже:
+
+" + reply
+      : reply;
+    thinking.textContent = finalText;
+    chatSave([...chatHistory(), { role: "user", text }, { role: "bot", text: finalText }]);
   } catch (e) {
     thinking.remove();
     addMsg("bot", "Ошибка: " + e.message);
