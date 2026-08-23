@@ -4,99 +4,342 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Админ-панель — ПравоФин</title>
+<!-- seo:start -->
+<meta name="description" content="Административная панель сервиса ПравоФин.">
+<link rel="canonical" href="https://divine-guest.github.io/ecofin/admin.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ПравоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Админ-панель — ПравоФин">
+<meta property="og:description" content="Административная панель сервиса ПравоФин.">
+<meta property="og:url" content="https://divine-guest.github.io/ecofin/admin.html">
+<meta property="og:image" content="https://divine-guest.github.io/ecofin/icon.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<!-- seo:end -->
+<meta name="robots" content="noindex, nofollow">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <main class="section tint-navy">
   <div class="container" id="content">
     <div class="card" style="text-align:center">
-      <p>Доступ только для администратора.</p><br>
-      <a href="auth.html" class="btn">Войти как админ</a>
+      <p style="color:var(--muted)">Проверяем доступ…</p>
     </div>
   </div>
 </main>
 
+<script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script src="js/ai.js"></script>
 <script>
 initPage("admin.html");
 
-function renderAdmin() {
-  const me = PF.user();
-  const users = Object.values(PF.users()).sort((a, b) => a.registered - b.registered);
-  const proCount = users.filter(x => x.plan === "pro" || x.isAdmin).length;
-  const totalActions = users.reduce((s, x) => s + (x.actions || []).length, 0);
-  const totalAiUses = users.reduce((s, x) => s + (x.aiUses || 0), 0);
-  const revenue = users.reduce((s, x) => s + (x.payments || []).reduce((a, p) => a + p.amount, 0), 0);
+const AD = {
+  stats: null,
+  users: [],
+  total: 0,
+  q: "",
+  offset: 0,
+  limit: 50,
 
-  document.getElementById("content").innerHTML = `
-    <div class="section-title">
-      <h2>Админ-<span>панель</span></h2>
-      <div class="line"></div>
-      <p class="subtitle">Управление пользователями и подписками</p>
-    </div>
+  money(n) { return (n || 0).toLocaleString("ru-RU") + " ₽"; },
+  date(ts) { return ts ? new Date(ts).toLocaleDateString("ru-RU") : "—"; },
+  dateTime(ts) { return ts ? new Date(ts).toLocaleString("ru-RU") : "—"; },
 
-    <div class="grid cols-4" style="margin-bottom:28px">
-      <div class="card"><div class="stat-value">${users.length}</div><div class="stat-label">пользователей</div></div>
-      <div class="card"><div class="stat-value">${proCount}</div><div class="stat-label">с подпиской Pro</div></div>
-      <div class="card"><div class="stat-value">${revenue.toLocaleString("ru-RU")} ₽</div><div class="stat-label">выручка всего</div></div>
-      <div class="card"><div class="stat-value">${totalAiUses}</div><div class="stat-label">использований ИИ</div></div>
-    </div>
+  /* Осталось дней подписки — для колонки «до какого числа». */
+  until(u) {
+    if (u.isAdmin) return "бессрочно";
+    if (u.plan !== "pro") return "—";
+    if (!u.proUntil) return "бессрочно";
+    const days = Math.ceil((u.proUntil - Date.now()) / 86400000);
+    return `${this.date(u.proUntil)} (${days} дн.)`;
+  },
 
-    <div class="card" style="overflow-x:auto">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Пользователь</th><th>Email</th><th>Тариф</th><th>ИИ</th>
-            <th>Действий</th><th>Регистрация</th><th>Управление</th>
+  async load() {
+    const [stats, list] = await Promise.all([
+      API.admin.stats(),
+      API.admin.users(this.q, this.limit, this.offset),
+    ]);
+    this.stats = stats;
+    this.users = list.users;
+    this.total = list.total;
+    this.render();
+  },
+
+  render() {
+    const s = this.stats;
+    const meOwner = PF.isOwner();
+    document.getElementById("content").innerHTML = `
+      <div class="section-title" style="margin-bottom:24px">
+        <h2>Админ-<span>панель</span></h2>
+        <div class="line"></div>
+        <p class="subtitle">
+          Вы вошли как ${escapeHtml(PF.user().name)} —
+          <span class="badge ${meOwner ? "pro" : ""}">${meOwner ? "владелец сервиса" : "администратор"}</span>
+        </p>
+      </div>
+
+      <div class="grid cols-4" style="margin-bottom:8px">
+        <div class="card"><div class="stat-value">${s.users}</div><div class="stat-label">пользователей</div></div>
+        <div class="card"><div class="stat-value">${s.pro}</div><div class="stat-label">с активной Pro</div></div>
+        <div class="card"><div class="stat-value">${this.money(s.revenue)}</div><div class="stat-label">выручка всего</div></div>
+        <div class="card"><div class="stat-value">${this.money(s.revenue30)}</div><div class="stat-label">выручка за 30 дней</div></div>
+      </div>
+      <div class="grid cols-4" style="margin-bottom:24px">
+        <div class="card"><div class="stat-value">${s.new30}</div><div class="stat-label">новых за 30 дней</div></div>
+        <div class="card"><div class="stat-value">${s.active7}</div><div class="stat-label">заходили за неделю</div></div>
+        <div class="card"><div class="stat-value">${s.paidCount}</div><div class="stat-label">оплат картой</div></div>
+        <div class="card"><div class="stat-value">${s.aiTotal}</div><div class="stat-label">обращений к ИИ</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <input type="text" id="adSearch" placeholder="Поиск по email или имени"
+                 value="${escapeHtml(this.q)}" style="flex:1;min-width:220px"
+                 onkeydown="if(event.key==='Enter')AD.search()">
+          <button class="btn small" onclick="AD.search()">Найти</button>
+          ${this.q ? '<button class="btn small secondary" onclick="AD.clearSearch()">Сбросить</button>' : ""}
+          <span style="color:var(--muted);font-size:.85rem;margin-left:auto">
+            показано ${this.users.length} из ${this.total}
+          </span>
+        </div>
+      </div>
+
+      <div class="card" style="overflow-x:auto">
+        <h3 style="margin-bottom:14px">Пользователи</h3>
+        <table class="cmp-table" style="width:100%;min-width:900px">
+          <tr style="font-size:.8rem;color:var(--muted)">
+            <th style="text-align:left">Пользователь</th>
+            <th>Статус</th>
+            <th>Подписка до</th>
+            <th>Оплачено</th>
+            <th>ИИ</th>
+            <th>Регистрация</th>
+            <th style="text-align:right">Действия</th>
           </tr>
-        </thead>
-        <tbody>
-          ${users.map(x => `
+          ${this.users.map(u => this.row(u, meOwner)).join("")}
+        </table>
+        ${this.total > this.limit ? `
+          <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
+            <button class="btn small secondary" ${this.offset === 0 ? "disabled" : ""} onclick="AD.page(-1)">← Назад</button>
+            <button class="btn small secondary" ${this.offset + this.limit >= this.total ? "disabled" : ""} onclick="AD.page(1)">Вперёд →</button>
+          </div>` : ""}
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3 style="margin-bottom:6px">Выдать Pro вручную</h3>
+        <p style="color:var(--muted);font-size:.85rem;margin-bottom:14px">
+          Подарочная подписка не попадает в выручку, но видна в журнале операций.
+          Если у человека уже есть Pro — срок продлевается, а не перезаписывается.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div class="form-group" style="margin:0;flex:1;min-width:220px">
+            <label>Email пользователя</label>
+            <input type="text" id="grantEmail" placeholder="user@example.com">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Срок</label>
+            <select id="grantPlan" onchange="document.getElementById('grantDaysBox').style.display=this.value==='days'?'block':'none'">
+              <option value="month">Месяц (30 дн.)</option>
+              <option value="year">Год (365 дн.)</option>
+              <option value="days">Своё число дней</option>
+            </select>
+          </div>
+          <div class="form-group" id="grantDaysBox" style="margin:0;display:none">
+            <label>Дней</label>
+            <input type="number" id="grantDays" min="1" max="3650" value="14" style="max-width:110px">
+          </div>
+          <button class="btn gold" onclick="AD.grant()">Выдать</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3>Журнал операций</h3>
+          <button class="btn small secondary" onclick="AD.loadPayments()">Показать</button>
+        </div>
+        <div id="payLog" style="color:var(--muted);font-size:.88rem">Нажмите «Показать», чтобы загрузить последние 200 операций.</div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3 style="margin-bottom:10px">Права доступа</h3>
+        <p style="color:var(--muted);font-size:.85rem;line-height:1.7">
+          Владельцы сервиса: ${s.owners.map(e => `<b>${escapeHtml(e)}</b>`).join(", ") || "—"}<br>
+          ${s.envAdmins.length ? `Админы из настроек: ${s.envAdmins.map(e => escapeHtml(e)).join(", ")}<br>` : ""}
+          ${meOwner
+            ? "Вы можете выдавать и снимать права администратора кнопкой в таблице. Список владельцев меняется только в настройках воркера."
+            : "Выдавать права администратора может только владелец сервиса."}
+        </p>
+      </div>`;
+  },
+
+  row(u, meOwner) {
+    const me = PF.user().email === u.email;
+    const badge = u.isOwner
+      ? '<span class="badge pro">владелец</span>'
+      : u.isAdmin ? '<span class="badge">админ</span>'
+      : u.plan === "pro" ? '<span class="badge ok">PRO</span>'
+      : '<span class="badge">Free</span>';
+
+    return `
+      <tr>
+        <td>
+          <b>${escapeHtml(u.name)}</b>${me ? ' <span style="color:var(--muted)">(это вы)</span>' : ""}<br>
+          <span style="color:var(--muted);font-size:.82rem">${escapeHtml(u.email)}</span>
+        </td>
+        <td style="text-align:center">${badge}</td>
+        <td style="text-align:center;font-size:.85rem">${this.until(u)}</td>
+        <td style="text-align:center">${u.paid ? this.money(u.paid) : "—"}</td>
+        <td style="text-align:center">${u.aiTotal || 0}</td>
+        <td style="text-align:center;font-size:.85rem;color:var(--muted)">${this.date(u.createdAt)}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn small secondary" onclick="AD.card('${encodeURIComponent(u.email)}')">Карточка</button>
+          ${u.isAdmin ? "" : `
+            <button class="btn small gold" onclick="AD.quickGrant('${encodeURIComponent(u.email)}')">+ Pro</button>
+            ${u.plan === "pro" ? `<button class="btn small secondary" onclick="AD.revoke('${encodeURIComponent(u.email)}')">Снять</button>` : ""}
+          `}
+          ${meOwner && !u.isOwner && !me ? `
+            <button class="btn small ${u.isAdmin ? "secondary" : ""}" onclick="AD.setRole('${encodeURIComponent(u.email)}', ${u.isAdmin ? "false" : "true"})">
+              ${u.isAdmin ? "Снять админа" : "Сделать админом"}
+            </button>` : ""}
+          ${!u.isAdmin && !me ? `<button class="btn small danger" onclick="AD.remove('${encodeURIComponent(u.email)}')">Удалить</button>` : ""}
+        </td>
+      </tr>`;
+  },
+
+  search() { this.q = document.getElementById("adSearch").value.trim(); this.offset = 0; this.reload(); },
+  clearSearch() { this.q = ""; this.offset = 0; this.reload(); },
+  page(dir) { this.offset = Math.max(0, this.offset + dir * this.limit); this.reload(); },
+
+  async reload() {
+    try { await this.load(); } catch (e) { toast(e.message, "error"); }
+  },
+
+  async act(fn, okMsg) {
+    try {
+      await fn();
+      toast(okMsg);
+      await this.load();
+    } catch (e) { toast(e.message, "error"); }
+  },
+
+  grant() {
+    const email = document.getElementById("grantEmail").value.trim();
+    if (!email) return toast("Укажите email");
+    const plan = document.getElementById("grantPlan").value;
+    const days = Number(document.getElementById("grantDays").value) || 0;
+    this.act(() => API.admin.grant(email, plan, days), `Pro выдан: ${email}`);
+  },
+
+  quickGrant(enc) {
+    const email = decodeURIComponent(enc);
+    const choice = prompt(`Выдать Pro пользователю ${email}.\nВведите: month — месяц, year — год, либо число дней.`, "month");
+    if (!choice) return;
+    const v = choice.trim().toLowerCase();
+    if (v === "month" || v === "year") return this.act(() => API.admin.grant(email, v), `Pro выдан: ${email}`);
+    const days = Number(v);
+    if (!days || days < 1) return toast("Не понял срок");
+    this.act(() => API.admin.grant(email, "days", days), `Pro на ${days} дн. выдан: ${email}`);
+  },
+
+  revoke(enc) {
+    const email = decodeURIComponent(enc);
+    if (!confirm(`Снять подписку Pro у ${email}?`)) return;
+    this.act(() => API.admin.revoke(email), "Подписка снята");
+  },
+
+  setRole(enc, makeAdmin) {
+    const email = decodeURIComponent(enc);
+    const msg = makeAdmin
+      ? `Выдать права администратора пользователю ${email}?\n\nОн получит доступ к списку пользователей, выручке и выдаче подписок.`
+      : `Снять права администратора у ${email}?`;
+    if (!confirm(msg)) return;
+    this.act(() => API.admin.setRole(email, makeAdmin ? "admin" : "user"),
+      makeAdmin ? "Права администратора выданы" : "Права администратора сняты");
+  },
+
+  remove(enc) {
+    const email = decodeURIComponent(enc);
+    if (!confirm(`Удалить аккаунт ${email}? Действие необратимо.`)) return;
+    if (prompt('Для подтверждения введите слово "удалить"') !== "удалить") return toast("Отменено");
+    this.act(() => API.admin.deleteUser(email), "Пользователь удалён");
+  },
+
+  async card(enc) {
+    const email = decodeURIComponent(enc);
+    try {
+      const d = await API.admin.card(email);
+      const u = d.user;
+      alert(
+        `${u.name} <${u.email}>\n` +
+        `Роль: ${u.role} | План: ${u.plan} | Подписка до: ${this.until(u)}\n` +
+        `Регистрация: ${this.dateTime(u.createdAt)}\n` +
+        `Последний вход: ${this.dateTime(u.lastLoginAt)}\n` +
+        `Пробных запусков израсходовано: ${u.toolUses}\n\n` +
+        `ОПЛАТЫ (${d.payments.length}):\n` +
+        (d.payments.map(p => `  ${this.date(p.created_at)} — ${p.amount} ₽ · ${p.plan} · ${p.source} · ${p.status}` +
+          (p.granted_by ? ` (выдал ${p.granted_by})` : "")).join("\n") || "  нет") +
+        `\n\nПОСЛЕДНИЕ ДЕЙСТВИЯ:\n` +
+        (d.actions.slice(0, 15).map(a => `  ${this.dateTime(a.at)} — ${a.text}`).join("\n") || "  нет")
+      );
+    } catch (e) { toast(e.message, "error"); }
+  },
+
+  async loadPayments() {
+    const box = document.getElementById("payLog");
+    box.textContent = "Загружаем…";
+    try {
+      const d = await API.admin.payments();
+      if (!d.payments.length) { box.textContent = "Операций пока нет."; return; }
+      box.innerHTML = `
+        <table class="cmp-table" style="width:100%">
+          <tr style="font-size:.8rem;color:var(--muted)">
+            <th style="text-align:left">Дата</th><th style="text-align:left">Пользователь</th>
+            <th>Сумма</th><th>План</th><th>Источник</th><th>Статус</th>
+          </tr>
+          ${d.payments.map(p => `
             <tr>
-              <td><b>${escapeHtml(x.name)}</b>${x.isAdmin ? ' <span class="badge">админ</span>' : ""}</td>
-              <td style="color:var(--muted)">${escapeHtml(x.email)}</td>
-              <td><span class="badge ${x.plan === "pro" || x.isAdmin ? "pro" : ""}">${x.plan === "pro" || x.isAdmin ? "PRO" : "Free"}</span></td>
-              <td>${x.isAdmin ? "∞" : (x.aiUses || 0) + " / " + FREE_AI_LIMIT}</td>
-              <td>${(x.actions || []).length}</td>
-              <td style="color:var(--muted)">${new Date(x.registered).toLocaleDateString("ru-RU")}</td>
-              <td>
-                <button class="btn small ${x.plan === "pro" ? "secondary" : "gold"}" onclick="togglePro('${x.email}')" ${x.isAdmin ? "disabled" : ""}>
-                  ${x.plan === "pro" ? "Снять Pro" : "Выдать Pro"}
-                </button>
-                <button class="btn small danger" onclick="deleteUser('${x.email}')" ${x.isAdmin ? "disabled" : ""}>Удалить</button>
-              </td>
+              <td style="font-size:.82rem">${this.dateTime(p.created_at)}</td>
+              <td style="font-size:.82rem">${escapeHtml(p.email)}${p.granted_by ? `<br><span style="color:var(--muted);font-size:.75rem">выдал ${escapeHtml(p.granted_by)}</span>` : ""}</td>
+              <td style="text-align:center">${p.amount ? this.money(p.amount) : "—"}</td>
+              <td style="text-align:center">${escapeHtml(String(p.plan))}</td>
+              <td style="text-align:center">${escapeHtml(p.source)}</td>
+              <td style="text-align:center"><span class="badge ${p.status === "succeeded" ? "ok" : ""}">${escapeHtml(p.status)}</span></td>
             </tr>`).join("")}
-        </tbody>
-      </table>
-    </div>
-    <br>
-    <div class="card">
-      <h3>💡 Как это работает</h3>
-      <p>Пользователи хранятся в localStorage браузера, поэтому список виден только на этом устройстве.
-      Когда появится бэкенд — эта страница подключится к базе данных через API.
-      Первый зарегистрированный аккаунт автоматически становится админом и владельцем.</p>
+        </table>`;
+    } catch (e) { box.textContent = "Не удалось загрузить: " + e.message; }
+  },
+};
+
+/* Ждём подтверждения сессии сервером: рисовать админку по кэшу нельзя. */
+document.addEventListener("pf:ready", async ({ detail }) => {
+  const denied = `
+    <div class="card" style="text-align:center">
+      <h3 style="margin-bottom:10px">Доступ закрыт</h3>
+      <p style="color:var(--muted)">Этот раздел доступен только администраторам сервиса.</p>
+      <br><a href="index.html" class="btn secondary">На главную</a>
     </div>`;
-}
 
-function togglePro(email) {
-  const users = PF.users();
-  users[email].plan = users[email].plan === "pro" ? "free" : "pro";
-  PF.saveUsers(users);
-  toast(users[email].plan === "pro" ? "👑 Pro выдан: " + email : "Pro снят: " + email);
-  renderAdmin();
-}
-
-function deleteUser(email) {
-  if (!confirm("Удалить пользователя " + email + "?")) return;
-  const users = PF.users();
-  delete users[email];
-  PF.saveUsers(users);
-  toast("Пользователь удалён");
-  renderAdmin();
-}
-
-if (PF.user() && PF.user().isAdmin) renderAdmin();
+  if (!detail.user) {
+    document.getElementById("content").innerHTML = `
+      <div class="card" style="text-align:center">
+        <p>Требуется вход.</p><br><a href="auth.html" class="btn">Войти</a>
+      </div>`;
+    return;
+  }
+  if (!detail.user.isAdmin) {
+    document.getElementById("content").innerHTML = denied;
+    return;
+  }
+  try {
+    await AD.load();
+  } catch (e) {
+    document.getElementById("content").innerHTML = e.status === 403
+      ? denied
+      : `<div class="card"><p>Не удалось загрузить данные: ${escapeHtml(e.message)}</p></div>`;
+  }
+});
 </script>
 </body>
 </html>

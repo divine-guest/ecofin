@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Калькуляторы и счета — ПравоФин</title>
+<!-- seo:start -->
+<meta name="description" content="Налоговые калькуляторы: сравнение НПД, УСН 6% и 15% с учётом взносов, пеня, отпускные, больничные, дивиденды, вычеты и счёт с QR-кодом СБП.">
+<link rel="canonical" href="https://divine-guest.github.io/ecofin/calc.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ПравоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Калькуляторы и счета — ПравоФин">
+<meta property="og:description" content="Налоговые калькуляторы: сравнение НПД, УСН 6% и 15% с учётом взносов, пеня, отпускные, больничные, дивиденды, вычеты и счёт с QR-кодом СБП.">
+<meta property="og:url" content="https://divine-guest.github.io/ecofin/calc.html">
+<meta property="og:image" content="https://divine-guest.github.io/ecofin/icon.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<!-- seo:end -->
 <link rel="stylesheet" href="css/style.css">
 <style>
   @media print {
@@ -65,7 +78,7 @@
         </div>
         <div class="calc-result" id="txOut"></div>
       </div>
-      <p style="color:var(--muted);font-size:.8rem;margin-top:14px">Расчёт ориентировочный: страховые взносы ИП за себя ≈ 53 658 ₽/год + 1% с дохода свыше 300 000 ₽. НДС при доходе свыше 60 млн ₽ не учтён.</p>
+      <p style="color:var(--muted);font-size:.8rem;margin-top:14px" id="txNote"></p>
     </div>
 
     <!-- 2. Пеня -->
@@ -175,10 +188,22 @@
   </div>
 </main>
 
+<script src="js/rates.js"></script>
+<script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script src="js/ai.js"></script>
 <script>
 initPage("calc.html");
+
+/* Подпись со ставками — из единого конфига, чтобы не расходилась с расчётами. */
+{
+  const note = document.getElementById("txNote");
+  const c = RATES.ipContributions;
+  if (note) note.textContent =
+    `Расчёт ориентировочный: страховые взносы ИП за себя ${c.fixed.toLocaleString("ru-RU")} \u20bd/год ` +
+    `+ 1% с дохода свыше ${c.extraThreshold.toLocaleString("ru-RU")} \u20bd. ` +
+    `НДС при доходе свыше ${RATES.usn.vatThreshold / 1e6} млн \u20bd не учтён. ${RATES.disclaimer()}`;
+}
 
 function switchCalc(i, btn) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
@@ -188,25 +213,43 @@ function switchCalc(i, btn) {
 const fmt = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
 
 /* --- 1. Налоговые режимы --- */
+/* Раньше УСН 6% показывалась БЕЗ взносов, а УСН 15% — СО взносами, поэтому
+   «Доходы» почти всегда выигрывали, а нагрузка занижалась почти вдвое.
+   Теперь все три варианта считаются одинаково: налог + взносы. */
 function calcTax() {
   const income = +document.getElementById("txIn").value || 0;
   const exp = +document.getElementById("txExp").value || 0;
   const emp = document.getElementById("txEmp").value === "yes";
-  const fixed = 53658, over = Math.max(0, income - 300000) * 0.01;
+  const contrib = RATES.contributions(income);
 
-  const npdOk = !emp && income <= 2400000;
-  const npd = npdOk ? income * 0.06 : null;
-  const usn6 = income * 0.06 - (emp ? (fixed + over) / 2 : (fixed + over)); // вычет взносов: 50% с работниками, 100% без
-  const usn15raw = (income - exp) * 0.15;
-  const usn15 = Math.max(usn15raw, income * 0.01) + fixed + over;
+  const npdOk = !emp && income <= RATES.npd.limit;
+  const npd = npdOk ? income * RATES.npd.rateCompanies : null;   // взносов у НПД нет
+
+  /* Взносы уменьшают налог: без работников — полностью, с работниками — вдвое.
+     Итог всё равно включает сами взносы, иначе сравнение было бы нечестным. */
+  const deductible = emp ? contrib / 2 : contrib;
+  const usn6 = Math.max(0, income * RATES.usn.incomeRate - deductible) + contrib;
+
+  const usn15base = Math.max((income - exp) * RATES.usn.profitRate, income * RATES.usn.minTaxRate);
+  const usn15 = usn15base + contrib;
 
   const rows = [
-    { name: "НПД (самозанятость)", val: npd, note: npdOk ? "6% с юрлиц, без взносов" : "недоступно: работники или лимит 2,4 млн" },
-    { name: "УСН «Доходы» 6%", val: Math.max(0, usn6), note: "минус взносы " + (emp ? "(50%)" : "(100%)") },
-    { name: "УСН «Доходы − расходы» 15%", val: usn15, note: "включая взносы; мин. налог 1%" },
+    { name: "НПД (самозанятость)", val: npd,
+      note: npdOk ? `${RATES.npd.rateCompanies * 100}% с юрлиц, страховых взносов нет`
+                  : `недоступно: есть работники или доход выше ${(RATES.npd.limit / 1e6).toLocaleString("ru-RU")} млн ₽` },
+    { name: "УСН «Доходы» 6%", val: usn6,
+      note: `налог за вычетом взносов ${emp ? "(50%)" : "(100%)"} + сами взносы ${fmt(contrib)}` },
+    { name: "УСН «Доходы − расходы» 15%", val: usn15,
+      note: `не менее 1% с дохода + взносы ${fmt(contrib)}` },
   ];
   const valid = rows.filter(r => r.val !== null);
   const best = valid.reduce((a, b) => (a.val <= b.val ? a : b));
+  const worst = valid.reduce((a, b) => (a.val >= b.val ? a : b));
+
+  const vat = income > RATES.usn.vatThreshold
+    ? `<p style="color:var(--danger);font-size:.84rem;margin-top:10px">
+         Доход выше ${(RATES.usn.vatThreshold / 1e6).toLocaleString("ru-RU")} млн ₽ — на УСН добавляется НДС, он в расчёт не включён.
+       </p>` : "";
 
   document.getElementById("txOut").innerHTML = `
     <table class="cmp-table">
@@ -215,7 +258,12 @@ function calcTax() {
         <td style="text-align:right;white-space:nowrap"><b>${r.val === null ? "—" : fmt(r.val)}</b></td>
       </tr>`).join("")}
     </table>
-    <p style="margin-top:12px"><b>Рекомендация:</b> ${best.name} — экономия ${fmt(valid.reduce((a, b) => Math.max(a, b.val), 0) - best.val)} против худшего варианта.</p>`;
+    <p style="margin-top:12px"><b>Рекомендация:</b> ${best.name}${
+      valid.length > 1 && worst.val > best.val
+        ? ` — на ${fmt(worst.val - best.val)} выгоднее худшего варианта`
+        : ""}.</p>
+    ${vat}
+    <p style="color:var(--muted);font-size:.78rem;margin-top:10px">Все суммы — налог вместе со страховыми взносами за год. ${RATES.disclaimer()}</p>`;
 }
 
 /* --- 2. Пеня --- */
@@ -224,11 +272,12 @@ function calcPenalty() {
   const rate = +document.getElementById("pnRate").value || 0;
   const days = +document.getElementById("pnDays").value || 0;
   const pen = sum * (rate / 100) * days;
+  const share = sum > 0 ? ((pen / sum) * 100).toFixed(1) + "% от долга. " : "";
   document.getElementById("pnOut").innerHTML = `
     <p>Пеня за ${days} дн. по ставке ${rate}%/день:</p>
     <div class="big">${fmt(pen)}</div>
     <p style="color:var(--muted);font-size:.82rem;margin-top:8px">
-      Это ${((pen / sum) * 100).toFixed(1)}% от долга. Пеня выше 10–15% суммы долга обычно снижается судом по ст. 333 ГК РФ.
+      ${share}Пеня выше 10–15% суммы долга обычно снижается судом по ст. 333 ГК РФ.
     </p>`;
 }
 
@@ -237,11 +286,19 @@ function calcVacation() {
   const s = +document.getElementById("vpSum").value || 0;
   const d = +document.getElementById("vpDays").value || 0;
   const day = s / 12 / 29.3;
-  const gross = day * d, ndfl = gross * 0.13;
+  const gross = day * d;
+  /* НДФЛ считаем от годового дохода: с 2025 шкала прогрессивная, и плоские
+     13% завышали бы выплату тем, кто зарабатывает больше 2,4 млн ₽ в год. */
+  const ndflYear = RATES.ndfl(s);
+  const effective = s > 0 ? ndflYear / s : 0.13;
+  const ndfl = gross * effective;
   document.getElementById("vpOut").innerHTML = `
     <p>Среднедневной заработок:</p><div class="big">${fmt(day)}</div>
     <p style="margin-top:10px">Начислено за ${d} дн.: <b>${fmt(gross)}</b></p>
-    <p>К выплате (− НДФЛ 13%): <b>${fmt(gross - ndfl)}</b></p>`;
+    <p>К выплате (− НДФЛ ${(effective * 100).toFixed(1)}%): <b>${fmt(gross - ndfl)}</b></p>
+    <p style="color:var(--muted);font-size:.78rem;margin-top:8px">
+      Ставка НДФЛ рассчитана по прогрессивной шкале от годового дохода. ${RATES.disclaimer()}
+    </p>`;
 }
 
 /* --- 4. Больничные --- */
@@ -249,19 +306,24 @@ function calcSick() {
   const s = +document.getElementById("blSum").value || 0;
   const k = +document.getElementById("blExp").value;
   const d = +document.getElementById("blDays").value || 0;
-  const day = Math.min(s / 730, 2735.33); // предельная база 2025-2026
+  /* Было жёстко зашито 2735,33 ₽ — цифра примерно 2021 года, пособие занижалось
+     более чем вдвое. Теперь считается из предельных баз в js/rates.js. */
+  const day = Math.min(s / RATES.sickLeave.days, RATES.maxSickDaily());
   const pay = day * k * d;
   document.getElementById("blOut").innerHTML = `
     <p>Среднедневной (с учётом стажа ${k * 100}%):</p><div class="big">${fmt(day * k)}</div>
     <p style="margin-top:10px">Пособие за ${d} дн.: <b>${fmt(pay)}</b></p>
-    <p style="color:var(--muted);font-size:.82rem">Первые 3 дня оплачивает работодатель, остальные — СФР.</p>`;
+    <p style="color:var(--muted);font-size:.82rem">Первые 3 дня оплачивает работодатель, остальные — СФР.</p>
+    <p style="color:var(--muted);font-size:.78rem;margin-top:6px">
+      Максимум ${fmt(RATES.maxSickDaily())} в день — из предельных баз за ${RATES.sickLeave.baseYears.join(" и ")} гг. ${RATES.disclaimer()}
+    </p>`;
 }
 
 /* --- 5. Дивиденды --- */
 function calcDiv() {
   const s = +document.getElementById("dvSum").value || 0;
-  const LIMIT = 2400000;
-  const ndfl = s <= LIMIT ? s * 0.13 : LIMIT * 0.13 + (s - LIMIT) * 0.15;
+  const LIMIT = RATES.dividendScale[0].upTo;
+  const ndfl = RATES.dividendTax(s);
   document.getElementById("dvOut").innerHTML = `
     <p>К распределению:</p><div class="big">${fmt(s)}</div>
     <p style="margin-top:10px">НДФЛ (13%${s > LIMIT ? " / 15% свыше 2,4 млн" : ""}): <b>${fmt(ndfl)}</b></p>
@@ -270,11 +332,11 @@ function calcDiv() {
 
 /* --- 6. Вычеты --- */
 function calcDeduction() {
-  const exp = Math.min(+document.getElementById("vdExp").value || 0, 150000);
+  const exp = Math.min(+document.getElementById("vdExp").value || 0, RATES.deductions.socialLimit);
   const tax = +document.getElementById("vdTax").value || 0;
   const ret = Math.min(exp * 0.13, tax);
   document.getElementById("vdOut").innerHTML = `
-    <p>Социальный вычет (лимит 150 000 ₽/год):</p><div class="big">${fmt(ret)}</div>
+    <p>Социальный вычет (лимит ${RATES.deductions.socialLimit.toLocaleString("ru-RU")} ₽/год):</p><div class="big">${fmt(ret)}</div>
     <p style="color:var(--muted);font-size:.82rem;margin-top:8px">
       Возврат ограничен уплаченным НДФЛ (${fmt(tax)}). Подать можно за 3 предыдущих года через личный кабинет ФНС.
     </p>`;

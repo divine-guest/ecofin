@@ -1,9 +1,110 @@
+async function analyzeContract() {
+  if (!PF.user()) {
+    toast("Войдите, чтобы использовать ИИ-инструменты");
+    return setTimeout(() => (location.href = "auth.html"), 1200);
+  }
+  const typed = document.getElementById("contractText").value.trim();
+  const scanned = DOCUI.payload && DOCUI.payload.images.length ? DOCUI.payload : null;
+
+  if (!typed && !scanned) return toast("Вставьте текст договора или приложите файл");
+
+  /* Скан идёт в /api/analyze — там зрячая модель. Текст, откуда бы он ни взялся,
+     разбирает обычный текстовый инструмент. */
+  if (scanned) {
+    const el = document.getElementById("contractResult");
+    el.textContent = "⏳ Читаем документ по изображению…";
+    el.classList.add("show");
+    try {
+      const res = await API.analyze({
+        text: typed,
+        images: scanned.images,
+        fileName: scanned.fileName,
+      });
+      PF.quota = res.quota || PF.quota;
+      showResult("contractResult", res.text);
+      trackEvent("tool_use");
+    } catch (e) {
+      if (e.isPaywall) { el.classList.remove("show"); showPaywall(e.message); }
+      else showResult("contractResult", "Не получилось: " + e.message);
+    }
+    renderQuota();
+    return;
+  }
+
+  runAI(
+    `Проанализируй договор на русском языке. Найди: 1) риски для стороны-исполнителя; 2) невыгодные или двусмысленные условия; 3) отсутствующие важные пункты (персональные данные, форс-мажор, неустойки, подсудность); 4) дай рекомендации по исправлению. Текст договора:
+
+${typed}`,
+    () => OFFLINE.analysis(typed), "contractResult", "Анализ договора",
+    "Ты — юрист по договорной работе с 15-летним опытом аудита. Сделай детальный аудит договора: 1) таблица рисков по убыванию серьёзности (риск → статья закона → как исправить формулировку); 2) отсутствующие важные пункты; 3) переговорная позиция — что требовать в первую очередь. Пиши конкретно, с номерами статей."
+  );
+}
+
+/* --- Загрузка документа файлом или фотографией --- */
+const DOCUI = {
+  payload: null,   // { text, images, fileName } — результат разбора файла
+
+  status(msg, kind = "") {
+    const el = document.getElementById("docStatus");
+    el.className = "doc-status " + kind;
+    el.textContent = msg;
+  },
+
+  onDrop(e) {
+    e.preventDefault();
+    document.getElementById("docDrop").classList.remove("over");
+    const f = e.dataTransfer.files[0];
+    if (f) this.onPick(f);
+  },
+
+  async onPick(file) {
+    if (!file) return;
+    if (!PF.user()) {
+      toast("Войдите, чтобы разбирать документы");
+      return setTimeout(() => (location.href = "auth.html"), 1200);
+    }
+    this.payload = null;
+    this.status("Открываем файл…");
+    try {
+      const data = await DOCSCAN.read(file, msg => this.status(msg));
+      this.payload = data;
+      if (data.text) {
+        document.getElementById("contractText").value = data.text;
+        this.status(`${file.name} — распознано ${data.text.length} символов. Можно править текст и запускать разбор.`, "ok");
+      } else {
+        this.status(`${file.name} — подготовлено страниц: ${data.images.length}. Текстового слоя нет, разберём по изображению.`, "ok");
+      }
+    } catch (e) {
+      this.status(e.message, "err");
+    }
+  },
+
+  clear() {
+    this.payload = null;
+    document.getElementById("docFile").value = "";
+    this.status("");
+  },
+};
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ИИ-Инструменты — ПравоФин</title>
+<!-- seo:start -->
+<meta name="description" content="ИИ-инструменты ПравоФин: генератор документов, анализ договора по файлу или фотографии, налоговый помощник и чек-листы.">
+<link rel="canonical" href="https://divine-guest.github.io/ecofin/tools.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ПравоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="ИИ-Инструменты — ПравоФин">
+<meta property="og:description" content="ИИ-инструменты ПравоФин: генератор документов, анализ договора по файлу или фотографии, налоговый помощник и чек-листы.">
+<meta property="og:url" content="https://divine-guest.github.io/ecofin/tools.html">
+<meta property="og:image" content="https://divine-guest.github.io/ecofin/icon.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<!-- seo:end -->
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -49,7 +150,22 @@
     <!-- Анализ договоров -->
     <div class="tab-panel game-stage" id="tool1">
       <div class="form-group">
-        <label>Текст договора (вставьте полностью или ключевые разделы)</label>
+        <label>Файл или фотография документа</label>
+        <div class="dropzone" id="docDrop"
+             onclick="document.getElementById('docFile').click()"
+             ondragover="event.preventDefault();this.classList.add('over')"
+             ondragleave="this.classList.remove('over')"
+             ondrop="DOCUI.onDrop(event)">
+          <b>Перетащите файл сюда</b> или нажмите, чтобы выбрать<br>
+          <span>PDF, DOCX, TXT или фото документа — до 15 МБ</span>
+        </div>
+        <input type="file" id="docFile" accept=".pdf,.docx,.txt,.md,.csv,image/*"
+               style="display:none" onchange="DOCUI.onPick(this.files[0])">
+        <div id="docStatus" class="doc-status"></div>
+      </div>
+
+      <div class="form-group">
+        <label>…либо вставьте текст договора вручную</label>
         <textarea id="contractText" rows="10" placeholder="ДОГОВОР ОКАЗАНИЯ УСЛУГ..."></textarea>
       </div>
       <button class="btn" onclick="analyzeContract()">Проанализировать</button>
@@ -118,13 +234,16 @@
   </div>
 </main>
 
+<script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/templates.js"></script>
+<script src="js/docscan.js"></script>
 <script>
 initPage("tools.html");
 
-// Индикатор оставшихся использований
+/* Остатки лимита приходят с сервера. Плашка — только индикация:
+   реальный отказ выдаёт API, даже если здесь всё «зелёное». */
 function renderQuota() {
   let el = document.getElementById("quotaBadge");
   if (!el) {
@@ -134,22 +253,25 @@ function renderQuota() {
   }
   if (!PF.user()) {
     el.className = "badge";
-    el.innerHTML = "Войдите, чтобы использовать ИИ";
+    el.textContent = "Войдите, чтобы использовать ИИ";
     return false;
   }
   if (PF.isPro()) {
     el.className = "badge pro";
-    el.innerHTML = "Pro — безлимит";
+    el.textContent = "Pro — без ограничений";
     return true;
   }
-  const left = PF.aiLeft();
+  const q = PF.quota;
+  if (!q) { el.className = "badge"; el.textContent = "Проверяем лимит…"; return true; }
+  const left = q.tool.left;
   el.className = left > 0 ? "badge ok" : "badge";
-  el.innerHTML = left > 0
-    ? `Бесплатно осталось: ${left} из ${FREE_AI_LIMIT}`
-    : "Бесплатные использования закончились";
+  el.textContent = left > 0
+    ? `Пробный запуск: осталось ${left} из ${q.tool.limit}`
+    : "Пробный запуск израсходован — нужна подписка Pro";
   return left > 0;
 }
 renderQuota();
+document.addEventListener("pf:ready", renderQuota);
 
 function switchTool(i, btn) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
@@ -163,22 +285,32 @@ function showResult(id, text) {
   el.classList.add("show");
 }
 
+/* Все инструменты идут через одну точку: сервер списывает пробный запуск
+   и сам решает, отдавать ответ или пейволл. offlineFn больше не подменяет
+   результат молча — иначе платная функция «работала бы» и без подписки. */
 async function runAI(prompt, offlineFn, resultId, action, system) {
-  if (!PF.user()) { toast("Войдите, чтобы использовать ИИ-инструменты"); return location.href = "auth.html"; }
-  if (PF.aiLeft() <= 0) { showPaywall(); return; }
+  if (!PF.user()) {
+    toast("Войдите, чтобы использовать ИИ-инструменты");
+    return setTimeout(() => (location.href = "auth.html"), 1200);
+  }
 
   const el = document.getElementById(resultId);
   el.textContent = "⏳ Генерация…";
   el.classList.add("show");
-  PF.consumeAIUse();
+
   try {
-    const r = await AI.complete(prompt, offlineFn, system);
-    showResult(resultId, AI.lastError ? "ИИ-сервер сейчас недоступен (проблема сети) — показан встроенный шаблон.\n\n" + r : r);
+    const res = await API.ai(prompt, { kind: "tool", system, maxTokens: 3000 });
+    PF.quota = res.quota || PF.quota;
+    showResult(resultId, res.text);
+    trackEvent("tool_use");
   } catch (e) {
-    showResult(resultId, "Ошибка: " + e.message);
+    if (e.isPaywall) {
+      el.classList.remove("show");
+      showPaywall(e.message);
+    } else {
+      showResult(resultId, "Не получилось: " + e.message);
+    }
   }
-  PF.logAction(action);
-  trackEvent("tool_use");
   renderQuota();
 }
 
@@ -199,7 +331,7 @@ function genDoc() {
 
 function analyzeContract() {
   const text = document.getElementById("contractText").value.trim();
-  if (!text) return toast("Вставьте текст договора");
+  if (!text) return toast("Вставьте текст договора или приложите файл");
   runAI(
     `Проанализируй договор на русском языке. Найди: 1) риски для стороны-исполнителя; 2) невыгодные или двусмысленные условия; 3) отсутствующие важные пункты (персональные данные, форс-мажор, неустойки, подсудность); 4) дай рекомендации по исправлению. Текст договора:\n\n${text}`,
     () => OFFLINE.analysis(text), "contractResult", "Анализ договора",

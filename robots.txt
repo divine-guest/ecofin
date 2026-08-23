@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /dashboard.html
+Disallow: /auth.html
+Disallow: /onboarding.html
+
+Sitemap: https://divine-guest.github.io/ecofin/sitemap.xml

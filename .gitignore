@@ -1,3 +1,8 @@
 node_modules/
 *.log
 .DS_Store
+
+# секреты воркера
+pravofin/worker/.env
+worker/.env
+.env

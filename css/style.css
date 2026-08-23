@@ -684,3 +684,26 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* ===== Загрузка документа (анализ файлом и фото) ===== */
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  padding: 26px 18px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: .9rem;
+  line-height: 1.7;
+  transition: border-color .2s, background .2s;
+}
+.dropzone:hover, .dropzone.over {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+.dropzone b { color: var(--text); }
+.dropzone span { font-size: .82rem; }
+
+.doc-status { margin-top: 10px; font-size: .86rem; color: var(--muted); min-height: 1.2em; }
+.doc-status.ok  { color: var(--ok, #2e9e6b); }
+.doc-status.err { color: var(--danger, #d64545); }

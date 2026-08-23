@@ -1,111 +1,67 @@
 /* ============ ПравоФин — общая логика ============ */
-const FREE_AI_LIMIT = 1; // бесплатных использований AI-инструментов
 
+/* Кэш пользователя нужен только чтобы шапка и кабинет рисовались без мигания.
+   Все запреты живут на сервере: правка кэша в DevTools ничего не открывает. */
 const PF = {
-  usersKey: "pf_users",
-  sessionKey: "pf_session",
   themeKey: "pf_theme",
-  historyKey: "pf_history",
-  habitsKey: "pf_habits",
-  scoresKey: "pf_scores",
 
-  users() { return JSON.parse(localStorage.getItem(this.usersKey) || "{}"); },
-  saveUsers(u) { localStorage.setItem(this.usersKey, JSON.stringify(u)); },
-  user() {
-    const email = localStorage.getItem(this.sessionKey);
-    return email ? this.users()[email] : null;
+  user() { return API.cached(); },
+  isPro() { const u = this.user(); return !!u && (u.plan === "pro" || u.isAdmin); },
+  isAdmin() { const u = this.user(); return !!u && u.isAdmin; },
+  isOwner() { const u = this.user(); return !!u && u.isOwner; },
+
+  /* Остатки лимитов приходят с сервера; до первого ответа — null. */
+  quota: null,
+  async refreshQuota() {
+    if (!this.user()) { this.quota = null; return null; }
+    try { this.quota = await API.quota(); } catch { this.quota = null; }
+    return this.quota;
   },
-  register(name, email, pass) {
-    const users = this.users();
-    if (users[email]) throw new Error("Пользователь уже существует");
-    if (pass.length < 4) throw new Error("Пароль минимум 4 символа");
-    const isFirst = Object.keys(users).length === 0;
-    users[email] = {
-      name, email, pass, registered: Date.now(),
-      plan: isFirst ? "pro" : "free", // первый зарегистрированный — владелец (PRO + админ)
-      isAdmin: isFirst,
-      aiUses: 0, actions: [],
-    };
-    this.saveUsers(users);
-    localStorage.setItem(this.sessionKey, email);
-    this.logAction(isFirst ? "Регистрация владельца сервиса (админ)" : "Регистрация аккаунта");
-    trackEvent("register");
-    return users[email];
-  },
-  login(email, pass) {
-    const u = this.users()[email];
-    if (!u) throw new Error("Аккаунт не найден на этом устройстве. Данные хранятся в браузере компьютера, где вы регистрировались. Войдите там или зарегистрируйтесь заново здесь — прогресс можно перенести файлом (кабинет старого устройства → Настройки → «Скачать все мои данные», здесь → Импорт)");
-    if (u.pass !== pass) throw new Error("Неверный пароль. Проверьте раскладку клавиатуры и Caps Lock");
-    localStorage.setItem(this.sessionKey, email);
-    this.logAction("Вход в аккаунт");
-    trackEvent("login");
-    return u;
-  },
-  logout() {
-    localStorage.removeItem(this.sessionKey);
+
+  async logout() {
+    await API.logout();
     location.href = "index.html";
   },
-  updateUser(patch) {
-    const email = localStorage.getItem(this.sessionKey);
-    if (!email) return;
-    const users = this.users();
-    Object.assign(users[email], patch);
-    this.saveUsers(users);
-  },
 
-  /* --- Подписка и лимиты AI --- */
-  isPro() { const u = this.user(); return !!u && (u.plan === "pro" || u.isAdmin); },
-  aiUses() { const u = this.user(); return u ? u.aiUses || 0 : 0; },
-  aiLeft() { return this.isPro() ? Infinity : Math.max(0, FREE_AI_LIMIT - this.aiUses()); },
-  consumeAIUse() {
-    if (this.aiLeft() <= 0) return false;
-    if (!this.isPro()) this.updateUser({ aiUses: this.aiUses() + 1 });
-    return true;
-  },
+  /* Журнал действий ведёт сервер (он же — источник правды для админки).
+     Метод оставлен пустым, чтобы страницы, которые его зовут, не падали. */
+  logAction() {},
+  actions: [],
+  history() { return this.actions; },
 
-  history() {
-    const email = localStorage.getItem(this.sessionKey);
-    if (!email) return [];
-    return this.users()[email].actions || [];
-  },
-  logAction(text) {
-    const email = localStorage.getItem(this.sessionKey);
-    if (!email) return;
-    const users = this.users();
-    users[email].actions = [{ text, date: new Date().toISOString() }, ...(users[email].actions || [])].slice(0, 50);
-    this.saveUsers(users);
-  },
+  /* Результаты практикума и онбординг — вспомогательные данные, живут в браузере.
+     Ни на доступ, ни на подписку они не влияют, поэтому серверу не нужны. */
+  localKey(name) { const u = this.user(); return `pf_${name}_` + (u ? u.email : "guest"); },
   addScore(game, points) {
-    const email = localStorage.getItem(this.sessionKey);
-    if (!email) return;
-    const users = this.users();
-    const s = (users[email].scores || {});
+    const s = this.scores();
     s[game] = Math.max(s[game] || 0, points);
-    users[email].scores = s;
-    this.saveUsers(users);
+    localStorage.setItem(this.localKey("scores"), JSON.stringify(s));
   },
-  getScore(game) {
-    const u = this.user();
-    return u && u.scores ? u.scores[game] || 0 : 0;
+  scores() { try { return JSON.parse(localStorage.getItem(this.localKey("scores")) || "{}"); } catch { return {}; } },
+  getScore(game) { return this.scores()[game] || 0; },
+  updateUser(patch) {
+    /* Профиль и подписку меняет только сервер. Здесь оседают лишь ответы
+       онбординга и прочие настройки отображения. */
+    const safe = { ...patch };
+    delete safe.plan; delete safe.proUntil; delete safe.isAdmin; delete safe.role; delete safe.pass;
+    if (!Object.keys(safe).length) return;
+    const cur = this.prefs();
+    localStorage.setItem(this.localKey("prefs"), JSON.stringify({ ...cur, ...safe }));
   },
+  prefs() { try { return JSON.parse(localStorage.getItem(this.localKey("prefs")) || "{}"); } catch { return {}; } },
 
-  /* --- Мои документы (сгенерированные/сохранённые) --- */
-  docs() {
-    const u = this.user();
-    return JSON.parse(localStorage.getItem("pf_docs_" + (u ? u.email : "guest")) || "[]");
-  },
+  /* --- Мои документы: остаются в браузере, это черновики, а не аккаунт --- */
+  docsKey() { const u = this.user(); return "pf_docs_" + (u ? u.email : "guest"); },
+  docs() { try { return JSON.parse(localStorage.getItem(this.docsKey()) || "[]"); } catch { return []; } },
   saveDoc(title, content) {
-    const key = "pf_docs_" + (this.user() ? this.user().email : "guest");
     const docs = this.docs();
     docs.unshift({ title, content, date: new Date().toISOString() });
-    localStorage.setItem(key, JSON.stringify(docs.slice(0, 50)));
-    this.logAction("Сохранён документ: " + title);
+    localStorage.setItem(this.docsKey(), JSON.stringify(docs.slice(0, 50)));
   },
   deleteDoc(i) {
-    const key = "pf_docs_" + (this.user() ? this.user().email : "guest");
     const docs = this.docs();
     docs.splice(i, 1);
-    localStorage.setItem(key, JSON.stringify(docs));
+    localStorage.setItem(this.docsKey(), JSON.stringify(docs));
   },
 
   /* --- Реферальный код --- */
@@ -117,6 +73,10 @@ const PF = {
     return "PF-" + h.toString(36).toUpperCase().padStart(4, "0");
   },
 };
+
+/* Журнал действий ведёт сервер; локальный вызов оставлен как заглушка,
+   чтобы старые страницы не падали. */
+function logAction() {}
 
 /* ============ Тема ============ */
 function applyTheme(t) {
@@ -159,6 +119,8 @@ function renderHeader(active) {
     ["index.html", "Главная"], ["tools.html", "Инструменты"], ["calc.html", "Калькуляторы"],
     ["courses.html", "Курсы"], ["games.html", "Практикум"], ["knowledge.html", "База знаний"], ["dashboard.html", "Кабинет"],
   ];
+  /* Пункт «Админка» видят только админы и владелец. Прямой заход по адресу
+     всё равно упрётся в проверку прав на сервере. */
   if (u && u.isAdmin) pages.push(["admin.html", "Админка"]);
   const links = pages.map(([href, label]) =>
     `<a href="${href}" class="${active === href ? "active" : ""}">${label}</a>`).join("");
@@ -260,38 +222,54 @@ async function chatSend() {
   const input = document.getElementById("chatInput");
   const text = input.value.trim();
   if (!text) return;
+
+  /* Консультант — только для вошедших: иначе лимит не к кому привязать. */
+  if (!PF.user()) {
+    addMsg("bot", "Чтобы задать вопрос ИИ-консультанту, войдите или зарегистрируйтесь — это бесплатно.");
+    setTimeout(() => (location.href = "auth.html"), 1600);
+    return;
+  }
+
   input.value = "";
   addMsg("user", text);
   const thinking = document.createElement("div");
   thinking.className = "chat-msg bot";
   thinking.textContent = "…";
   document.getElementById("chatMessages").appendChild(thinking);
+  document.getElementById("chatMessages").scrollTop = 1e9;
+
   try {
-    const reply = await AI.complete(
-      `Ты — юридическо-финансовый консультант сервиса «ПравоФин». Отвечай кратко и по делу на русском языке, делая оговорку, что это не официальная консультация. Вопрос: ${chatContext(text)}`,
-      () => OFFLINE.chat(text)
-    );
-    const finalText = AI.lastError
-      ? "ИИ-сервер сейчас недоступен (проблема сети). Ниже — краткий встроенный ответ, попробуйте полный позже:\n\n" + reply
-      : reply;
-    thinking.textContent = finalText;
-    chatSave([...chatHistory(), { role: "user", text }, { role: "bot", text: finalText }]);
+    const res = await API.ai(chatContext(text), { kind: "chat" });
+    thinking.textContent = res.text;
+    PF.quota = res.quota || PF.quota;
+    chatSave([...chatHistory(), { role: "user", text }, { role: "bot", text: res.text }]);
+    if (res.quota && !res.quota.pro && res.quota.ai.left === 0) {
+      addMsg("bot", "Это было последнее бесплатное обращение на сегодня. Лимит обновится завтра, а с Pro его нет совсем.");
+    }
   } catch (e) {
     thinking.remove();
-    addMsg("bot", "Ошибка: " + e.message);
+    if (e.isPaywall) {
+      addMsg("bot", e.message);
+      showPaywall();
+    } else {
+      addMsg("bot", "Не получилось: " + e.message);
+    }
   }
-  PF.logAction("Вопрос ИИ-консультанту: " + text.slice(0, 60));
   document.getElementById("chatMessages").scrollTop = 1e9;
 }
 
 /* ============ Платежи (подписка Pro) ============ */
+/* Формы карты здесь больше нет: реквизиты вводятся на стороне ЮKassa.
+   Сайт только создаёт платёж и уводит на защищённую страницу оплаты. */
 const PAY = {
   plans: {
     month: { title: "Pro на месяц", price: 490, days: 30 },
     year: { title: "Pro на год", price: 4900, days: 365, note: "2 месяца в подарок" },
   },
+  enabled: null,
 
-  open(planId) {
+  async open(planId) {
+    if (!PF.user()) return (location.href = "auth.html");
     let bd = document.getElementById("payBackdrop");
     if (!bd) {
       bd = document.createElement("div");
@@ -300,13 +278,25 @@ const PAY = {
       document.body.appendChild(bd);
     }
     bd.classList.add("open");
-    this.step = { plan: planId || "month", method: "card" };
-    this.renderPlans();
+    this.step = { plan: planId || "month" };
+    this.render();
+    try {
+      const info = await API.billing.plans();
+      this.enabled = info.enabled;
+      if (info.plans) info.plans.forEach(p => { if (this.plans[p.id]) this.plans[p.id].price = p.price; });
+    } catch { this.enabled = false; }
+    this.render();
   },
-  close() { document.getElementById("payBackdrop").classList.remove("open"); },
-
-  renderPlans() {
+  close() {
     const bd = document.getElementById("payBackdrop");
+    if (bd) bd.classList.remove("open");
+  },
+  selectPlan(id) { this.step.plan = id; this.render(); },
+
+  render() {
+    const bd = document.getElementById("payBackdrop");
+    if (!bd) return;
+    const off = this.enabled === false;
     bd.innerHTML = `
       <div class="modal">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
@@ -321,89 +311,44 @@ const PAY = {
               ${p.note ? `<span class="badge ok">${p.note}</span>` : ""}
             </div>`).join("")}
         </div>
-        <div class="form-group" style="margin-top:16px">
-          <label>Способ оплаты</label>
-          <div class="pay-methods">
-            <button class="pay-method ${this.step.method === "card" ? "selected" : ""}" onclick="PAY.selectMethod('card')">Банковская карта</button>
-            <button class="pay-method ${this.step.method === "sbp" ? "selected" : ""}" onclick="PAY.selectMethod('sbp')">СБП</button>
+        ${off ? `
+          <p class="pay-note" style="margin-top:16px">
+            Приём оплаты картой пока не подключён. Получить Pro можно по промокоду
+            или запросив доступ у администратора сервиса.
+          </p>` : `
+          <p class="pay-note" style="margin-top:16px">
+            Оплата проходит на защищённой странице ЮKassa. Реквизиты карты
+            вводятся там и на сайт ПравоФин не попадают.
+          </p>`}
+        <br><button class="btn gold" style="width:100%" ${off ? "disabled" : ""} onclick="PAY.submit()">
+          ${off ? "Оплата временно недоступна" : `Перейти к оплате — ${this.plans[this.step.plan].price} ₽`}
+        </button>
+        <div style="margin-top:16px;text-align:center">
+          <p style="color:var(--muted);font-size:.8rem;margin-bottom:6px">или введите промокод</p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <input type="text" id="promoInput2" placeholder="Промокод" style="max-width:170px">
+            <button class="btn secondary" onclick="applyPromo('promoInput2')">Активировать</button>
           </div>
         </div>
-        <div id="payDetails"></div>
-        <br><button class="btn gold" style="width:100%" onclick="PAY.submit()">Оплатить ${this.plans[this.step.plan].price} ₽</button>
-        <p class="pay-note">Демо-режим: карта не списывается. Точка подключения реального эквайринга — в js/app.js, функция PAY.submit.</p>
       </div>`;
-    this.renderDetails();
-  },
-  selectPlan(id) { this.step.plan = id; this.renderPlans(); },
-  selectMethod(m) { this.step.method = m; this.renderPlans(); },
-
-  renderDetails() {
-    const box = document.getElementById("payDetails");
-    if (this.step.method === "card") {
-      box.innerHTML = `
-        <div class="grid cols-2" style="gap:10px">
-          <div class="form-group" style="margin:0;grid-column:1/-1">
-            <label>Номер карты</label>
-            <input type="text" id="ccNum" inputmode="numeric" placeholder="0000 0000 0000 0000" maxlength="19" oninput="PAY.formatCard(this)">
-          </div>
-          <div class="form-group" style="margin:0"><label>Срок</label><input type="text" id="ccExp" placeholder="ММ/ГГ" maxlength="5"></div>
-          <div class="form-group" style="margin:0"><label>CVC</label><input type="password" id="ccCvc" placeholder="•••" maxlength="3"></div>
-        </div>`;
-    } else {
-      box.innerHTML = `
-        <div class="pay-sbp">
-          <p style="color:var(--muted);font-size:.9rem">Отсканируйте QR-код в приложении банка или подтвердите платёж по push-уведомлению.</p>
-          <div class="pay-qr">СБП</div>
-        </div>`;
-    }
-  },
-  formatCard(input) {
-    input.value = input.value.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ");
   },
 
   async submit() {
-    /* ================================================================
-       ТОЧКА ИНТЕГРАЦИИ ПЛАТЕЖЕЙ (YooKassa / CloudPayments / Robokassa)
-       Здесь вместо демо-блока создайте платёж через ваш бэкенд:
-       const res = await fetch("/api/pay", { method: "POST",
-         body: JSON.stringify({ plan: this.step.plan, method: this.step.method, ...card }) });
-       и активируйте Pro только после подтверждения вебхуком.
-       ================================================================ */
-    if (this.step.method === "card") {
-      const num = (document.getElementById("ccNum").value || "").replace(/\s/g, "");
-      const exp = document.getElementById("ccExp").value || "";
-      const cvc = document.getElementById("ccCvc").value || "";
-      if (num.length !== 16) return toast("Введите номер карты полностью");
-      if (!/^\d{2}\/\d{2}$/.test(exp)) return toast("Срок в формате ММ/ГГ");
-      if (cvc.length !== 3) return toast("CVC — 3 цифры");
-    }
     const btn = document.querySelector("#payBackdrop .btn.gold");
     btn.disabled = true;
-    btn.textContent = "Обработка платежа…";
-    await new Promise(r => setTimeout(r, 1800));
-
-    const plan = this.plans[this.step.plan];
-    const until = Date.now() + plan.days * 86400000;
-    const u = PF.user();
-    const payments = [...(u.payments || []), {
-      id: "PF-" + Date.now().toString(36).toUpperCase(),
-      plan: this.step.plan, amount: plan.price, method: this.step.method,
-      date: new Date().toISOString(),
-    }];
-    PF.updateUser({ plan: "pro", proUntil: until, payments });
-    PF.logAction(`Оплата: ${plan.title} за ${plan.price} ₽`);
-    trackEvent("pay_success");
-    this.close();
-    toast("Pro активирован! Приятной работы");
-    setTimeout(() => location.reload(), 900);
-  },
-
-  cancel() {
-    if (!confirm("Отменить подписку Pro? Доступ сохранится до конца оплаченного периода.")) return;
-    PF.updateUser({ plan: "free" });
-    PF.logAction("Подписка Pro отменена");
-    toast("Подписка отменена");
-    location.reload();
+    btn.textContent = "Создаём платёж…";
+    try {
+      const res = await API.billing.create(this.step.plan);
+      if (res.confirmationUrl) {
+        location.href = res.confirmationUrl;   // дальше платёж ведёт ЮKassa
+        return;
+      }
+      toast("Платёж создан, но ЮKassa не вернула ссылку. Напишите в поддержку", "error");
+    } catch (e) {
+      toast(e.message, "error");
+    }
+    btn.disabled = false;
+    btn.textContent = `Перейти к оплате — ${this.plans[this.step.plan].price} ₽`;
   },
 };
 
@@ -411,7 +356,7 @@ const PAY = {
 const SETTINGS = {
   open() {
     const u = PF.user();
-    if (!u) return location.href = "auth.html";
+    if (!u) return (location.href = "auth.html");
     let bd = document.getElementById("settingsBackdrop");
     if (!bd) {
       bd = document.createElement("div");
@@ -436,110 +381,105 @@ const SETTINGS = {
         </div>
         <div class="form-group">
           <label>Имя</label>
-          <input type="text" id="setName" value="${escapeHtml(u.name)}">
+          <input type="text" id="setName" value="${escapeHtml(u.name)}" maxlength="80">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="text" value="${escapeHtml(u.email)}" disabled>
+          <p style="color:var(--muted);font-size:.78rem;margin-top:4px">Email — логин аккаунта, он не меняется.</p>
         </div>
         <button class="btn" style="width:100%" onclick="SETTINGS.save()">Сохранить</button>
 
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
 
         <div class="form-group">
-          <label>Смена пароля</label>
-          <input type="password" id="setOldPass" placeholder="Текущий пароль">
+          <label>Текущий пароль</label>
+          <input type="password" id="setOldPass" placeholder="••••••••" autocomplete="current-password">
         </div>
         <div class="form-group">
-          <label>Новый пароль (мин. 4 символа)</label>
-          <input type="password" id="setNewPass" placeholder="••••••">
+          <label>Новый пароль (мин. 8 символов)</label>
+          <input type="password" id="setNewPass" placeholder="••••••••" autocomplete="new-password">
         </div>
         <button class="btn secondary" style="width:100%" onclick="SETTINGS.changePass()">Изменить пароль</button>
+        <p style="color:var(--muted);font-size:.78rem;margin-top:8px">
+          После смены пароля все остальные устройства будут разлогинены.
+        </p>
 
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
+        <button class="btn secondary" style="width:100%" onclick="SETTINGS.exportData()">Скачать мои документы (JSON)</button>
+        <p style="color:var(--muted);font-size:.78rem;margin-top:8px">
+          Профиль и подписка хранятся на сервере и переносятся сами — на любом устройстве
+          достаточно войти. Выгрузка нужна только для черновиков документов и заметок,
+          которые остаются в браузере.
+        </p>
+
         <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
-        <button class="btn secondary" style="width:100%" onclick="SETTINGS.exportData()">Скачать все мои данные (JSON)</button>
-        <input type="file" id="importFile" accept=".json" style="display:none" onchange="SETTINGS.importData(this.files[0])">
-        <br><button class="btn secondary" style="width:100%" onclick="document.getElementById('importFile').click()">Импорт данных из файла</button>
-        <p style="color:var(--muted);font-size:.8rem;margin-top:8px">Профиль, документы, сроки, прогресс курсов и календарь — одним файлом.</p>
-        <br><br>
         <button class="btn danger" style="width:100%" onclick="SETTINGS.deleteAccount()">Удалить аккаунт</button>
-        <p style="color:var(--muted);font-size:.8rem;margin-top:8px">Аккаунт и все данные будут стёрты из этого браузера безвозвратно.</p>
+        <p style="color:var(--muted);font-size:.78rem;margin-top:8px">
+          Аккаунт, подписка и история будут стёрты с сервера безвозвратно.
+        </p>
       </div>`;
     this._avatar = u.avatar || "";
   },
-  close() { document.getElementById("settingsBackdrop").classList.remove("open"); },
+  close() {
+    const bd = document.getElementById("settingsBackdrop");
+    if (bd) bd.classList.remove("open");
+  },
   pickAvatar(btn, a) {
     document.querySelectorAll(".avatar-option").forEach(b => b.classList.remove("selected"));
     btn.classList.add("selected");
     this._avatar = a;
   },
-  save() {
+  async save() {
     const name = document.getElementById("setName").value.trim();
     if (name.length < 2) return toast("Имя слишком короткое");
-    PF.updateUser({ name, avatar: this._avatar });
-    PF.logAction("Обновлён профиль");
-    toast("Профиль сохранён");
-    setTimeout(() => location.reload(), 700);
+    try {
+      await API.updateProfile({ name, avatar: this._avatar });
+      toast("Профиль сохранён");
+      setTimeout(() => location.reload(), 600);
+    } catch (e) { toast(e.message, "error"); }
   },
-  changePass() {
-    const u = PF.user();
+  async changePass() {
     const oldP = document.getElementById("setOldPass").value;
     const newP = document.getElementById("setNewPass").value;
-    if (oldP !== u.pass) return toast("Текущий пароль неверен");
-    if (newP.length < 4) return toast("Новый пароль минимум 4 символа");
-    PF.updateUser({ pass: newP });
-    PF.logAction("Изменён пароль");
-    toast("Пароль изменён");
-    SETTINGS.close();
+    if (newP.length < 8) return toast("Новый пароль минимум 8 символов");
+    try {
+      await API.changePassword(oldP, newP);
+      toast("Пароль изменён");
+      document.getElementById("setOldPass").value = "";
+      document.getElementById("setNewPass").value = "";
+      SETTINGS.close();
+    } catch (e) { toast(e.message, "error"); }
   },
   exportData() {
     const u = PF.user();
     if (!u) return;
-    const email = u.email;
     const data = {
       exported: new Date().toISOString(),
-      profile: { ...u, pass: undefined },
+      profile: { email: u.email, name: u.name, plan: u.plan },
       documents: PF.docs(),
-      deadlines: JSON.parse(localStorage.getItem("pf_deadlines_" + email) || "[]"),
-      habits: JSON.parse(localStorage.getItem("pf_habits_" + email) || "{}"),
-      courses: JSON.parse(localStorage.getItem("pf_course_" + email) || "{}"),
+      deadlines: JSON.parse(localStorage.getItem("pf_deadlines_" + u.email) || "[]"),
+      habits: JSON.parse(localStorage.getItem("pf_habits_" + u.email) || "{}"),
+      courses: JSON.parse(localStorage.getItem("pf_course_" + u.email) || "{}"),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "pravofin-" + email.split("@")[0] + ".json";
+    a.download = "pravofin-" + u.email.split("@")[0] + ".json";
     a.click();
     URL.revokeObjectURL(a.href);
     toast("Данные выгружены");
   },
-  importData(file) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(reader.result);
-        const email = data.profile.email;
-        const users = PF.users();
-        if (!users[email]) throw new Error("Сначала зарегистрируйтесь с тем же email");
-        users[email] = { ...users[email], ...data.profile };
-        PF.saveUsers(users);
-        if (data.deadlines) localStorage.setItem("pf_deadlines_" + email, JSON.stringify(data.deadlines));
-        if (data.habits) localStorage.setItem("pf_habits_" + email, JSON.stringify(data.habits));
-        if (data.courses) localStorage.setItem("pf_course_" + email, JSON.stringify(data.courses));
-        if (data.documents) localStorage.setItem("pf_docs_" + email, JSON.stringify(data.documents));
-        PF.logAction("Импорт данных из файла");
-        toast("Данные перенесены");
-        setTimeout(() => location.reload(), 800);
-      } catch (e) { toast("Ошибка импорта: " + e.message); }
-    };
-    reader.readAsText(file);
-  },
-  deleteAccount() {
-    if (!confirm("Точно удалить аккаунт? Действие необратимо.")) return;
-    const email = localStorage.getItem(PF.sessionKey);
-    const users = PF.users();
-    delete users[email];
-    PF.saveUsers(users);
-    localStorage.removeItem(PF.sessionKey);
-    localStorage.removeItem("pf_habits_" + email);
-    toast("Аккаунт удалён");
-    setTimeout(() => location.href = "index.html", 700);
+  async deleteAccount() {
+    const u = PF.user();
+    if (!u) return;
+    if (!confirm("Точно удалить аккаунт? Подписка и история будут стёрты безвозвратно.")) return;
+    if (prompt('Для подтверждения введите слово "удалить"') !== "удалить") return toast("Отменено");
+    try {
+      await API.deleteAccount();
+      toast("Аккаунт удалён");
+      setTimeout(() => (location.href = "index.html"), 700);
+    } catch (e) { toast(e.message, "error"); }
   },
 };
 
@@ -575,53 +515,74 @@ const NOTIF = {
 };
 
 /* ============ Пейволл (окно подписки) ============ */
-function showPaywall() {
+function showPaywall(message) {
   let bd = document.getElementById("paywallBackdrop");
   if (!bd) {
     bd = document.createElement("div");
     bd.id = "paywallBackdrop";
     bd.className = "modal-backdrop";
-    bd.innerHTML = `
-      <div class="modal" style="text-align:center">
-        <h3 style="font-family:'Playfair Display',Georgia,serif;margin:6px 0 10px">Нужна подписка Pro</h3>
-        <p style="color:var(--muted);margin-bottom:16px">
-          Бесплатный тариф даёт ${FREE_AI_LIMIT} использование ИИ-инструментов.
-          Оформите Pro — и работайте без ограничений.
-        </p>
-        <ul style="text-align:left;color:var(--muted);font-size:.9rem;margin:0 20px 18px;line-height:2">
-          <li>Безлимитные ИИ-инструменты</li>
-          <li>Готовые документы за минуту</li>
-          <li>Персональные налоговые расчёты</li>
-          <li>Доступ к платным курсам (скоро)</li>
-        </ul>
-        <br><button class="btn gold" onclick="PAY.open()">Оформить за 490 ₽/мес</button>
-        <p style="color:var(--muted);font-size:.8rem;margin-top:10px">или введите промокод</p>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px">
-          <input type="text" id="promoInput" placeholder="Промокод" style="max-width:170px">
-          <button class="btn secondary" onclick="applyPromo()">Активировать</button>
-        </div>
-        <br><button class="btn secondary small" onclick="closePaywall()">Позже</button>
-      </div>`;
     document.body.appendChild(bd);
   }
+  const q = PF.quota;
+  const reason = message
+    || (q && q.tool && q.tool.left === 0 ? "Пробный запуск инструментов израсходован."
+    : q && q.ai && q.ai.left === 0 ? "Дневной лимит обращений к ИИ исчерпан."
+    : "Эта возможность доступна по подписке Pro.");
+
+  bd.innerHTML = `
+    <div class="modal" style="text-align:center">
+      <h3 style="font-family:'Playfair Display',Georgia,serif;margin:6px 0 10px">Нужна подписка Pro</h3>
+      <p style="color:var(--muted);margin-bottom:16px">${escapeHtml(reason)}</p>
+      <ul style="text-align:left;color:var(--muted);font-size:.9rem;margin:0 20px 18px;line-height:2">
+        <li>Безлимитные ИИ-инструменты и калькуляторы</li>
+        <li>Анализ договоров: файлом и фотографией</li>
+        <li>ИИ-консультант без дневного лимита</li>
+        <li>Платные курсы и сертификаты</li>
+      </ul>
+      <button class="btn gold" onclick="closePaywall();PAY.open()">Оформить Pro</button>
+      <p style="color:var(--muted);font-size:.8rem;margin-top:14px;margin-bottom:6px">или введите промокод</p>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <input type="text" id="promoInput" placeholder="Промокод" style="max-width:170px">
+        <button class="btn secondary" onclick="applyPromo('promoInput')">Активировать</button>
+      </div>
+      <br><button class="btn secondary small" onclick="closePaywall()">Позже</button>
+    </div>`;
   bd.classList.add("open");
-  trackEvent("paywall");
 }
 function closePaywall() {
   const bd = document.getElementById("paywallBackdrop");
   if (bd) bd.classList.remove("open");
 }
-function applyPromo() {
-  const code = (document.getElementById("promoInput").value || "").trim().toUpperCase();
-  if (code === "PRO2026") {
-    PF.updateUser({ plan: "pro" });
-    PF.logAction("Активирована подписка Pro (промокод)");
+
+/* Промокоды проверяет сервер: подобрать код в консоли браузера нельзя. */
+async function applyPromo(inputId) {
+  const el = document.getElementById(inputId || "promoInput");
+  const code = (el && el.value || "").trim();
+  if (!code) return toast("Введите промокод");
+  try {
+    const res = await API.billing.promo(code);
     closePaywall();
-    toast("Pro активирован! Приятной работы");
-    setTimeout(() => location.reload(), 800);
-  } else {
-    toast("❌ Неверный промокод");
+    PAY.close();
+    toast(`Pro активирован на ${res.days} дн.`);
+    setTimeout(() => location.reload(), 900);
+  } catch (e) {
+    toast(e.message, "error");
   }
+}
+
+/* Единая проверка перед запуском платной возможности.
+   Возвращает true, если можно продолжать. Сервер всё равно перепроверит. */
+function requirePro(feature) {
+  if (!PF.user()) {
+    toast("Сначала войдите — это бесплатно");
+    setTimeout(() => (location.href = "auth.html"), 1200);
+    return false;
+  }
+  if (PF.isPro()) return true;
+  const q = PF.quota;
+  if (q && q.tool && q.tool.left > 0) return true;
+  showPaywall(feature ? `«${feature}» доступно по подписке Pro — пробный запуск уже израсходован.` : undefined);
+  return false;
 }
 
 /* ============ Анимации появления при скролле ============ */
@@ -662,13 +623,31 @@ function spawnHeroParticles(containerSelector = ".hero", count = 16) {
 }
 
 /* ============ Инициализация страницы ============ */
+/* Сессию подтверждает сервер. До ответа рисуем по кэшу — чтобы не мигало,
+   после ответа перерисовываем шапку, если роль или план изменились. */
+async function refreshSession() {
+  if (!API.token()) { API.setSession(null, null); return null; }
+  try {
+    const before = JSON.stringify(API.cached());
+    const d = await API.me();
+    PF.actions = d.actions || [];
+    PF.payments = d.payments || [];
+    await PF.refreshQuota();
+    if (JSON.stringify(d.user) !== before) window.dispatchEvent(new CustomEvent("pf:userchanged"));
+    return d.user;
+  } catch (e) {
+    if (e.status === 401) return null;   // сессия истекла, API уже почистил кэш
+    return API.cached();                 // сеть отвалилась — работаем по кэшу
+  }
+}
+
 function initPage(active) {
   initTheme();
   renderHeader(active);
   renderFooter();
   renderChatWidget();
   initRevealAnimations();
-  // PWA: manifest + service worker (работает на GitHub Pages / любом хостинге)
+
   if (!document.querySelector('link[rel="manifest"]')) {
     const m = document.createElement("link");
     m.rel = "manifest";
@@ -678,4 +657,22 @@ function initPage(active) {
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
+
+  /* Разлогин где угодно — сразу перерисовываем шапку. */
+  window.addEventListener("pf:signedout", () => {
+    document.querySelector(".site-header")?.remove();
+    renderHeader(active);
+  });
+
+  refreshSession().then(user => {
+    const header = document.querySelector(".site-header");
+    if (header) { header.remove(); renderHeader(active); }
+    document.dispatchEvent(new CustomEvent("pf:ready", { detail: { user } }));
+  });
+}
+
+/* Страницы, которым нужен вошедший пользователь, зовут это вместо своей проверки. */
+function requireAuth() {
+  if (!API.token()) { location.href = "auth.html"; return false; }
+  return true;
 }

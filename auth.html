@@ -4,6 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Вход — ПравоФин</title>
+<!-- seo:start -->
+<meta name="description" content="Вход и регистрация в сервисе ПравоФин. Аккаунт синхронизируется между устройствами.">
+<link rel="canonical" href="https://divine-guest.github.io/ecofin/auth.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ПравоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Вход — ПравоФин">
+<meta property="og:description" content="Вход и регистрация в сервисе ПравоФин. Аккаунт синхронизируется между устройствами.">
+<meta property="og:url" content="https://divine-guest.github.io/ecofin/auth.html">
+<meta property="og:image" content="https://divine-guest.github.io/ecofin/icon.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<meta name="robots" content="noindex, nofollow">
+<!-- seo:end -->
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -29,7 +43,7 @@
         </div>
         <div class="form-group">
           <label>Пароль</label>
-          <input type="password" id="loginPass" required placeholder="••••••">
+          <input type="password" id="loginPass" required autocomplete="current-password" placeholder="••••••••">
         </div>
         <button class="btn" style="width:100%">Войти</button>
       </form>
@@ -45,7 +59,7 @@
         </div>
         <div class="form-group">
           <label>Пароль (мин. 4 символа)</label>
-          <input type="password" id="regPass" required minlength="4" placeholder="••••••">
+          <input type="password" id="regPass" required minlength="8" autocomplete="new-password" placeholder="минимум 8 символов">
         </div>
         <button class="btn" style="width:100%">Создать аккаунт</button>
       </form>
@@ -53,6 +67,7 @@
   </div>
 </main>
 
+<script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script src="js/ai.js"></script>
 <script>
@@ -65,29 +80,53 @@ function switchAuth(mode) {
   document.getElementById("regForm").style.display = mode === "reg" ? "block" : "none";
 }
 
-function doLogin(e) {
-  e.preventDefault();
-  try {
-    PF.login(document.getElementById("loginEmail").value.trim(), document.getElementById("loginPass").value);
-    toast("Добро пожаловать!");
-    setTimeout(() => location.href = "dashboard.html", 600);
-  } catch (err) { toast(err.message, "error"); }
+/* Ключевое отличие от прежней версии: аккаунт создаётся на сервере.
+   Войти можно с любого устройства, а подписку и права подделать нельзя. */
+function busy(form, on, label) {
+  const btn = form.querySelector('button[type="submit"]');
+  if (!btn) return;
+  if (on) { btn.dataset.label = btn.textContent; btn.disabled = true; btn.textContent = label; }
+  else { btn.disabled = false; btn.textContent = btn.dataset.label || label; }
 }
 
-function doRegister(e) {
+async function doLogin(e) {
   e.preventDefault();
+  const form = e.target;
+  busy(form, true, "Входим…");
   try {
-    PF.register(
+    await API.login(
+      document.getElementById("loginEmail").value.trim(),
+      document.getElementById("loginPass").value
+    );
+    toast("Добро пожаловать!");
+    location.href = "dashboard.html";
+  } catch (err) {
+    toast(err.message, "error");
+    busy(form, false, "Войти");
+  }
+}
+
+async function doRegister(e) {
+  e.preventDefault();
+  const form = e.target;
+  const pass = document.getElementById("regPass").value;
+  if (pass.length < 8) return toast("Пароль минимум 8 символов", "error");
+  busy(form, true, "Создаём аккаунт…");
+  try {
+    await API.register(
       document.getElementById("regName").value.trim(),
       document.getElementById("regEmail").value.trim(),
-      document.getElementById("regPass").value
+      pass
     );
     toast("Аккаунт создан!");
-    setTimeout(() => location.href = "onboarding.html", 600);
-  } catch (err) { toast(err.message, "error"); }
+    location.href = "onboarding.html";
+  } catch (err) {
+    toast(err.message, "error");
+    busy(form, false, "Создать аккаунт");
+  }
 }
 
-if (PF.user()) location.href = "dashboard.html";
+if (API.token()) location.href = "dashboard.html";
 </script>
 </body>
 </html>

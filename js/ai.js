@@ -1,49 +1,25 @@
 /* ============ ПравоФин — AI-модуль ============ */
-/* ИИ встроен в сервис. Это единая точка вызова для всех инструментов.
-   Чтобы подключить своего ИИ-агента — замените помеченный блок ниже. */
+/* ИИ вызывается только через серверный API: ключ живёт на сервере,
+   лимиты и подписка проверяются там же. Этот объект оставлен для
+   совместимости со старыми вызовами и просто делегирует в API. */
 const AI = {
-  /* URL вашего бэкенда с Render — вставьте после деплоя, например:
-     "https://pravofin-ai.onrender.com" (без слэша на конце) */
-  BACKEND_URL: "https://pravofin-ai.onrender.com",
-
+  lastError: null,
   async complete(prompt, fallback, system) {
-    /* ================================================================
-       ИИ-АГЕНТ ПОДКЛЮЧЁН ЧЕРЕЗ БЭКЕНД (backend/server.js на Render)
-       1) Задеплойте backend: инструкция в backend/README.md
-       2) Впишите URL выше в AI.BACKEND_URL — и весь сайт (инструменты,
-          чат-виджет, личный чат) начнёт отвечать через настоящий ИИ.
-       Ключ хранится только на сервере. При недоступности бэкенда
-       срабатывают встроенные ответы — сайт не ломается.
-       ================================================================ */
     this.lastError = null;
-    if (this.BACKEND_URL) {
-      try {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 25000);
-        const res = await fetch(this.BACKEND_URL + "/api/ai", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt, system, maxTokens: 2000 }),
-          signal: ctrl.signal,
-        });
-        clearTimeout(timer);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.text) return data.text;
-        }
-        this.lastError = "ИИ-сервер ответил ошибкой (" + res.status + ")";
-      } catch (e) {
-        this.lastError = "нет связи с ИИ-сервером";
-      }
+    try {
+      const res = await API.ai(prompt, { kind: "tool", system });
+      return res.text;
+    } catch (e) {
+      this.lastError = e.message;
+      throw e;
     }
-
-    // Пока бэкенд не подключён — встроенные ответы
-    await new Promise(r => setTimeout(r, 700)); // имитация «размышления»
-    return typeof fallback === "function" ? fallback() : fallback;
   },
 };
 
-/* ============ Встроенные ответы (пока ИИ-агент не подключён) ============ */
+/* ============ Встроенные ответы ============
+   Остались как аварийная заглушка и как источник формулировок.
+   В обычной работе не используются: платная функция не должна
+   «срабатывать» подделкой, когда сервер отказал. */
 const OFFLINE = {
   document(type, fields) {
     const f = Object.entries(fields).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join("\n");

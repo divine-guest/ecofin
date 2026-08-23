@@ -4,6 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Личный кабинет — ПравоФин</title>
+<!-- seo:start -->
+<meta name="description" content="Личный кабинет ПравоФин: подписка, документы, сроки, прогресс обучения и личный ИИ-консультант.">
+<link rel="canonical" href="https://divine-guest.github.io/ecofin/dashboard.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ПравоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Личный кабинет — ПравоФин">
+<meta property="og:description" content="Личный кабинет ПравоФин: подписка, документы, сроки, прогресс обучения и личный ИИ-консультант.">
+<meta property="og:url" content="https://divine-guest.github.io/ecofin/dashboard.html">
+<meta property="og:image" content="https://divine-guest.github.io/ecofin/icon.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<meta name="robots" content="noindex, nofollow">
+<!-- seo:end -->
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -16,6 +30,7 @@
   </div>
 </main>
 
+<script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/competencies.js"></script>
@@ -126,20 +141,19 @@ const CAL = (() => {
     checkStreakReward();
   }
 
-  /* Награды за серию: 7 дней = неделя Pro, 30 дней = месяц Pro, 90 дней = 2 месяца */
+  /* Отметки серии живут в браузере, поэтому подписку за них выдавать нельзя:
+     любой дорисовал бы себе 90 дней через DevTools и получил Pro даром.
+     Серия остаётся достижением; бонусные дни выдаёт администратор вручную. */
+  const STREAK_MILESTONES = { 7: "неделя", 30: "месяц", 90: "три месяца" };
   function checkStreakReward() {
-    const REWARDS = { 7: 7, 30: 30, 90: 60 };
     const cur = streaks().cur;
-    const user = PF.user();
-    if (!user || !REWARDS[cur]) return;
-    const claimed = user.streakRewards || [];
-    if (claimed.includes(cur)) return;
-    const base = user.proUntil && user.proUntil > Date.now() ? user.proUntil : Date.now();
-    const until = base + REWARDS[cur] * 86400000;
-    PF.updateUser({ plan: "pro", proUntil: until, streakRewards: [...claimed, cur] });
-    PF.logAction(`Награда за серию ${cur} дней: +${REWARDS[cur]} дней Pro`);
+    if (!PF.user() || !STREAK_MILESTONES[cur]) return;
+    const key = "pf_streak_seen_" + PF.user().email;
+    const seen = JSON.parse(localStorage.getItem(key) || "[]");
+    if (seen.includes(cur)) return;
+    localStorage.setItem(key, JSON.stringify([...seen, cur]));
     trackEvent("streak_reward");
-    toast(`Награда за серию ${cur} дней: +${REWARDS[cur]} дней Pro!`);
+    toast(`Серия ${cur} дней — ${STREAK_MILESTONES[cur]} без пропусков. Так держать!`);
   }
   function toggleToday() { toggle(todayISO()); }
   function shift(dir) { const d = new Date(view.y, view.m + dir, 1); view = { y: d.getFullYear(), m: d.getMonth() }; render(); }
@@ -173,7 +187,11 @@ if (u) {
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
   const habitsStore = JSON.parse(localStorage.getItem("pf_habits_" + u.email) || "{}");
   const habitDone = (habitsStore.money || []).length;
-  const quota = PF.isPro() ? "👑 Безлимит" : `${PF.aiLeft()} из ${FREE_AI_LIMIT}`;
+  const q = PF.quota;
+  const quota = PF.isPro()
+    ? "👑 Без ограничений"
+    : q ? `${q.tool.left} из ${q.tool.limit} · ИИ сегодня: ${q.ai.left} из ${q.ai.limit}`
+        : "проверяем…";
 
   document.getElementById("content").innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:24px">
@@ -461,14 +479,18 @@ async function pcSend() {
   const hist = JSON.parse(localStorage.getItem(key) || "[]");
   const context = hist.slice(-6).map(m => (m.role === "user" ? "Пользователь: " : "Консультант: ") + m.text).join("\n");
   try {
-    const reply = await AI.complete(
+    const res = await API.ai(
       `Ты — личный ИИ-консультант пользователя в кабинете сервиса «ПравоФин». Отвечай кратко, по делу, на русском. ${context ? "Контекст диалога:\n" + context + "\n\n" : ""}Вопрос: ${text}`,
-      () => OFFLINE.chat(text)
+      { kind: "chat" }
     );
-    thinking.textContent = reply;
-    localStorage.setItem(key, JSON.stringify([...hist, { role: "user", text }, { role: "bot", text: reply }].slice(-30)));
-  } catch (e) { thinking.textContent = "Ошибка: " + e.message; }
-  PF.logAction("Личный чат: " + text.slice(0, 60));
+    thinking.textContent = res.text;
+    PF.quota = res.quota || PF.quota;
+    localStorage.setItem(key, JSON.stringify([...hist, { role: "user", text }, { role: "bot", text: res.text }].slice(-30)));
+  } catch (e) {
+    thinking.remove();
+    if (e.isPaywall) { pcAdd("bot", e.message); showPaywall(e.message); }
+    else pcAdd("bot", "Не получилось: " + e.message);
+  }
   document.getElementById("pcMessages").scrollTop = 1e9;
 }
 </script>

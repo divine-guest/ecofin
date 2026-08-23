@@ -1,0 +1,15 @@
+name = "pravofin-ai"
+main = "src/index.js"
+compatibility_date = "2025-05-01"
+
+# Секрет (НЕ здесь!):  wrangler secret put AI_API_KEY
+[vars]
+AI_BASE_URL = "https://api.aitunnel.ru/v1"
+AI_MODEL = "deepseek-chat"
+
+# Честный лимит запросов через KV. Раскомментируйте после:
+#   wrangler kv namespace create RL
+# и подставьте выданный id.
+# [[kv_namespaces]]
+# binding = "RL"
+# id = "СЮДА_ID_ИЗ_КОМАНДЫ_ВЫШЕ"
