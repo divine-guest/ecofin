@@ -3,6 +3,7 @@ import {
   CFG, json, fail, hashPassword, verifyPassword, newSessionToken, sha256,
   bearer, now, normEmail, validEmail, publicUser, normalizeAvatar,
 } from "./lib.js";
+import { attachReferral } from "./referral.js";
 
 /* Три уровня доступа:
      owner — задан в OWNER_EMAILS, может выдавать и снимать админку через сайт;
@@ -68,6 +69,9 @@ export async function register(request, env, origin) {
   ).bind(email, name, await hashPassword(password), role, now(), now()).run();
 
   await logAction(env, email, role === "user" ? "Регистрация аккаунта" : `Регистрация (${role})`);
+  /* Реферальный код привязываем один раз, здесь. Награда начислится позже,
+     когда человек реально воспользуется сервисом. */
+  if (b.ref) await attachReferral(env, email, b.ref).catch(() => {});
   const session = await issueSession(env, email);
   const row = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
   return json(env, origin, { ...session, user: publicUser(row) }, 201);

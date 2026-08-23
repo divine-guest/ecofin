@@ -7,6 +7,7 @@ import * as ai from "./ai.js";
 import * as admin from "./admin.js";
 import * as billing from "./billing.js";
 import { checkLimits, sweep as sweepLimits } from "./ratelimit.js";
+import * as referral from "./referral.js";
 
 /* Маршруты: [метод, путь, обработчик, доступ] */
 const ROUTES = [
@@ -23,6 +24,7 @@ const ROUTES = [
   ["POST", "/api/ai", ai.handleAI, "user"],
   ["POST", "/api/analyze", ai.handleAnalyze, "user"],
   ["GET", "/api/quota", ai.handleQuota, "user"],
+  ["GET", "/api/referral", referral.status, "user"],
 
   ["POST", "/api/billing/create", billing.createPayment, "user"],
   ["POST", "/api/billing/check", billing.check, "user"],
@@ -109,6 +111,11 @@ export default {
     }
 
     if (path === "/api/billing/plans") return billing.plans(env, origin);
+    /* Публичный: приглашённый видит, кто его позвал, ещё до регистрации. */
+    if (path === "/api/referral/check") {
+      if (!env.DB) return fail(env, origin, "База не подключена", 500);
+      return referral.preview(request, env, origin);
+    }
 
     const route = ROUTES.find(([m, p]) => p === path && m === request.method);
     if (!route) return fail(env, origin, "Метод не найден", 404);

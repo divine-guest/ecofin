@@ -10,8 +10,11 @@ CREATE TABLE IF NOT EXISTS users (
   pro_until     INTEGER,               -- unix ms; NULL = бессрочно (для админов)
   tool_uses     INTEGER NOT NULL DEFAULT 0,     -- израсходовано пробных запусков инструментов
   created_at    INTEGER NOT NULL,
-  last_login_at INTEGER
+  last_login_at INTEGER,
+  referred_by   TEXT,                  -- email пригласившего, ставится один раз
+  referral_paid INTEGER NOT NULL DEFAULT 0   -- награда за это приглашение уже выдана
 );
+CREATE INDEX IF NOT EXISTS idx_users_referred ON users(referred_by);
 
 CREATE TABLE IF NOT EXISTS sessions (
   token      TEXT PRIMARY KEY,         -- SHA-256 от выданного клиенту токена

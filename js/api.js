@@ -60,8 +60,8 @@ const API = {
   },
 
   /* --- Аккаунт --- */
-  async register(name, email, password) {
-    const d = await this.request("/api/auth/register", { method: "POST", body: { name, email, password } });
+  async register(name, email, password, ref) {
+    const d = await this.request("/api/auth/register", { method: "POST", body: { name, email, password, ref } });
     this.setSession(d.token, d.user);
     return d.user;
   },
@@ -92,6 +92,8 @@ const API = {
     this.clearSession();
   },
   sessions() { return this.request("/api/auth/sessions"); },
+  referral() { return this.request("/api/referral"); },
+  referralCheck(code) { return this.request("/api/referral/check?code=" + encodeURIComponent(code)); },
   logoutEverywhere() { return this.request("/api/auth/logout-all", { method: "POST" }); },
 
   /* --- ИИ --- */

@@ -185,14 +185,40 @@ function renderFooter() {
   document.body.appendChild(f);
 }
 
-/* ============ Аналитика (Яндекс.Метрика) ============
-   Подключение: создайте счётчик на metrika.yandex.ru, вставьте их
-   <script>-сниппет в <head> каждой страницы, затем раскомментируйте
-   строку в trackEvent, подставив ID счётчика. События уже расставлены
-   по коду: register, login, paywall, pay_success, tool_use и др. */
-function trackEvent(name) {
-  // if (window.ym) window.ym(XXXXXXXX, "reachGoal", name);
-  console.debug("[event]", name);
+/* ============ Аналитика ============
+   Без цифр нельзя понять, на каком шаге люди уходят и что чинить.
+   Метрика подключается одной строкой: впишите номер счётчика из
+   metrika.yandex.ru в METRIKA_ID — код счётчика загрузится сам.
+   Пока ID пустой, события просто пишутся в консоль и никуда не уходят. */
+const METRIKA_ID = "";
+
+function initAnalytics() {
+  if (!METRIKA_ID) return;
+  /* Счётчик грузим отложенно, чтобы он не тормозил первую отрисовку. */
+  const load = () => {
+    (function (m, e, t, r, i, k, a) {
+      m[i] = m[i] || function () { (m[i].a = m[i].a || []).push(arguments); };
+      m[i].l = 1 * new Date();
+      k = e.createElement(t); a = e.getElementsByTagName(t)[0];
+      k.async = 1; k.src = r; a.parentNode.insertBefore(k, a);
+    })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+    window.ym(METRIKA_ID, "init", {
+      clickmap: true,
+      trackLinks: true,
+      accurateTrackBounce: true,
+      webvisor: true,
+    });
+  };
+  if (document.readyState === "complete") load();
+  else window.addEventListener("load", load);
+}
+
+/* Ключевые события воронки. Названия совпадают с целями, которые нужно
+   завести в Метрике: register, login, tool_use, paywall, pay_click,
+   pay_success, referral_share, analyze_doc. */
+function trackEvent(name, params) {
+  if (METRIKA_ID && window.ym) window.ym(METRIKA_ID, "reachGoal", name, params);
+  console.debug("[event]", name, params || "");
 }
 
 /* ============ Чат-виджет с ИИ-консультантом ============ */
@@ -271,6 +297,7 @@ async function chatSend() {
   document.getElementById("chatMessages").scrollTop = 1e9;
 
   try {
+    trackEvent("ai_chat");
     const res = await API.ai(chatContext(text), { kind: "chat" });
     thinking.textContent = res.text;
     PF.quota = res.quota || PF.quota;
@@ -369,6 +396,7 @@ const PAY = {
     const btn = document.querySelector("#payBackdrop .btn.gold");
     btn.disabled = true;
     btn.textContent = "Создаём платёж…";
+    trackEvent("pay_click", { plan: this.step.plan, price: this.plans[this.step.plan].price });
     try {
       const res = await API.billing.create(this.step.plan);
       if (res.confirmationUrl) {
@@ -751,6 +779,7 @@ function showPaywall(message) {
       <br><button class="btn secondary small" onclick="closePaywall()">Позже</button>
     </div>`;
   bd.classList.add("open");
+  trackEvent("paywall", { reason });
 }
 function closePaywall() {
   const bd = document.getElementById("paywallBackdrop");
@@ -766,6 +795,7 @@ async function applyPromo(inputId) {
     const res = await API.billing.promo(code);
     closePaywall();
     PAY.close();
+    trackEvent("promo_success", { days: res.days });
     toast(`Pro активирован на ${res.days} дн.`);
     setTimeout(() => location.reload(), 900);
   } catch (e) {
@@ -846,6 +876,7 @@ async function refreshSession() {
 
 function initPage(active) {
   initTheme();
+  initAnalytics();
   renderHeader(active);
   renderFooter();
   renderChatWidget();

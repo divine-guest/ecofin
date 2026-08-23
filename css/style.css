@@ -772,3 +772,103 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
   .avatar-editor { justify-content: center; text-align: center; }
   .avatar-actions { justify-content: center; }
 }
+
+
+/* ===== Доступность: цели нажатия и читаемость =====
+   Ориентир — рекомендации Apple (44 px) и Google (48 px).
+   Мелкие ссылки и кнопки — главная причина промахов у пожилых пользователей
+   и у всех, кто пользуется телефоном на ходу. */
+
+/* .section-title содержит теперь h1, а не h2 — правило должно ловить оба */
+.section-title h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(1.7rem, 4.5vw, 2.6rem);
+  line-height: 1.2;
+  margin: 0;
+}
+.section-title h1 span { color: var(--accent); }
+
+@media (pointer: coarse) {
+  /* На сенсорных экранах растим все интерактивные элементы до 44 px */
+  .nav-links a,
+  .mobile-menu a,
+  .site-footer a,
+  .tab,
+  .btn.small,
+  .settings-tab {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .nav-burger { min-height: 44px; padding-inline: 14px; }
+  .avatar-option { width: 52px; height: 52px; }
+
+  /* Ссылки внутри текста получают запас по вертикали, чтобы не промахиваться */
+  .site-footer p a { padding-block: 6px; }
+}
+
+/* Мельче 13 px не опускаемся нигде: это нижняя граница комфортного чтения */
+.hint,
+.pay-note,
+.section-title .subtitle,
+.stat-label { font-size: max(0.82rem, 13px); }
+
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .nav-links a, .mobile-menu a { font-size: max(0.9rem, 14px); }
+  /* Таблицы на телефоне прокручиваются внутри себя, а не растягивают страницу */
+  .cmp-table { display: block; overflow-x: auto; }
+}
+
+/* Видимая рамка фокуса: без неё сайтом невозможно пользоваться с клавиатуры */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+
+/* ===== Форма входа: пояснение и согласие на обработку данных ===== */
+.auth-note {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px;
+  font-size: max(.84rem, 13px); color: var(--muted);
+  line-height: 1.6; margin-bottom: 20px;
+}
+.consent {
+  display: flex; gap: 10px; align-items: flex-start;
+  font-size: max(.82rem, 13px); color: var(--muted);
+  line-height: 1.55; margin: 4px 0 16px; cursor: pointer;
+}
+.consent input {
+  width: 20px; height: 20px; min-width: 20px;
+  margin: 1px 0 0; accent-color: var(--accent); cursor: pointer;
+}
+.consent a { color: var(--accent); }
+
+
+/* ===== Реферальный блок ===== */
+.ref-code-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ref-code-row input {
+  flex: 1; min-width: 200px; font-size: max(.85rem, 13px);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.ref-stats { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0; }
+.ref-stats > div {
+  flex: 1; min-width: 92px; text-align: center;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 8px;
+}
+.ref-stats b { display: block; font-size: 1.4rem; color: var(--accent); line-height: 1.2; }
+.ref-stats span { font-size: max(.75rem, 12px); color: var(--muted); }
+.ref-list { margin: 12px 0; }
+.ref-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border); font-size: max(.84rem, 13px);
+}
+.ref-row:last-child { border-bottom: none; }

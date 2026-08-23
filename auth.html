@@ -24,12 +24,13 @@
 <main class="section">
   <div class="container" style="max-width: 460px">
     <div class="card">
-      <h2 style="margin-bottom:6px">Вход в ПравоФин</h2>
-      <p style="color:var(--muted);margin-bottom:14px">Данные хранятся локально в вашем браузере</p>
-      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:.82rem;color:var(--muted);margin-bottom:20px">
-        Входите с нового устройства (телефон, другой браузер)? Аккаунт там не появится сам —
-        зарегистрируйтесь заново с тем же email и перенесите данные: на старом устройстве
-        «Настройки → Скачать все мои данные», здесь — «Настройки → Импорт».
+      <h1 style="font-size:1.6rem;margin-bottom:6px">Вход в ПравоФин</h1>
+      <p style="color:var(--muted);margin-bottom:16px">Один аккаунт — все устройства</p>
+      <div class="auth-note" id="refBanner" style="display:none"></div>
+      <div class="auth-note">
+        Аккаунт хранится на сервере: войдите теми же почтой и паролем с телефона,
+        планшета или другого компьютера — подписка, документы и прогресс будут на месте.
+        Регистрироваться заново не нужно.
       </div>
       <div class="tabs">
         <button class="tab active" id="tabLogin" onclick="switchAuth('login')">Вход</button>
@@ -38,11 +39,11 @@
 
       <form id="loginForm" onsubmit="doLogin(event)">
         <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="loginEmail" required placeholder="you@mail.ru">
+          <label for="loginEmail">Электронная почта</label>
+          <input type="email" id="loginEmail" autocomplete="email" inputmode="email" required placeholder="you@mail.ru">
         </div>
         <div class="form-group">
-          <label>Пароль</label>
+          <label for="loginPass">Пароль</label>
           <input type="password" id="loginPass" required autocomplete="current-password" placeholder="••••••••">
         </div>
         <button class="btn" style="width:100%">Войти</button>
@@ -50,18 +51,28 @@
 
       <form id="regForm" style="display:none" onsubmit="doRegister(event)">
         <div class="form-group">
-          <label>Имя</label>
-          <input type="text" id="regName" required placeholder="Иван Иванов">
+          <label for="regName">Как к вам обращаться</label>
+          <input type="text" id="regName" autocomplete="name" required placeholder="Иван Иванов">
         </div>
         <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="regEmail" required placeholder="you@mail.ru">
+          <label for="regEmail">Электронная почта</label>
+          <input type="email" id="regEmail" autocomplete="email" inputmode="email" required placeholder="you@mail.ru">
         </div>
         <div class="form-group">
-          <label>Пароль (мин. 4 символа)</label>
+          <label for="regPass">Пароль</label>
           <input type="password" id="regPass" required minlength="8" autocomplete="new-password" placeholder="минимум 8 символов">
         </div>
+        <label class="consent">
+          <input type="checkbox" id="regConsent" required>
+          <span>Я даю согласие на обработку персональных данных и принимаю
+            <a href="legal.html#offer" target="_blank" rel="noopener">публичную оферту</a> и
+            <a href="legal.html#privacy" target="_blank" rel="noopener">политику конфиденциальности</a>
+          </span>
+        </label>
         <button class="btn" style="width:100%">Создать аккаунт</button>
+        <p class="hint" style="text-align:center;margin-top:10px">
+          Забыли пароль? Напишите в поддержку — восстановим доступ.
+        </p>
       </form>
     </div>
   </div>
@@ -98,6 +109,7 @@ async function doLogin(e) {
       document.getElementById("loginEmail").value.trim(),
       document.getElementById("loginPass").value
     );
+    trackEvent("login");
     toast("Добро пожаловать!");
     location.href = "dashboard.html";
   } catch (err) {
@@ -110,20 +122,39 @@ async function doRegister(e) {
   e.preventDefault();
   const form = e.target;
   const pass = document.getElementById("regPass").value;
+  if (!document.getElementById("regConsent").checked)
+    return toast("Без согласия на обработку данных регистрация невозможна", "error");
   if (pass.length < 8) return toast("Пароль минимум 8 символов", "error");
   busy(form, true, "Создаём аккаунт…");
   try {
     await API.register(
       document.getElementById("regName").value.trim(),
       document.getElementById("regEmail").value.trim(),
-      pass
+      pass,
+      REF.code
     );
+    trackEvent("register", { referred: REF.code ? 1 : 0 });
     toast("Аккаунт создан!");
     location.href = "onboarding.html";
   } catch (err) {
     toast(err.message, "error");
     busy(form, false, "Создать аккаунт");
   }
+}
+
+/* Пришли по ссылке-приглашению: показываем, кто позвал, и сразу открываем
+   вкладку регистрации — иначе человек упирается в форму входа и уходит. */
+const REF = { code: new URLSearchParams(location.search).get("ref") || "" };
+if (REF.code) {
+  switchAuth("reg");
+  API.referralCheck(REF.code)
+    .then(d => {
+      const el = document.getElementById("refBanner");
+      el.style.display = "block";
+      el.innerHTML = `<b>${escapeHtml(d.inviter || "Друг")}</b> приглашает вас в ПравоФин.
+        Зарегистрируйтесь — и вы оба получите <b>${d.days} дней Pro</b> в подарок.`;
+    })
+    .catch(() => { REF.code = ""; });
 }
 
 if (API.token()) location.href = "dashboard.html";

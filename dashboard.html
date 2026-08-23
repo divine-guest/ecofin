@@ -197,7 +197,7 @@ function renderCabinet() {
   document.getElementById("content").innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:24px">
       <div>
-        <h2>Привет, ${escapeHtml(u.name)}! 👋</h2>
+        <h1 style="font-size:clamp(1.5rem,4vw,2rem);margin:0">Привет, ${escapeHtml(u.name)}! 👋</h1>
         <p style="color:var(--muted)">
           Тариф: <span class="badge ${u.plan === "pro" || u.isAdmin ? "pro" : ""}">${u.plan === "pro" || u.isAdmin ? "PRO" : "Бесплатный"}</span>
           ${u.isAdmin ? '<span class="badge">Админ</span>' : ""}
@@ -277,19 +277,9 @@ function renderCabinet() {
             </p>`).join("")}
           </div>` : ""}
         <br><br>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <a href="tools.html" class="btn small secondary">Документ</a>
-          <a href="tools.html" class="btn small secondary">Анализ</a>
-          <a href="games.html" class="btn small secondary">Игры</a>
-          <a href="knowledge.html" class="btn small secondary">Статьи</a>
-          <a href="expenses.html" class="btn small secondary">Дневник трат</a>
-          <a href="search.html" class="btn small secondary">Поиск</a>
-        </div>
-        <br>
-        <p style="font-size:.88rem;color:var(--muted)">Реферальный код: <b style="color:var(--text)">${PF.referralCode()}</b>
-          <button class="btn small secondary" onclick="copyRef()">Копировать</button>
-        </p>
-        <p style="font-size:.8rem;color:var(--muted)">Друг регистрируется по вашему коду — вы оба получаете месяц Pro в подарок (после запуска бэкенда).</p>
+        <div class="card" id="refCard">
+        <h3 style="margin-bottom:10px">Приглашайте друзей</h3>
+        <div id="refBox">Загружаем…</div>
       </div>
       <div class="card">
         <h3>Профиль компетенций</h3>
@@ -384,6 +374,7 @@ function renderCabinet() {
     pcAdd("bot", "Это ваш личный кабинет. Спросите меня о налогах, договорах или финансах — я подскажу. История переписки сохраняется.");
   }
   CAL.render();
+  renderReferral();
   renderDocs();
   dlRender();
   NOTIF.checkDeadlines();
@@ -465,6 +456,53 @@ function dlRender() {
         </p>`;
       }).join("")
     : `<p style="color:var(--muted)">Сроков нет. Добавьте налоговые дедлайны или окончание договора.</p>`;
+}
+
+/* Реферальный блок теперь настоящий: код, ссылка и список приглашённых
+   приходят с сервера, а не собираются в браузере «для вида». */
+async function renderReferral() {
+  const box = document.getElementById("refBox");
+  if (!box) return;
+  try {
+    const d = await API.referral();
+    const rewarded = d.invited.filter(x => x.rewarded).length;
+    box.innerHTML = `
+      <div class="ref-code-row">
+        <input type="text" id="refLink" value="${escapeHtml(d.link)}" readonly onclick="this.select()">
+        <button class="btn small" onclick="copyRef()">Копировать</button>
+        ${navigator.share ? '<button class="btn small secondary" onclick="shareRef()">Поделиться</button>' : ""}
+      </div>
+      <p class="hint">Ваш код: <b>${escapeHtml(d.code)}</b></p>
+      <div class="ref-stats">
+        <div><b>${d.invited.length}</b><span>приглашено</span></div>
+        <div><b>${rewarded}</b><span>дошли до дела</span></div>
+        <div><b>${d.earnedDays}</b><span>дней Pro заработано</span></div>
+      </div>
+      ${d.invited.length ? `
+        <div class="ref-list">
+          ${d.invited.slice(0, 10).map(x => `
+            <div class="ref-row">
+              <span>${escapeHtml(x.hint)}</span>
+              <span class="badge ${x.rewarded ? "ok" : ""}">${x.rewarded ? `+${d.days.inviter} дн.` : "ещё не пользовался"}</span>
+            </div>`).join("")}
+        </div>` : ""}
+      <p class="hint">
+        Друг регистрируется по вашей ссылке — вы оба получаете ${d.days.inviter} дней Pro.
+        Бонус начисляется, когда друг впервые воспользуется ИИ, а не сразу за регистрацию.
+      </p>`;
+  } catch (e) {
+    box.innerHTML = `<p class="hint">Не удалось загрузить: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function shareRef() {
+  const link = document.getElementById("refLink").value;
+  trackEvent("referral_share");
+  navigator.share({
+    title: "ПравоФин",
+    text: "Юридические и налоговые вопросы — с ИИ-консультантом. Заходи по моей ссылке, обоим дадут Pro.",
+    url: link,
+  }).catch(() => {});
 }
 
 function copyRef() {

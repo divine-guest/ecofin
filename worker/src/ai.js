@@ -3,6 +3,7 @@
 import { json, fail, isPro } from "./lib.js";
 import { aiQuota, toolQuota, spendAI, spendTool } from "./quota.js";
 import { logAction } from "./auth.js";
+import { rewardIfEarned } from "./referral.js";
 
 const MAX_PROMPT = 12000;
 const MAX_SYSTEM = 4000;
@@ -90,6 +91,9 @@ export async function handleAI(request, env, origin, user) {
       messages: [{ role: "system", content: system }, { role: "user", content: prompt }],
       maxTokens: Math.min(3000, Math.max(200, Number(b.maxTokens) || 1500)),
     });
+    /* Приглашение окупилось: человек не просто зарегистрировался, а поработал.
+       Награду начисляем тихо — на ответ она не влияет. */
+    await rewardIfEarned(env, user.email).catch(() => {});
     return json(env, origin, { text, quota: await quotaSnapshot(env, user) });
   } catch (e) {
     return upstreamError(env, origin, e);

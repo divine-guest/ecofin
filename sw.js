@@ -1,7 +1,7 @@
 /* ПравоФин — service worker (офлайн-кэш).
    Версию поднимаем при каждом релизе: иначе у вернувшихся посетителей
    останется старый кэш и новый фронтенд не подхватится. */
-const CACHE = "pravofin-v3";
+const CACHE = "pravofin-v4";
 
 const ASSETS = [
   "index.html", "tools.html", "calc.html", "courses.html", "games.html",
