@@ -6,3 +6,5 @@ node_modules/
 pravofin/worker/.env
 worker/.env
 .env
+
+# номер версии ресурсов ведётся скриптом bump-version.py

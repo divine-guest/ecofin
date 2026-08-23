@@ -43,6 +43,17 @@ CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=... node deploy.mjs
 
 Проверка: `curl https://pravofin-api.pravofin.workers.dev/api/health`
 
+## Перед коммитом фронтенда
+
+```bash
+python bump-version.py
+```
+
+Проставляет номер версии всем css/js: `js/app.js?v=5`. Без этого вернувшийся
+посетитель получает новый HTML и старый JS из кэша браузера (GitHub Pages
+отдаёт файлы с `max-age=600`) — и сайт падает на вызовах функций, которых
+в старом файле ещё нет. Тот же номер уходит в имя кэша service worker.
+
 ## Ставки и лимиты
 
 Все суммы, ставки и пороги, которые меняет законодатель, собраны
