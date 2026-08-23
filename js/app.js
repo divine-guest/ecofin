@@ -108,6 +108,38 @@ function toast(msg, type = "") {
   el._t = setTimeout(() => el.classList.remove("show"), type === "error" ? 5000 : 2800);
 }
 
+/* Аватар — либо загруженное фото (data-URL), либо emoji, либо первая буква имени. */
+function avatarHtml(u, cls = "avatar") {
+  if (!u) return "";
+  const a = u.avatar || "";
+  if (a.startsWith("data:image/"))
+    return `<span class="${cls} has-photo"><img src="${escapeHtml(a)}" alt=""></span>`;
+  return `<span class="${cls}">${escapeHtml(a || (u.name || "?")[0].toUpperCase())}</span>`;
+}
+
+/* Сжимает выбранное фото до квадрата 160 px — в базу уходят единицы килобайт,
+   а не пять мегабайт с телефона. */
+async function prepareAvatarPhoto(file) {
+  if (!file.type.startsWith("image/")) throw new Error("Это не изображение");
+  if (file.size > 20 * 1024 * 1024) throw new Error("Файл больше 20 МБ");
+
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);      // берём центральный квадрат
+  const sx = (bitmap.width - side) / 2;
+  const sy = (bitmap.height - side) / 2;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 160;
+  canvas.getContext("2d").drawImage(bitmap, sx, sy, side, side, 0, 0, 160, 160);
+  bitmap.close?.();
+
+  for (const q of [0.82, 0.7, 0.55, 0.4]) {
+    const url = canvas.toDataURL("image/jpeg", q);
+    if (url.length <= 45000) return url;
+  }
+  throw new Error("Не удалось сжать фото — попробуйте другое");
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -125,7 +157,7 @@ function renderHeader(active) {
   const links = pages.map(([href, label]) =>
     `<a href="${href}" class="${active === href ? "active" : ""}">${label}</a>`).join("");
   const auth = u
-    ? `<a href="dashboard.html" class="btn small"><span class="avatar">${escapeHtml(u.avatar || u.name[0].toUpperCase())}</span>${escapeHtml(u.name.split(" ")[0])}</a>`
+    ? `<a href="dashboard.html" class="btn small">${avatarHtml(u)}${escapeHtml(u.name.split(" ")[0])}</a>`
     : `<a href="auth.html" class="btn small">Войти</a>`;
   const themeLabel = document.documentElement.getAttribute("data-theme") === "dark" ? "Тёмная тема" : "Светлая тема";
   const header = document.createElement("header");
@@ -354,113 +386,272 @@ const PAY = {
 
 /* ============ Настройки профиля ============ */
 const SETTINGS = {
-  open() {
+  _avatar: "",
+  _tab: "profile",
+
+  open(tab) {
     const u = PF.user();
     if (!u) return (location.href = "auth.html");
+    this._avatar = u.avatar || "";
+    this._tab = tab || "profile";
+
     let bd = document.getElementById("settingsBackdrop");
     if (!bd) {
       bd = document.createElement("div");
       bd.id = "settingsBackdrop";
       bd.className = "modal-backdrop";
       document.body.appendChild(bd);
+      /* Клик по затемнению и Esc закрывают окно — обычное поведение,
+         которого людям не хватало. */
+      bd.addEventListener("click", e => { if (e.target === bd) SETTINGS.close(); });
     }
     bd.classList.add("open");
-    bd.innerHTML = `
-      <div class="modal">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <h3 style="font-family:'Playfair Display',Georgia,serif">Настройки профиля</h3>
-          <button class="btn small secondary" onclick="SETTINGS.close()">Закрыть</button>
-        </div>
-
-        <div class="form-group">
-          <label>Аватар</label>
-          <div class="avatar-row">
-            ${["Ю", "Ф", "⚖", "🧑‍💼", "👩‍💼", "🦉"].map(a =>
-              `<button class="avatar-option ${u.avatar === a ? "selected" : ""}" onclick="SETTINGS.pickAvatar(this,'${a}')">${a}</button>`).join("")}
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Имя</label>
-          <input type="text" id="setName" value="${escapeHtml(u.name)}" maxlength="80">
-        </div>
-        <div class="form-group">
-          <label>Email</label>
-          <input type="text" value="${escapeHtml(u.email)}" disabled>
-          <p style="color:var(--muted);font-size:.78rem;margin-top:4px">Email — логин аккаунта, он не меняется.</p>
-        </div>
-        <button class="btn" style="width:100%" onclick="SETTINGS.save()">Сохранить</button>
-
-        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
-
-        <div class="form-group">
-          <label>Текущий пароль</label>
-          <input type="password" id="setOldPass" placeholder="••••••••" autocomplete="current-password">
-        </div>
-        <div class="form-group">
-          <label>Новый пароль (мин. 8 символов)</label>
-          <input type="password" id="setNewPass" placeholder="••••••••" autocomplete="new-password">
-        </div>
-        <button class="btn secondary" style="width:100%" onclick="SETTINGS.changePass()">Изменить пароль</button>
-        <p style="color:var(--muted);font-size:.78rem;margin-top:8px">
-          После смены пароля все остальные устройства будут разлогинены.
-        </p>
-
-        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
-        <button class="btn secondary" style="width:100%" onclick="SETTINGS.exportData()">Скачать мои документы (JSON)</button>
-        <p style="color:var(--muted);font-size:.78rem;margin-top:8px">
-          Профиль и подписка хранятся на сервере и переносятся сами — на любом устройстве
-          достаточно войти. Выгрузка нужна только для черновиков документов и заметок,
-          которые остаются в браузере.
-        </p>
-
-        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0">
-        <button class="btn danger" style="width:100%" onclick="SETTINGS.deleteAccount()">Удалить аккаунт</button>
-        <p style="color:var(--muted);font-size:.78rem;margin-top:8px">
-          Аккаунт, подписка и история будут стёрты с сервера безвозвратно.
-        </p>
-      </div>`;
-    this._avatar = u.avatar || "";
+    document.body.style.overflow = "hidden";
+    this.render();
   },
+
   close() {
     const bd = document.getElementById("settingsBackdrop");
     if (bd) bd.classList.remove("open");
+    document.body.style.overflow = "";
   },
-  pickAvatar(btn, a) {
-    document.querySelectorAll(".avatar-option").forEach(b => b.classList.remove("selected"));
-    btn.classList.add("selected");
-    this._avatar = a;
+
+  tab(name) { this._tab = name; this.render(); },
+
+  render() {
+    const u = PF.user();
+    if (!u) return;
+    const bd = document.getElementById("settingsBackdrop");
+    const tabs = [
+      ["profile", "Профиль"],
+      ["security", "Безопасность"],
+      ["subscription", "Подписка"],
+      ["data", "Данные"],
+    ];
+
+    bd.innerHTML = `
+      <div class="modal settings-modal">
+        <div class="settings-head">
+          <h3>Настройки</h3>
+          <button class="btn small secondary" onclick="SETTINGS.close()">Закрыть</button>
+        </div>
+        <div class="settings-tabs">
+          ${tabs.map(([id, label]) =>
+            `<button class="settings-tab ${this._tab === id ? "active" : ""}" onclick="SETTINGS.tab('${id}')">${label}</button>`).join("")}
+        </div>
+        <div class="settings-body">${this["render_" + this._tab](u)}</div>
+      </div>`;
   },
+
+  /* --- Вкладка «Профиль» --- */
+  render_profile(u) {
+    const emojis = ["Ю", "Ф", "⚖", "🧑‍💼", "👩‍💼", "🦉", "📊", "🛡"];
+    const preview = this._avatar.startsWith("data:image/")
+      ? `<img src="${escapeHtml(this._avatar)}" alt="">`
+      : escapeHtml(this._avatar || (u.name || "?")[0].toUpperCase());
+
+    return `
+      <div class="avatar-editor">
+        <span class="avatar big ${this._avatar.startsWith("data:image/") ? "has-photo" : ""}" id="avatarPreview">${preview}</span>
+        <div class="avatar-actions">
+          <button class="btn small" onclick="document.getElementById('avatarFile').click()">Загрузить фото</button>
+          ${this._avatar.startsWith("data:image/")
+            ? '<button class="btn small secondary" onclick="SETTINGS.pickAvatar(\'\')">Убрать фото</button>' : ""}
+          <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="SETTINGS.onPhoto(this.files[0])">
+          <p class="hint">JPEG, PNG или WebP. Фото обрежется по центру в квадрат и сожмётся автоматически.</p>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>…или выберите значок</label>
+        <div class="avatar-row">
+          ${emojis.map(a =>
+            `<button class="avatar-option ${this._avatar === a ? "selected" : ""}" onclick="SETTINGS.pickAvatar('${a}')">${a}</button>`).join("")}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="setName">Как к вам обращаться</label>
+        <input type="text" id="setName" value="${escapeHtml(u.name)}" maxlength="80" autocomplete="name">
+      </div>
+
+      <div class="form-group">
+        <label>Электронная почта</label>
+        <input type="text" value="${escapeHtml(u.email)}" disabled>
+        <p class="hint">Почта — это логин, она не меняется. Нужен другой адрес — напишите в поддержку.</p>
+      </div>
+
+      <button class="btn wide" onclick="SETTINGS.save()">Сохранить изменения</button>`;
+  },
+
+  /* --- Вкладка «Безопасность» --- */
+  render_security() {
+    return `
+      <div class="form-group">
+        <label for="setOldPass">Текущий пароль</label>
+        <input type="password" id="setOldPass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div class="form-group">
+        <label for="setNewPass">Новый пароль</label>
+        <input type="password" id="setNewPass" placeholder="минимум 8 символов"
+               autocomplete="new-password" oninput="SETTINGS.strength(this.value)">
+        <div class="pw-meter"><div id="pwBar"></div></div>
+        <p class="hint" id="pwHint">Надёжнее всего — три несвязанных слова подряд.</p>
+      </div>
+      <button class="btn wide secondary" onclick="SETTINGS.changePass()">Изменить пароль</button>
+      <p class="hint" style="margin-top:8px">
+        После смены пароля все остальные устройства выйдут из аккаунта. Текущее — останется.
+      </p>
+
+      <hr>
+      <h4>Мои устройства</h4>
+      <p class="hint">Каждый вход создаёт отдельную сессию. Сессия живёт 30 дней.</p>
+      <div id="sessionsList" class="sessions-list">Загружаем…</div>
+      <button class="btn wide danger" onclick="SETTINGS.logoutAll()">Выйти на всех других устройствах</button>`;
+  },
+
+  /* --- Вкладка «Подписка» --- */
+  render_subscription(u) {
+    const q = PF.quota;
+    const until = u.proUntil
+      ? new Date(u.proUntil).toLocaleDateString("ru-RU")
+      : null;
+    const daysLeft = u.proUntil ? Math.ceil((u.proUntil - Date.now()) / 86400000) : null;
+
+    const status = u.isAdmin
+      ? `<span class="badge pro">Полный доступ по роли</span>`
+      : PF.isPro()
+        ? `<span class="badge pro">Pro</span> ${until ? `до ${until} (осталось ${daysLeft} дн.)` : "бессрочно"}`
+        : `<span class="badge">Бесплатный тариф</span>`;
+
+    const limits = PF.isPro()
+      ? "<li>Инструменты и калькуляторы — без ограничений</li><li>ИИ-консультант — без дневного лимита</li>"
+      : q
+        ? `<li>Пробных запусков инструментов: <b>${q.tool.left}</b> из ${q.tool.limit}</li>
+           <li>Обращений к ИИ сегодня: <b>${q.ai.left}</b> из ${q.ai.limit}</li>`
+        : "<li>Проверяем остатки…</li>";
+
+    const history = (PF.payments || []).length
+      ? `<hr><h4>История операций</h4>
+         <div class="pay-history">
+           ${PF.payments.map(x => `
+             <div class="pay-row">
+               <span>${new Date(x.created_at).toLocaleDateString("ru-RU")} · ${escapeHtml(String(x.plan))}</span>
+               <b>${x.amount ? x.amount.toLocaleString("ru-RU") + " ₽" : (x.source === "promo" ? "промокод" : "подарок")}</b>
+             </div>`).join("")}
+         </div>` : "";
+
+    return `
+      <p style="margin-bottom:10px">Текущий статус: ${status}</p>
+      <ul class="limits-list">${limits}</ul>
+      ${PF.isPro()
+        ? '<button class="btn gold wide" onclick="SETTINGS.close();PAY.open()">Продлить Pro</button>'
+        : '<button class="btn gold wide" onclick="SETTINGS.close();PAY.open()">Оформить Pro</button>'}
+      <p class="hint" style="margin-top:8px">Автосписаний нет: подписка разовая и просто заканчивается в указанную дату.</p>
+      ${history}`;
+  },
+
+  /* --- Вкладка «Данные» --- */
+  render_data() {
+    return `
+      <h4>Выгрузка</h4>
+      <p class="hint">Профиль и подписка хранятся на сервере и переносятся сами — на новом
+      устройстве достаточно войти. Выгрузка нужна для черновиков документов, сроков
+      и заметок, которые остаются в браузере.</p>
+      <button class="btn wide secondary" onclick="SETTINGS.exportData()">Скачать мои данные (JSON)</button>
+
+      <hr>
+      <h4>Удаление аккаунта</h4>
+      <p class="hint">Аккаунт, подписка и вся история будут стёрты с сервера безвозвратно.
+      Оплаченный остаток подписки не возвращается.</p>
+      <button class="btn wide danger" onclick="SETTINGS.deleteAccount()">Удалить аккаунт</button>`;
+  },
+
+  /* --- Действия --- */
+  pickAvatar(a) { this._avatar = a; this.render(); },
+
+  async onPhoto(file) {
+    if (!file) return;
+    try {
+      toast("Обрабатываем фото…");
+      this._avatar = await prepareAvatarPhoto(file);
+      this.render();
+      toast("Фото готово — не забудьте сохранить");
+    } catch (e) { toast(e.message, "error"); }
+  },
+
+  /* Простая оценка пароля: длина важнее экзотических символов. */
+  strength(v) {
+    const bar = document.getElementById("pwBar");
+    const hint = document.getElementById("pwHint");
+    if (!bar) return;
+    let score = 0;
+    if (v.length >= 8) score++;
+    if (v.length >= 12) score++;
+    if (v.length >= 16) score++;
+    if (/[^a-zA-Zа-яА-Я]/.test(v) && v.length >= 8) score++;
+    const labels = ["слишком короткий", "слабый", "нормальный", "хороший", "отличный"];
+    const colors = ["var(--danger)", "var(--danger)", "#d9a13a", "var(--accent)", "var(--accent)"];
+    bar.style.width = (score / 4 * 100) + "%";
+    bar.style.background = colors[score];
+    hint.textContent = v ? "Пароль " + labels[score] : "Надёжнее всего — три несвязанных слова подряд.";
+  },
+
   async save() {
     const name = document.getElementById("setName").value.trim();
     if (name.length < 2) return toast("Имя слишком короткое");
     try {
       await API.updateProfile({ name, avatar: this._avatar });
-      toast("Профиль сохранён");
+      toast("Сохранено");
       setTimeout(() => location.reload(), 600);
     } catch (e) { toast(e.message, "error"); }
   },
+
   async changePass() {
     const oldP = document.getElementById("setOldPass").value;
     const newP = document.getElementById("setNewPass").value;
     if (newP.length < 8) return toast("Новый пароль минимум 8 символов");
+    if (newP === oldP) return toast("Новый пароль совпадает со старым");
     try {
       await API.changePassword(oldP, newP);
-      toast("Пароль изменён");
-      document.getElementById("setOldPass").value = "";
-      document.getElementById("setNewPass").value = "";
-      SETTINGS.close();
+      toast("Пароль изменён. Другие устройства вышли из аккаунта");
+      this.render();
     } catch (e) { toast(e.message, "error"); }
   },
+
+  async loadSessions() {
+    const box = document.getElementById("sessionsList");
+    if (!box) return;
+    try {
+      const d = await API.sessions();
+      box.innerHTML = d.sessions.map(x => `
+        <div class="session-row">
+          <span>Вход ${new Date(x.createdAt).toLocaleString("ru-RU")}</span>
+          ${x.current ? '<span class="badge ok">это устройство</span>' : '<span class="badge">другое</span>'}
+        </div>`).join("") || "<p class='hint'>Активных сессий нет</p>";
+    } catch (e) { box.textContent = "Не удалось загрузить: " + e.message; }
+  },
+
+  async logoutAll() {
+    if (!confirm("Выйти на всех других устройствах? Текущее останется в аккаунте.")) return;
+    try {
+      const r = await API.logoutEverywhere();
+      toast(r.closed ? `Закрыто сессий: ${r.closed}` : "Других сессий не было");
+      this.loadSessions();
+    } catch (e) { toast(e.message, "error"); }
+  },
+
   exportData() {
     const u = PF.user();
     if (!u) return;
     const data = {
       exported: new Date().toISOString(),
-      profile: { email: u.email, name: u.name, plan: u.plan },
+      profile: { email: u.email, name: u.name, plan: u.plan, proUntil: u.proUntil },
       documents: PF.docs(),
       deadlines: JSON.parse(localStorage.getItem("pf_deadlines_" + u.email) || "[]"),
       habits: JSON.parse(localStorage.getItem("pf_habits_" + u.email) || "{}"),
       courses: JSON.parse(localStorage.getItem("pf_course_" + u.email) || "{}"),
+      expenses: JSON.parse(localStorage.getItem("pf_expenses_" + u.email) || "[]"),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
@@ -470,9 +661,8 @@ const SETTINGS = {
     URL.revokeObjectURL(a.href);
     toast("Данные выгружены");
   },
+
   async deleteAccount() {
-    const u = PF.user();
-    if (!u) return;
     if (!confirm("Точно удалить аккаунт? Подписка и история будут стёрты безвозвратно.")) return;
     if (prompt('Для подтверждения введите слово "удалить"') !== "удалить") return toast("Отменено");
     try {
@@ -482,6 +672,19 @@ const SETTINGS = {
     } catch (e) { toast(e.message, "error"); }
   },
 };
+
+/* Список устройств подгружаем после отрисовки вкладки «Безопасность». */
+const _settingsRender = SETTINGS.render.bind(SETTINGS);
+SETTINGS.render = function () {
+  _settingsRender();
+  if (this._tab === "security") this.loadSessions();
+};
+
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  const bd = document.getElementById("settingsBackdrop");
+  if (bd && bd.classList.contains("open")) SETTINGS.close();
+});
 
 /* ============ Уведомления о сроках (браузерные) ============ */
 const NOTIF = {

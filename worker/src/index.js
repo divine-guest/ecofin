@@ -16,6 +16,8 @@ const ROUTES = [
   ["POST", "/api/auth/profile", auth.updateProfile, "user"],
   ["POST", "/api/auth/password", auth.changePassword, "user"],
   ["POST", "/api/auth/delete", auth.deleteAccount, "user"],
+  ["GET", "/api/auth/sessions", auth.listSessions, "user"],
+  ["POST", "/api/auth/logout-all", auth.logoutEverywhere, "user"],
 
   ["POST", "/api/ai", ai.handleAI, "user"],
   ["POST", "/api/analyze", ai.handleAnalyze, "user"],
@@ -34,6 +36,7 @@ const ROUTES = [
   ["POST", "/api/admin/revoke", admin.revoke, "admin"],
   ["POST", "/api/admin/reset-trial", admin.resetTrial, "admin"],
   ["POST", "/api/admin/delete-user", admin.removeUser, "admin"],
+  ["POST", "/api/admin/reset-password", admin.resetPassword, "admin"],
   ["POST", "/api/admin/set-role", admin.setRole, "owner"],
 ];
 

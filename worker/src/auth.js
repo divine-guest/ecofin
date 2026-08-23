@@ -1,7 +1,7 @@
 /* ПравоФин — регистрация, вход, сессии, профиль. */
 import {
   CFG, json, fail, hashPassword, verifyPassword, newSessionToken, sha256,
-  bearer, now, normEmail, validEmail, publicUser,
+  bearer, now, normEmail, validEmail, publicUser, normalizeAvatar,
 } from "./lib.js";
 
 /* Три уровня доступа:
@@ -120,8 +120,10 @@ export async function logout(request, env, origin) {
 export async function updateProfile(request, env, origin, user) {
   const b = await request.json().catch(() => ({}));
   const name = String(b.name ?? user.name).trim().slice(0, 80);
-  const avatar = String(b.avatar ?? user.avatar ?? "").slice(0, 8);
+  const avatar = normalizeAvatar(b.avatar, user.avatar || "");
   if (name.length < 2) return fail(env, origin, "Имя слишком короткое");
+  if (avatar === null)
+    return fail(env, origin, "Фото не подошло: нужен JPEG, PNG или WebP до 45 КБ после сжатия");
   await env.DB.prepare("UPDATE users SET name = ?, avatar = ? WHERE email = ?")
     .bind(name, avatar, user.email).run();
   await logAction(env, user.email, "Обновлён профиль");
@@ -154,4 +156,30 @@ export async function deleteAccount(request, env, origin, user) {
     env.DB.prepare("DELETE FROM users    WHERE email = ?").bind(user.email),
   ]);
   return json(env, origin, { ok: true });
+}
+
+/* GET /api/auth/sessions — «мои устройства». Сам токен не показываем,
+   только когда сессия создана и какая из них текущая. */
+export async function listSessions(request, env, origin, user) {
+  const current = await sha256(bearer(request));
+  const rows = await env.DB.prepare(
+    "SELECT token, created_at, expires_at FROM sessions WHERE email = ? ORDER BY created_at DESC"
+  ).bind(user.email).all();
+  return json(env, origin, {
+    sessions: (rows.results || []).map(r => ({
+      createdAt: r.created_at,
+      expiresAt: r.expires_at,
+      current: r.token === current,
+    })),
+  });
+}
+
+/* POST /api/auth/logout-all — выйти на всех устройствах, кроме текущего.
+   Нужно, если человек забыл разлогиниться на чужом компьютере. */
+export async function logoutEverywhere(request, env, origin, user) {
+  const keep = await sha256(bearer(request));
+  const r = await env.DB.prepare("DELETE FROM sessions WHERE email = ? AND token != ?")
+    .bind(user.email, keep).run();
+  await logAction(env, user.email, "Выход на всех остальных устройствах");
+  return json(env, origin, { ok: true, closed: r.meta?.changes ?? 0 });
 }

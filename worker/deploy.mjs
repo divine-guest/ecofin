@@ -50,9 +50,20 @@ async function loadEnvFile() {
   }
 }
 
+/* Node 18 на этой машине периодически рвёт соединение с api.cloudflare.com.
+   Без ретрая деплой «успешно» проходил без привязки базы — молча ломая API. */
+async function fetchRetry(url, init, attempts = 4) {
+  let last;
+  for (let i = 0; i < attempts; i++) {
+    try { return await fetch(url, init); }
+    catch (e) { last = e; await new Promise(r => setTimeout(r, 2000 * (i + 1))); }
+  }
+  throw new Error(`сеть недоступна после ${attempts} попыток: ${last?.message}`);
+}
+
 async function cf(path, init = {}) {
   const token = path.includes("/d1/") ? D1_TOKEN : TOKEN;
-  const r = await fetch(API + path, {
+  const r = await fetchRetry(API + path, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...(init.headers || {}) },
   });
@@ -139,8 +150,13 @@ const main = async () => {
     await applySchema(db.uuid);
     bindings.push({ type: "d1", name: "DB", id: db.uuid });
   } catch (e) {
-    console.warn(`  ПРОПУЩЕНО: ${e.message}`);
-    console.warn("  → нет права D1:Edit. Воркер поднимется, но API вернёт «База не подключена».");
+    /* Молча деплоить без базы нельзя: API останется живым, но перестанет
+       работать целиком. Лучше упасть здесь. */
+    console.error(`  ОШИБКА БАЗЫ: ${e.message}`);
+    console.error("  Деплой прерван, чтобы не выкатить воркер без привязки DB.");
+    console.error("  Если это осознанно (первый запуск без D1) — запустите с SKIP_DB=1");
+    if (!process.env.SKIP_DB) process.exit(1);
+    console.warn("  SKIP_DB=1 — продолжаю без базы");
   }
 
   console.log("· переменные и секреты");

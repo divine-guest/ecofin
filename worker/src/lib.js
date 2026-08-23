@@ -1,5 +1,21 @@
 /* ПравоФин — общие утилиты воркера: CORS, ответы, крипта, лимиты. */
 
+/* Аватар-картинка хранится прямо в базе как data-URL: файл после сжатия
+   до 160 px весит единицы килобайт, ради этого отдельное хранилище не нужно. */
+export const MAX_AVATAR_BYTES = 60000;
+
+/* Пустой аватар, короткий emoji или картинка — всё остальное отбрасываем. */
+export function normalizeAvatar(value, fallback = "") {
+  const v = String(value ?? fallback);
+  if (!v) return "";
+  if (v.startsWith("data:image/")) {
+    const okType = /^data:image\/(jpeg|png|webp);base64,/.test(v);
+    if (!okType || v.length > MAX_AVATAR_BYTES) return null;   // null = ошибка
+    return v;
+  }
+  return v.slice(0, 8);   // emoji или буква
+}
+
 export const CFG = {
   FREE_TOOL_USES: 1,      // пробных запусков ИИ-инструментов/калькуляторов на аккаунт, всего
   FREE_AI_PER_DAY: 3,     // сообщений ИИ-консультанту в сутки без подписки

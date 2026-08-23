@@ -91,6 +91,8 @@ const API = {
     await this.request("/api/auth/delete", { method: "POST" });
     this.clearSession();
   },
+  sessions() { return this.request("/api/auth/sessions"); },
+  logoutEverywhere() { return this.request("/api/auth/logout-all", { method: "POST" }); },
 
   /* --- ИИ --- */
   quota() { return this.request("/api/quota"); },
@@ -127,6 +129,7 @@ const API = {
     resetTrial(email) { return API.request("/api/admin/reset-trial", { method: "POST", body: { email } }); },
     deleteUser(email) { return API.request("/api/admin/delete-user", { method: "POST", body: { email } }); },
     setRole(email, role) { return API.request("/api/admin/set-role", { method: "POST", body: { email, role } }); },
+    resetPassword(email) { return API.request("/api/admin/reset-password", { method: "POST", body: { email } }); },
   },
 };
 

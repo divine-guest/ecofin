@@ -1,6 +1,6 @@
 /* ПравоФин — админские эндпоинты. Роль проверяется в роутере до вызова,
    но каждая опасная операция дополнительно защищена от выстрела в ногу. */
-import { json, fail, now, normEmail, publicUser, isPro } from "./lib.js";
+import { json, fail, now, normEmail, publicUser, isPro, hashPassword } from "./lib.js";
 import { extendUntil } from "./quota.js";
 import { adminEmails, ownerEmails, logAction } from "./auth.js";
 
@@ -208,4 +208,33 @@ export async function setRole(request, env, origin, owner) {
 
   const row = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
   return json(env, origin, { user: publicUser(row) });
+}
+
+/* POST /api/admin/reset-password {email}
+   Пока к сервису не подключена почта, восстановить доступ можно только так:
+   администратор выдаёт временный пароль и передаёт его человеку лично.
+   Пароль показывается один раз и в базе лежит только его хэш. */
+export async function resetPassword(request, env, origin, admin) {
+  const b = await request.json().catch(() => ({}));
+  const email = normEmail(b.email);
+
+  const target = await env.DB.prepare("SELECT email, role FROM users WHERE email = ?").bind(email).first();
+  if (!target) return fail(env, origin, "Пользователь не найден", 404);
+  if (target.role === "owner" && admin.role !== "owner")
+    return fail(env, origin, "Пароль владельца может сбросить только он сам", 403);
+
+  /* Читаемый временный пароль: его придётся продиктовать голосом или в мессенджере.
+     Символы, которые легко перепутать (0/O, 1/l/I), исключены. */
+  const abc = "abcdefghijkmnpqrstuvwxyz23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  const temp = "pf-" + [...bytes].map(n => abc[n % abc.length]).join("");
+
+  await env.DB.prepare("UPDATE users SET pass_hash = ? WHERE email = ?")
+    .bind(await hashPassword(temp), email).run();
+  /* Все сессии закрываем: если аккаунт увели, чужой доступ обрывается сразу. */
+  await env.DB.prepare("DELETE FROM sessions WHERE email = ?").bind(email).run();
+
+  await logAction(env, email, "Администратор сбросил пароль");
+  await logAction(env, admin.email, `Сбросил пароль пользователю ${email}`);
+  return json(env, origin, { ok: true, tempPassword: temp });
 }

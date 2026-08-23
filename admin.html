@@ -195,6 +195,7 @@ const AD = {
         <td style="text-align:center;font-size:.85rem;color:var(--muted)">${this.date(u.createdAt)}</td>
         <td style="text-align:right;white-space:nowrap">
           <button class="btn small secondary" onclick="AD.card('${encodeURIComponent(u.email)}')">Карточка</button>
+          <button class="btn small secondary" onclick="AD.resetPassword('${encodeURIComponent(u.email)}')">Сбросить пароль</button>
           ${u.isAdmin ? "" : `
             <button class="btn small gold" onclick="AD.quickGrant('${encodeURIComponent(u.email)}')">+ Pro</button>
             ${u.plan === "pro" ? `<button class="btn small secondary" onclick="AD.revoke('${encodeURIComponent(u.email)}')">Снять</button>` : ""}
@@ -264,6 +265,22 @@ const AD = {
     if (!confirm(`Удалить аккаунт ${email}? Действие необратимо.`)) return;
     if (prompt('Для подтверждения введите слово "удалить"') !== "удалить") return toast("Отменено");
     this.act(() => API.admin.deleteUser(email), "Пользователь удалён");
+  },
+
+  /* Пока почта не подключена, это единственный способ вернуть человеку доступ,
+     если он забыл пароль. Пароль показывается один раз. */
+  async resetPassword(enc) {
+    const email = decodeURIComponent(enc);
+    if (!confirm(`Сбросить пароль пользователю ${email}?
+
+Он выйдет из аккаунта на всех устройствах, а вы получите временный пароль, который нужно ему передать.`)) return;
+    try {
+      const r = await API.admin.resetPassword(email);
+      prompt(`Временный пароль для ${email}.
+Скопируйте и передайте лично — второй раз он не покажется.
+Посоветуйте сменить его в настройках после входа.`, r.tempPassword);
+      await this.load();
+    } catch (e) { toast(e.message, "error"); }
   },
 
   async card(enc) {
