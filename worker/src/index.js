@@ -8,6 +8,8 @@ import * as admin from "./admin.js";
 import * as billing from "./billing.js";
 import { checkLimits, sweep as sweepLimits } from "./ratelimit.js";
 import * as referral from "./referral.js";
+import * as reminders from "./reminders.js";
+import * as telegram from "./telegram.js";
 
 /* Маршруты: [метод, путь, обработчик, доступ] */
 const ROUTES = [
@@ -25,6 +27,20 @@ const ROUTES = [
   ["POST", "/api/analyze", ai.handleAnalyze, "user"],
   ["GET", "/api/quota", ai.handleQuota, "user"],
   ["GET", "/api/referral", referral.status, "user"],
+
+  ["GET", "/api/reminders", reminders.list, "user"],
+  ["POST", "/api/reminders", reminders.create, "user"],
+  ["POST", "/api/reminders/update", reminders.update, "user"],
+  ["POST", "/api/reminders/delete", reminders.remove, "user"],
+  ["POST", "/api/reminders/preset", reminders.addPreset, "user"],
+  ["GET", "/api/notifications", reminders.listNotifications, "user"],
+  ["POST", "/api/notifications/read", reminders.markRead, "user"],
+  ["POST", "/api/notifications/clear", reminders.clearNotifications, "user"],
+
+  ["GET", "/api/telegram/status", telegram.status, "user"],
+  ["POST", "/api/telegram/link", telegram.requestLink, "user"],
+  ["POST", "/api/telegram/unlink", telegram.unlink, "user"],
+  ["POST", "/api/telegram/webhook", telegram.webhook, "webhook"],
 
   ["POST", "/api/billing/create", billing.createPayment, "user"],
   ["POST", "/api/billing/check", billing.check, "user"],
@@ -89,6 +105,13 @@ async function throttle(request, env, origin, path) {
 }
 
 export default {
+  /* Крон: раз в час проверяем, кому пора напомнить. Час, а не сутки, —
+     потому что пользователи в разных часовых поясах, и «утро» у каждого своё. */
+  async scheduled(event, env, ctx) {
+    if (!env.DB) return;
+    ctx.waitUntil(telegram.runReminders(env).catch(e => console.error("cron", e.message)));
+  },
+
   async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
     const url = new URL(request.url);
@@ -105,12 +128,14 @@ export default {
         aiKey: Boolean(env.AI_API_KEY),
         db: Boolean(env.DB),
         billing: Boolean(env.YOOKASSA_SHOP_ID && env.YOOKASSA_SECRET_KEY),
+        telegram: Boolean(env.TELEGRAM_BOT_TOKEN),
         owners: auth.ownerEmails(env).length,
         admins: auth.adminEmails(env).length,
       });
     }
 
     if (path === "/api/billing/plans") return billing.plans(env, origin);
+    if (path === "/api/reminders/presets") return reminders.presets(env, origin);
     /* Публичный: приглашённый видит, кто его позвал, ещё до регистрации. */
     if (path === "/api/referral/check") {
       if (!env.DB) return fail(env, origin, "База не подключена", 500);

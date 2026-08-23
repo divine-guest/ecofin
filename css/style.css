@@ -872,3 +872,74 @@ textarea:focus-visible,
   padding: 8px 0; border-bottom: 1px solid var(--border); font-size: max(.84rem, 13px);
 }
 .ref-row:last-child { border-bottom: none; }
+
+
+/* ===== Сроки и напоминания ===== */
+.rem-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border);
+}
+.rem-row:last-of-type { border-bottom: none; }
+.rem-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rem-main b { font-size: max(.92rem, 14px); overflow-wrap: anywhere; }
+.rem-meta { font-size: max(.78rem, 12px); color: var(--muted); }
+.rem-side { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+
+/* ===== Колокольчик уведомлений ===== */
+.notif-btn { position: relative; }
+.notif-dot {
+  position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px;
+  padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
+}
+.notif-list { max-height: 340px; overflow-y: auto; margin: 10px 0; }
+.notif-item {
+  padding: 11px 0; border-bottom: 1px solid var(--border);
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item.unread { border-left: 3px solid var(--accent); padding-left: 10px; }
+.notif-item .nt { font-weight: 600; font-size: max(.9rem, 14px); }
+.notif-item .nb { font-size: max(.82rem, 13px); color: var(--muted); }
+.notif-item .nd { font-size: max(.75rem, 12px); color: var(--muted); margin-top: 3px; }
+
+/* ===== Подключение Telegram ===== */
+.tg-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.6rem; font-weight: 700; letter-spacing: .16em;
+  text-align: center; padding: 14px; margin: 12px 0;
+  background: var(--surface-2); border: 1px dashed var(--border); border-radius: 12px;
+}
+.tg-steps { margin: 0 0 14px 18px; font-size: max(.86rem, 13px); color: var(--muted); line-height: 1.9; }
+
+/* ===== Партнёрские предложения ===== */
+.partners {
+  margin: 26px 0 8px; padding: 18px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px;
+}
+.partners.preview { border-style: dashed; opacity: .85; }
+.partners-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.partners-label {
+  font-size: max(.78rem, 12px); font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+}
+.partners-grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.partner-card {
+  display: flex; flex-direction: column; justify-content: space-between; gap: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 15px 16px;
+}
+.partner-card b { font-size: max(.95rem, 15px); display: block; margin-bottom: 5px; }
+.partner-card p { font-size: max(.85rem, 13px); color: var(--muted); margin: 0 0 8px; line-height: 1.55; }
+.partner-benefit {
+  display: inline-block; font-size: max(.76rem, 12px);
+  color: var(--accent); font-weight: 600;
+}
+.partner-foot { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+.partner-mark { font-size: 10.5px; color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }

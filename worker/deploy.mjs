@@ -24,11 +24,11 @@ if (!TOKEN || !ACCOUNT) {
 
 /* Что считать секретом, а что обычной переменной. Секреты не видны в дашборде
    после сохранения и не попадают в вывод этого скрипта. */
-const SECRET_KEYS = new Set(["AI_API_KEY", "YOOKASSA_SECRET_KEY"]);
+const SECRET_KEYS = new Set(["AI_API_KEY", "YOOKASSA_SECRET_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET"]);
 const VAR_KEYS = [
   "AI_BASE_URL", "AI_MODEL", "AI_VISION_MODEL",
   "ALLOWED_ORIGINS", "OWNER_EMAILS", "ADMIN_EMAILS", "SITE_URL", "PROMO_CODES",
-  "YOOKASSA_SHOP_ID",
+  "YOOKASSA_SHOP_ID", "TELEGRAM_BOT_USERNAME",
 ];
 
 async function loadEnvFile() {
@@ -127,6 +127,16 @@ async function uploadScript(bindings) {
   console.log(`  загружено модулей: ${files.length}`);
 }
 
+/* Расписание крона задаётся отдельным запросом, не через метаданные скрипта. */
+async function setSchedule() {
+  await cf(`/accounts/${ACCOUNT}/workers/scripts/${SCRIPT}/schedules`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify([{ cron: "0 * * * *" }]),   // каждый час
+  });
+  console.log("  расписание: каждый час");
+}
+
 async function enableSubdomain() {
   await cf(`/accounts/${ACCOUNT}/workers/scripts/${SCRIPT}/subdomain`, {
     method: "POST",
@@ -171,6 +181,10 @@ const main = async () => {
 
   console.log("· загрузка кода");
   await uploadScript(bindings);
+
+  console.log("· расписание напоминаний");
+  try { await setSchedule(); }
+  catch (e) { console.warn(`  ПРОПУЩЕНО: ${e.message}`); }
 
   console.log("· публикация");
   const url = await enableSubdomain();

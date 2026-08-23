@@ -93,6 +93,26 @@ const API = {
   },
   sessions() { return this.request("/api/auth/sessions"); },
   referral() { return this.request("/api/referral"); },
+
+  /* --- Напоминания и уведомления --- */
+  reminders: {
+    list() { return API.request("/api/reminders"); },
+    presets() { return API.request("/api/reminders/presets"); },
+    create(data) { return API.request("/api/reminders", { method: "POST", body: data }); },
+    update(data) { return API.request("/api/reminders/update", { method: "POST", body: data }); },
+    remove(id) { return API.request("/api/reminders/delete", { method: "POST", body: { id } }); },
+    addPreset(id) { return API.request("/api/reminders/preset", { method: "POST", body: { id } }); },
+  },
+  notifications: {
+    list() { return API.request("/api/notifications"); },
+    read(id) { return API.request("/api/notifications/read", { method: "POST", body: id ? { id } : {} }); },
+    clear() { return API.request("/api/notifications/clear", { method: "POST" }); },
+  },
+  telegram: {
+    status() { return API.request("/api/telegram/status"); },
+    link() { return API.request("/api/telegram/link", { method: "POST" }); },
+    unlink() { return API.request("/api/telegram/unlink", { method: "POST" }); },
+  },
   referralCheck(code) { return this.request("/api/referral/check?code=" + encodeURIComponent(code)); },
   logoutEverywhere() { return this.request("/api/auth/logout-all", { method: "POST" }); },
 

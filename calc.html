@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0e8f86">
 <!-- seo:end -->
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=8">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -79,6 +79,7 @@
         <div class="calc-result" id="txOut"></div>
       </div>
       <p style="color:var(--muted);font-size:.8rem;margin-top:14px" id="txNote"></p>
+      <div id="partnersTax"></div>
     </div>
 
     <!-- 2. Пеня -->
@@ -188,12 +189,17 @@
   </div>
 </main>
 
-<script src="js/rates.js?v=6"></script>
-<script src="js/api.js?v=6"></script>
-<script src="js/app.js?v=6"></script>
-<script src="js/ai.js?v=6"></script>
+<script src="js/partners.js?v=8"></script>
+<script src="js/rates.js?v=8"></script>
+<script src="js/api.js?v=8"></script>
+<script src="js/app.js?v=8"></script>
+<script src="js/ai.js?v=8"></script>
 <script>
 initPage("calc.html");
+
+/* Партнёрский блок под расчётом налогов: человек только что узнал свою
+   нагрузку — это лучший момент предложить счёт или бухгалтерию. */
+document.addEventListener("pf:ready", () => PARTNERS.render("partnersTax", "tax"));
 
 /* Подпись со ставками — из единого конфига, чтобы не расходилась с расчётами. */
 {

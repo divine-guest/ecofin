@@ -18,7 +18,7 @@
 <meta name="theme-color" content="#0e8f86">
 <meta name="robots" content="noindex, nofollow">
 <!-- seo:end -->
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
 <main class="section">
@@ -30,11 +30,11 @@
   </div>
 </main>
 
-<script src="js/api.js?v=6"></script>
-<script src="js/app.js?v=6"></script>
-<script src="js/ai.js?v=6"></script>
-<script src="js/competencies.js?v=6"></script>
-<script src="js/courses.js?v=6"></script>
+<script src="js/api.js?v=8"></script>
+<script src="js/app.js?v=8"></script>
+<script src="js/ai.js?v=8"></script>
+<script src="js/competencies.js?v=8"></script>
+<script src="js/courses.js?v=8"></script>
 <script>
 initPage("dashboard.html");
 
@@ -330,16 +330,22 @@ function renderCabinet() {
       </div>
       <div class="card">
         <h3>Сроки и напоминания</h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px">
-          <input type="text" id="dlTitle" placeholder="Например: Аванс УСН" style="flex:1;min-width:140px">
+        <p class="hint" style="margin-bottom:12px">
+          Напомним заранее — за 3 дня, за день и в сам день. С подпиской Pro
+          напоминания приходят ещё и в Telegram.
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <input type="text" id="dlTitle" placeholder="Например: аванс по УСН" style="flex:1;min-width:150px" maxlength="140">
           <input type="date" id="dlDate" style="width:auto">
-          <button class="btn small" onclick="dlAdd()">Добавить</button>
+          <select id="dlRepeat" style="width:auto">
+            <option value="once">один раз</option>
+            <option value="monthly">каждый месяц</option>
+            <option value="quarterly">каждый квартал</option>
+            <option value="yearly">каждый год</option>
+          </select>
+          <button class="btn small" onclick="REM.add()">Добавить</button>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-          <button class="btn small secondary" onclick="dlPreset(28)">Аванс УСН (28-е)</button>
-          <button class="btn small secondary" onclick="dlPreset(25)">Декларация (25-е)</button>
-          <button class="btn small secondary" id="notifBtn" onclick="NOTIF.enable().then(on => on && NOTIF.checkDeadlines())">Включить уведомления</button>
-        </div>
+        <div id="dlPresets" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
         <div id="dlList"></div>
       </div>
     </div>
@@ -376,7 +382,7 @@ function renderCabinet() {
   CAL.render();
   renderReferral();
   renderDocs();
-  dlRender();
+  REM.load();
   NOTIF.checkDeadlines();
   const nb = document.getElementById("notifBtn");
   if (nb && NOTIF.enabled()) nb.style.display = "none";
@@ -424,86 +430,108 @@ function docDelete(i) {
   renderDocs();
 }
 
-/* ============ Сроки и напоминания ============ */
-function dlKey() { return "pf_deadlines_" + (PF.user() ? PF.user().email : "guest"); }
-function dlAll() { return JSON.parse(localStorage.getItem(dlKey()) || "[]"); }
-function dlSave(list) { localStorage.setItem(dlKey(), JSON.stringify(list)); dlRender(); }
-function dlAdd() {
-  const title = document.getElementById("dlTitle").value.trim();
-  const date = document.getElementById("dlDate").value;
-  if (!title || !date) return toast("Заполните название и дату");
-  dlSave([...dlAll(), { title, date }]);
-  document.getElementById("dlTitle").value = "";
-  PF.logAction("Добавлен срок: " + title);
-}
-function dlPreset(day) {
-  const t = new Date();
-  const d = new Date(t.getFullYear(), t.getMonth() + 1, day);
-  dlSave([...dlAll(), { title: day === 28 ? "Авансовый платёж УСН" : "Сдать декларацию", date: d.toISOString().slice(0, 10) }]);
-}
-function dlDelete(i) { const l = dlAll(); l.splice(i, 1); dlSave(l); }
-function dlRender() {
-  const list = dlAll().sort((a, b) => a.date.localeCompare(b.date));
-  const today = new Date().toISOString().slice(0, 10);
-  document.getElementById("dlList").innerHTML = list.length
-    ? list.map((d, i) => {
-        const days = Math.ceil((new Date(d.date) - new Date(today)) / 86400000);
-        const cls = days < 0 ? "badge" : days <= 7 ? "badge pro" : "badge ok";
-        const label = days < 0 ? `просрочен на ${-days} дн.` : days === 0 ? "сегодня!" : `через ${days} дн.`;
-        return `<p style="padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem;display:flex;justify-content:space-between;gap:8px;align-items:center">
-          <span><b>${escapeHtml(d.title)}</b><br><span style="color:var(--muted);font-size:.78rem">${new Date(d.date).toLocaleDateString("ru-RU")}</span></span>
-          <span style="white-space:nowrap"><span class="${cls}">${label}</span> <button class="btn small danger" onclick="dlDelete(${i})">✕</button></span>
-        </p>`;
-      }).join("")
-    : `<p style="color:var(--muted)">Сроков нет. Добавьте налоговые дедлайны или окончание договора.</p>`;
-}
+/* ============ Сроки и напоминания ============
+   Раньше сроки жили в localStorage: терялись при смене устройства и не могли
+   ничего прислать. Теперь их хранит сервер и рассылает по расписанию. */
+const REM = {
+  items: [],
+  presets: [],
+  limit: null,
 
-/* Реферальный блок теперь настоящий: код, ссылка и список приглашённых
-   приходят с сервера, а не собираются в браузере «для вида». */
-async function renderReferral() {
-  const box = document.getElementById("refBox");
-  if (!box) return;
-  try {
-    const d = await API.referral();
-    const rewarded = d.invited.filter(x => x.rewarded).length;
-    box.innerHTML = `
-      <div class="ref-code-row">
-        <input type="text" id="refLink" value="${escapeHtml(d.link)}" readonly onclick="this.select()">
-        <button class="btn small" onclick="copyRef()">Копировать</button>
-        ${navigator.share ? '<button class="btn small secondary" onclick="shareRef()">Поделиться</button>' : ""}
-      </div>
-      <p class="hint">Ваш код: <b>${escapeHtml(d.code)}</b></p>
-      <div class="ref-stats">
-        <div><b>${d.invited.length}</b><span>приглашено</span></div>
-        <div><b>${rewarded}</b><span>дошли до дела</span></div>
-        <div><b>${d.earnedDays}</b><span>дней Pro заработано</span></div>
-      </div>
-      ${d.invited.length ? `
-        <div class="ref-list">
-          ${d.invited.slice(0, 10).map(x => `
-            <div class="ref-row">
-              <span>${escapeHtml(x.hint)}</span>
-              <span class="badge ${x.rewarded ? "ok" : ""}">${x.rewarded ? `+${d.days.inviter} дн.` : "ещё не пользовался"}</span>
-            </div>`).join("")}
-        </div>` : ""}
-      <p class="hint">
-        Друг регистрируется по вашей ссылке — вы оба получаете ${d.days.inviter} дней Pro.
-        Бонус начисляется, когда друг впервые воспользуется ИИ, а не сразу за регистрацию.
-      </p>`;
-  } catch (e) {
-    box.innerHTML = `<p class="hint">Не удалось загрузить: ${escapeHtml(e.message)}</p>`;
-  }
-}
+  async load() {
+    const box = document.getElementById("dlList");
+    if (!box) return;
+    try {
+      const d = await API.reminders.list();
+      this.items = d.reminders;
+      this.limit = d.limit;
+      this.render(d);
+      if (!this.presets.length) {
+        this.presets = (await API.reminders.presets()).presets;
+        this.renderPresets();
+      }
+    } catch (e) {
+      box.innerHTML = `<p class="hint">Не удалось загрузить: ${escapeHtml(e.message)}</p>`;
+    }
+  },
 
-function shareRef() {
-  const link = document.getElementById("refLink").value;
-  trackEvent("referral_share");
-  navigator.share({
-    title: "ПравоФин",
-    text: "Юридические и налоговые вопросы — с ИИ-консультантом. Заходи по моей ссылке, обоим дадут Pro.",
-    url: link,
-  }).catch(() => {});
-}
+  render(d) {
+    const box = document.getElementById("dlList");
+    if (!this.items.length) {
+      box.innerHTML = `<p class="hint">Пока ничего не запланировано. Добавьте свой срок
+        или выберите готовый из налогового календаря выше.</p>`;
+      return;
+    }
+    const REPEAT_RU = { once: "", monthly: "ежемесячно", quarterly: "ежеквартально", yearly: "ежегодно" };
+    box.innerHTML = this.items.map(r => {
+      const left = r.daysLeft;
+      const cls = left < 0 ? "badge" : left <= 3 ? "badge pro" : left <= 14 ? "badge ok" : "badge";
+      const label = left < 0 ? "просрочено" : left === 0 ? "сегодня" : left === 1 ? "завтра" : `через ${left} дн.`;
+      return `
+        <div class="rem-row">
+          <span class="rem-main">
+            <b>${escapeHtml(r.title)}</b>
+            <span class="rem-meta">
+              ${r.due.split("-").reverse().join(".")}
+              ${REPEAT_RU[r.repeat] ? " · " + REPEAT_RU[r.repeat] : ""}
+              ${r.channel !== "site" ? " · Telegram" : ""}
+            </span>
+          </span>
+          <span class="rem-side">
+            <span class="${cls}">${label}</span>
+            <button class="btn small danger" onclick="REM.remove(${r.id})" aria-label="Удалить напоминание">✕</button>
+          </span>
+        </div>`;
+    }).join("") + (d.limit !== null
+      ? `<p class="hint">Использовано ${d.used} из ${d.limit} на бесплатном тарифе.
+         <a href="#" onclick="showPaywall('Больше напоминаний и доставка в Telegram — в подписке Pro');return false">Снять лимит</a></p>`
+      : "");
+  },
+
+  renderPresets() {
+    const box = document.getElementById("dlPresets");
+    if (!box) return;
+    box.innerHTML = `<span class="hint" style="width:100%;margin:0 0 4px">Готовые сроки:</span>` +
+      this.presets.slice(0, 6).map(p =>
+        `<button class="btn small secondary" onclick="REM.addPreset('${p.id}')">${escapeHtml(p.title)}</button>`
+      ).join("");
+  },
+
+  async add() {
+    const title = document.getElementById("dlTitle").value.trim();
+    const due = document.getElementById("dlDate").value;
+    const repeat = document.getElementById("dlRepeat").value;
+    if (!title || !due) return toast("Заполните название и дату");
+    try {
+      await API.reminders.create({ title, due, repeat, channel: PF.isPro() ? "both" : "site" });
+      document.getElementById("dlTitle").value = "";
+      document.getElementById("dlDate").value = "";
+      toast("Напомним заранее");
+      trackEvent("reminder_add");
+      this.load();
+    } catch (e) {
+      if (e.isPaywall) showPaywall(e.message);
+      else toast(e.message, "error");
+    }
+  },
+
+  async addPreset(id) {
+    try {
+      await API.reminders.addPreset(id);
+      toast("Срок добавлен");
+      trackEvent("reminder_preset", { id });
+      this.load();
+    } catch (e) {
+      if (e.isPaywall) showPaywall(e.message);
+      else toast(e.message, "error");
+    }
+  },
+
+  async remove(id) {
+    try { await API.reminders.remove(id); this.load(); }
+    catch (e) { toast(e.message, "error"); }
+  },
+};
 
 function copyRef() {
   navigator.clipboard.writeText(PF.referralCode()).then(() => toast("Код скопирован")).catch(() => toast(PF.referralCode()));

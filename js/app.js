@@ -167,6 +167,7 @@ function renderHeader(active) {
       <a href="index.html" class="logo"><span class="logo-mark">⚖</span>Право<b>Фин</b></a>
       <button class="nav-burger" onclick="this.closest('.site-header').classList.toggle('menu-open')" aria-label="Меню">Меню</button>
       <nav class="nav-links">${links}</nav>
+      ${u ? `<button class="theme-toggle notif-btn" onclick="NOTIFY.open()" title="Уведомления" aria-label="Уведомления">Уведомления</button>` : ""}
       <button class="theme-toggle" onclick="toggleTheme()" title="Сменить тему">${themeLabel}</button>
       ${auth}
     </div>
@@ -452,6 +453,7 @@ const SETTINGS = {
     const bd = document.getElementById("settingsBackdrop");
     const tabs = [
       ["profile", "Профиль"],
+      ["notify", "Уведомления"],
       ["security", "Безопасность"],
       ["subscription", "Подписка"],
       ["data", "Данные"],
@@ -510,6 +512,80 @@ const SETTINGS = {
       </div>
 
       <button class="btn wide" onclick="SETTINGS.save()">Сохранить изменения</button>`;
+  },
+
+  /* --- Вкладка «Уведомления» --- */
+  render_notify() {
+    return `
+      <h4>Telegram</h4>
+      <p class="hint">Напоминания о сроках приходят в мессенджер — его открывают
+      чаще, чем почту. Там же можно спросить консультанта и посмотреть ближайшие сроки.</p>
+      <div id="tgBox" style="margin:14px 0">Загружаем…</div>
+
+      <hr>
+      <h4>Лента уведомлений</h4>
+      <p class="hint">Всё, о чём мы напоминали. Хранится полгода.</p>
+      <div id="notifBox" class="notif-list">Загружаем…</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn small secondary" onclick="NOTIFY.readAll()">Отметить прочитанным</button>
+        <button class="btn small secondary" onclick="NOTIFY.clear()">Очистить</button>
+      </div>`;
+  },
+
+  async loadTelegram() {
+    const box = document.getElementById("tgBox");
+    if (!box) return;
+    try {
+      const d = await API.telegram.status();
+      if (!d.enabled) { box.innerHTML = `<p class="hint">Бот пока не подключён к сервису.</p>`; return; }
+
+      if (d.linked) {
+        box.innerHTML = `
+          <p><span class="badge ok">подключён</span>
+          ${d.username ? " @" + escapeHtml(d.username) : ""}
+          ${d.linkedAt ? `<span class="hint"> · с ${new Date(d.linkedAt).toLocaleDateString("ru-RU")}</span>` : ""}</p>
+          <br><button class="btn small secondary" onclick="SETTINGS.unlinkTelegram()">Отключить Telegram</button>`;
+        return;
+      }
+
+      box.innerHTML = `
+        <button class="btn" onclick="SETTINGS.linkTelegram()">Подключить Telegram</button>
+        <p class="hint" style="margin-top:8px">Займёт полминуты: выдадим короткий код и ссылку на бота.</p>`;
+    } catch (e) {
+      box.innerHTML = `<p class="hint">Не удалось загрузить: ${escapeHtml(e.message)}</p>`;
+    }
+  },
+
+  async linkTelegram() {
+    const box = document.getElementById("tgBox");
+    box.innerHTML = "Готовим код…";
+    try {
+      const d = await API.telegram.link();
+      box.innerHTML = `
+        <ol class="tg-steps">
+          <li>Откройте бота <b>@${escapeHtml(d.bot)}</b></li>
+          <li>Отправьте ему этот код</li>
+        </ol>
+        <div class="tg-code">${escapeHtml(d.code)}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn" href="${escapeHtml(d.deepLink)}" target="_blank" rel="noopener">Открыть бота</a>
+          <button class="btn secondary" onclick="SETTINGS.loadTelegram()">Я подключил, проверить</button>
+        </div>
+        <p class="hint" style="margin-top:8px">Код действует ${d.expiresIn} минут.
+        По ссылке код подставится сам.</p>`;
+      trackEvent("telegram_link_start");
+    } catch (e) {
+      box.innerHTML = `<p class="hint">${escapeHtml(e.message)}</p>`;
+    }
+  },
+
+  async unlinkTelegram() {
+    if (!confirm("Отключить Telegram? Напоминания останутся в кабинете на сайте.")) return;
+    try {
+      await API.telegram.unlink();
+      toast("Telegram отключён");
+      this.loadTelegram();
+    } catch (e) { toast(e.message, "error"); }
   },
 
   /* --- Вкладка «Безопасность» --- */
@@ -706,6 +782,7 @@ const _settingsRender = SETTINGS.render.bind(SETTINGS);
 SETTINGS.render = function () {
   _settingsRender();
   if (this._tab === "security") this.loadSessions();
+  if (this._tab === "notify") { this.loadTelegram(); NOTIFY.render(); }
   if (this._tab === "subscription" && !PF.quota) {
     /* Остатки могли ещё не приехать — тянем и перерисовываем вкладку,
        иначе человек видит «проверяем…» и не понимает, что у него есть. */
@@ -747,6 +824,75 @@ const NOTIF = {
       }
     });
     localStorage.setItem("pf_notif_shown_" + u.email, JSON.stringify(shown));
+  },
+};
+
+/* ============ Уведомления ============
+   Лента живёт на сайте независимо от Telegram: человек может не подключать
+   бота и всё равно видеть, о чём мы напоминали. */
+const NOTIFY = {
+  items: [],
+  unread: 0,
+
+  async load() {
+    if (!PF.user()) return;
+    try {
+      const d = await API.notifications.list();
+      this.items = d.notifications;
+      this.unread = d.unread;
+      this.paintBell();
+    } catch { /* тихо: колокольчик не критичен */ }
+  },
+
+  paintBell() {
+    const btn = document.querySelector(".notif-btn");
+    if (!btn) return;
+    btn.querySelector(".notif-dot")?.remove();
+    if (!this.unread) return;
+    const dot = document.createElement("span");
+    dot.className = "notif-dot";
+    dot.textContent = this.unread > 9 ? "9+" : String(this.unread);
+    btn.appendChild(dot);
+  },
+
+  open() {
+    SETTINGS.open("notify");
+  },
+
+  render() {
+    const box = document.getElementById("notifBox");
+    if (!box) return;
+    if (!this.items.length) {
+      box.innerHTML = `<p class="hint">Пока пусто. Здесь появятся напоминания о сроках.</p>`;
+      return;
+    }
+    box.innerHTML = this.items.map(n => `
+      <div class="notif-item ${n.read_at ? "" : "unread"}">
+        <span>
+          <span class="nt">${escapeHtml(n.title)}</span>
+          ${n.body ? `<div class="nb">${escapeHtml(n.body)}</div>` : ""}
+          <div class="nd">${new Date(n.created_at).toLocaleString("ru-RU")}</div>
+        </span>
+      </div>`).join("");
+  },
+
+  async readAll() {
+    try {
+      await API.notifications.read();
+      this.unread = 0;
+      this.items = this.items.map(n => ({ ...n, read_at: Date.now() }));
+      this.render();
+      this.paintBell();
+    } catch (e) { toast(e.message, "error"); }
+  },
+
+  async clear() {
+    if (!confirm("Очистить всю ленту уведомлений?")) return;
+    try {
+      await API.notifications.clear();
+      this.items = []; this.unread = 0;
+      this.render(); this.paintBell();
+    } catch (e) { toast(e.message, "error"); }
   },
 };
 
@@ -904,6 +1050,7 @@ function initPage(active) {
   });
 
   refreshSession().then(user => {
+    if (user) NOTIFY.load();
     const header = document.querySelector(".site-header");
     if (header) { header.remove(); renderHeader(active); }
     document.dispatchEvent(new CustomEvent("pf:ready", { detail: { user } }));
