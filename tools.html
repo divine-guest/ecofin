@@ -173,9 +173,7 @@ async function runAI(prompt, offlineFn, resultId, action, system) {
   PF.consumeAIUse();
   try {
     const r = await AI.complete(prompt, offlineFn, system);
-    showResult(resultId, AI.lastError ? "ИИ-сервер сейчас недоступен (проблема сети) — показан встроенный шаблон.
-
-" + r : r);
+    showResult(resultId, AI.lastError ? "ИИ-сервер сейчас недоступен (проблема сети) — показан встроенный шаблон.\n\n" + r : r);
   } catch (e) {
     showResult(resultId, "Ошибка: " + e.message);
   }

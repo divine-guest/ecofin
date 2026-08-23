@@ -272,9 +272,7 @@ async function chatSend() {
       () => OFFLINE.chat(text)
     );
     const finalText = AI.lastError
-      ? "ИИ-сервер сейчас недоступен (проблема сети). Ниже — краткий встроенный ответ, попробуйте полный позже:
-
-" + reply
+      ? "ИИ-сервер сейчас недоступен (проблема сети). Ниже — краткий встроенный ответ, попробуйте полный позже:\n\n" + reply
       : reply;
     thinking.textContent = finalText;
     chatSave([...chatHistory(), { role: "user", text }, { role: "bot", text: finalText }]);
