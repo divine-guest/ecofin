@@ -993,6 +993,10 @@ function initRevealAnimations() {
 function spawnHeroParticles(containerSelector = ".hero", count = 16) {
   const hero = document.querySelector(containerSelector);
   if (!hero) return;
+  /* На телефонах и при включённом «уменьшить движение» частиц меньше или нет
+     совсем: 16 анимированных элементов заметно греют слабый аппарат. */
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (innerWidth < 700) count = 6;
   for (let i = 0; i < count; i++) {
     const p = document.createElement("span");
     p.className = "hero-particle";
@@ -1050,11 +1054,26 @@ function initPage(active) {
   });
 
   refreshSession().then(user => {
-    if (user) NOTIFY.load();
+    if (user) { NOTIFY.load(); askPendingQuestion(); }
     const header = document.querySelector(".site-header");
     if (header) { header.remove(); renderHeader(active); }
     document.dispatchEvent(new CustomEvent("pf:ready", { detail: { user } }));
   });
+}
+
+/* Человек задал вопрос на главной до регистрации. После входа задаём его
+   сам — иначе он проделал работу зря и, скорее всего, уйдёт. */
+function askPendingQuestion() {
+  const q = sessionStorage.getItem("pf_pending_question");
+  if (!q) return;
+  sessionStorage.removeItem("pf_pending_question");
+  setTimeout(() => {
+    const input = document.getElementById("chatInput");
+    if (!input) return;
+    chatToggle();
+    input.value = q;
+    chatSend();
+  }, 600);
 }
 
 /* Страницы, которым нужен вошедший пользователь, зовут это вместо своей проверки. */

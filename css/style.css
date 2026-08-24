@@ -943,3 +943,82 @@ textarea:focus-visible,
 }
 .partner-foot { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
 .partner-mark { font-size: 10.5px; color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
+
+
+/* ===== Типографская шкала =====
+   На странице жило 18 разных размеров шрифта — значения вроде 14.88, 14.08,
+   13.76 отличались на доли пикселя и читались как случайные. Шкала из шести
+   ступеней даёт заметную разницу между уровнями и убирает визуальный шум. */
+:root {
+  --t-xs: 0.8125rem;   /* 13px — подписи, минимум для чтения */
+  --t-sm: 0.9375rem;   /* 15px — вспомогательный текст */
+  --t-md: 1.0625rem;   /* 17px — основной текст */
+  --t-lg: 1.375rem;    /* 22px — подзаголовки */
+  --t-xl: 1.875rem;    /* 30px — заголовки блоков */
+  --t-2xl: clamp(2.1rem, 4.5vw, 3.25rem);  /* герой */
+}
+
+body { font-size: var(--t-md); }
+.hint, .pay-note, .stat-label, .partner-mark, .rem-meta { font-size: var(--t-xs); }
+.subtitle, .badge { font-size: var(--t-sm); }
+h3 { font-size: var(--t-lg); }
+.section-title h1, .section-title h2 { font-size: var(--t-xl); }
+.hero h1 { font-size: var(--t-2xl); }
+
+/* Длина строки. Было 42 символа в карточках — глазу тесно, приходится
+   часто переносить взгляд. Комфортный диапазон 60–75. */
+p, li { max-width: 68ch; }
+.card p, .card li { max-width: none; }   /* внутри карточки ширину держит сама карточка */
+.section-title .subtitle { max-width: 62ch; margin-inline: auto; }
+
+/* Аватар в шапке слипался с именем: «ННапоминалка» */
+.site-header .btn .avatar { margin-right: 7px; }
+
+/* ===== Герой: поле вопроса ===== */
+.hero-ask {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  max-width: 620px; margin: 26px auto 12px;
+}
+.hero-ask input {
+  flex: 1; min-width: 240px;
+  font-size: max(1rem, 16px);   /* 16px — иначе iOS зумит поле при фокусе */
+  padding: 15px 18px; border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .28);
+  background: rgba(255, 255, 255, .12);
+  color: #fff; backdrop-filter: blur(8px);
+}
+.hero-ask input::placeholder { color: rgba(255, 255, 255, .62); }
+.hero-ask input:focus {
+  outline: none; border-color: var(--gold-2);
+  background: rgba(255, 255, 255, .18);
+}
+.hero-ask .btn { padding-inline: 26px; }
+
+.hero-hints {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  max-width: 620px; margin: 0 auto 24px;
+}
+.hero-hints button {
+  font: inherit; font-size: var(--t-xs); cursor: pointer;
+  padding: 7px 13px; border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .25);
+  background: rgba(255, 255, 255, .07);
+  color: rgba(255, 255, 255, .82);
+  transition: background .15s, border-color .15s;
+}
+.hero-hints button:hover {
+  background: rgba(255, 255, 255, .16);
+  border-color: rgba(255, 255, 255, .45);
+}
+
+/* Экранным дикторам подпись нужна, глазам — нет */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+@media (max-width: 640px) {
+  .hero-ask { margin-top: 20px; }
+  .hero-ask .btn { width: 100%; }
+  .hero-hints button { font-size: 12px; }
+}

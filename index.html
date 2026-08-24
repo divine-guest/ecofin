@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0e8f86">
 <!-- seo:end -->
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
 <main>
@@ -88,19 +88,33 @@
     </svg>
 
     <div class="container hero-inner">
-      <span class="badge">⚖ Экосистема права и финансов</span>
-      <h1>Юриспруденция, бухгалтерия и финансы — <em>в одном месте</em></h1>
-      <p>Помощь бизнесу с налогами, юридическая консультация и поддержка в финансовых вопросах — быстро и в одном месте.</p>
+      <span class="badge">⚖ Право, налоги и финансы для бизнеса</span>
+      <h1>Разберём договор и посчитаем налоги — <em>за минуту</em></h1>
+      <p>Задайте вопрос как юристу и бухгалтеру сразу: про налоговый режим,
+         пункт в договоре, увольнение или штраф. Ответ со ссылками на статьи закона.</p>
+
+      <!-- Поле прямо в герое: человек получает ответ до регистрации.
+           Это единственное, что реально доказывает пользу сервиса. -->
+      <form class="hero-ask" onsubmit="heroAsk(event)">
+        <label class="sr-only" for="heroQ">Ваш вопрос</label>
+        <input type="text" id="heroQ" maxlength="300"
+               placeholder="Например: какой налоговый режим выбрать при доходе 3 млн?">
+        <button class="btn gold" type="submit">Спросить</button>
+      </form>
+      <div class="hero-hints">
+        <button type="button" onclick="heroFill(this)">Выгоднее УСН или патент?</button>
+        <button type="button" onclick="heroFill(this)">Что проверить в договоре подряда?</button>
+        <button type="button" onclick="heroFill(this)">Как уменьшить неустойку?</button>
+      </div>
       <div class="hero-actions">
         <a href="auth.html" class="btn auth-cta">Начать бесплатно</a>
-        <a href="tools.html" class="btn gold">ИИ-инструменты</a>
-        <a href="games.html" class="btn ghost">Практикум</a>
+        <a href="calc.html" class="btn ghost">Калькуляторы без регистрации</a>
       </div>
       <div class="hero-stats">
-        <div class="hs"><b>3</b><span>курса с сертификатами</span></div>
+        <div class="hs"><b>7</b><span>калькуляторов налогов и выплат</span></div>
         <div class="hs"><b>12</b><span>шаблонов документов</span></div>
         <div class="hs"><b>13</b><span>статей в базе знаний</span></div>
-        <div class="hs"><b>100%</b><span>бесплатный старт</span></div>
+        <div class="hs"><b>0 ₽</b><span>чтобы попробовать</span></div>
       </div>
     </div>
   </section>
@@ -154,6 +168,22 @@
   </section>
 
   <!-- ===== Тарифы ===== -->
+  <section class="section tint-navy">
+    <div class="container">
+      <div class="section-title">
+        <h2>Как это <span>работает</span></h2>
+        <div class="line"></div>
+        <p class="subtitle">Три шага до первого документа</p>
+      </div>
+      <div class="grid cols-3">
+        <div class="card"><span class="icon">1️⃣</span><h3>Зарегистрируйтесь</h3><p>30 секунд — данные хранятся локально в вашем браузере.</p></div>
+        <div class="card"><span class="icon">2️⃣</span><h3>Попробуйте ИИ бесплатно</h3><p>Первая генерация документа, анализ или расчёт — бесплатно, без карты.</p></div>
+        <div class="card"><span class="icon">3️⃣</span><h3>Подключите Pro</h3><p>Безлимитные ИИ-инструменты, персональные чек-листы и будущие курсы.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CTA ===== -->
   <section class="section tint-gold">
     <div class="container">
       <div class="section-title">
@@ -185,22 +215,6 @@
   </section>
 
   <!-- ===== Как это работает ===== -->
-  <section class="section tint-navy">
-    <div class="container">
-      <div class="section-title">
-        <h2>Как это <span>работает</span></h2>
-        <div class="line"></div>
-        <p class="subtitle">Три шага до первого документа</p>
-      </div>
-      <div class="grid cols-3">
-        <div class="card"><span class="icon">1️⃣</span><h3>Зарегистрируйтесь</h3><p>30 секунд — данные хранятся локально в вашем браузере.</p></div>
-        <div class="card"><span class="icon">2️⃣</span><h3>Попробуйте ИИ бесплатно</h3><p>Первая генерация документа, анализ или расчёт — бесплатно, без карты.</p></div>
-        <div class="card"><span class="icon">3️⃣</span><h3>Подключите Pro</h3><p>Безлимитные ИИ-инструменты, персональные чек-листы и будущие курсы.</p></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== CTA ===== -->
   <section class="section">
     <div class="container">
       <div class="card" style="text-align:center; background: var(--grad-hero); border: none; padding: 48px 28px;">
@@ -212,11 +226,40 @@
   </section>
 </main>
 
-<script src="js/api.js?v=9"></script>
-<script src="js/app.js?v=9"></script>
-<script src="js/ai.js?v=9"></script>
+<script src="js/api.js?v=10"></script>
+<script src="js/app.js?v=10"></script>
+<script src="js/ai.js?v=10"></script>
 <script>
 initPage("index.html");
+
+/* Вопрос из героя. Отвечает тот же консультант, что и в чате, — просто
+   человек попадает в него сразу, не разбираясь в устройстве сайта.
+   Незалогиненного ведём на регистрацию, сохранив вопрос: после входа
+   он не потеряется. */
+function heroFill(btn) {
+  const input = document.getElementById("heroQ");
+  input.value = btn.textContent.trim();
+  input.focus();
+}
+
+function heroAsk(e) {
+  e.preventDefault();
+  const q = document.getElementById("heroQ").value.trim();
+  if (q.length < 5) return toast("Напишите вопрос подробнее");
+  sessionStorage.setItem("pf_pending_question", q);
+  trackEvent("hero_ask");
+
+  if (!PF.user()) {
+    toast("Секунда — заведём аккаунт, и я отвечу");
+    setTimeout(() => (location.href = "auth.html?from=hero"), 900);
+    return;
+  }
+  chatToggle();
+  const input = document.getElementById("chatInput");
+  input.value = q;
+  chatSend();
+  document.getElementById("heroQ").value = "";
+}
 spawnHeroParticles();
 
 // Авторизованным — «Перейти в кабинет» вместо «Создать аккаунт»
