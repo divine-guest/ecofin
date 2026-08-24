@@ -84,7 +84,7 @@ function applyTheme(t) {
   localStorage.setItem(PF.themeKey, t);
   /* Персональный цвет задаётся отдельными оттенками для светлой и тёмной.
      Без пересчёта после переключения остаётся цвет прошлой темы. */
-  if (typeof THEMING !== "undefined") THEMING.restore();
+  if (typeof THEMING !== "undefined") THEMING.refresh();
   document.querySelectorAll(".theme-toggle").forEach(b => (b.textContent = t === "dark" ? "Тёмная тема" : "Светлая тема"));
 }
 function initTheme() {
@@ -454,40 +454,31 @@ const PAY = {
 };
 
 /* Персональное оформление — возможность тарифа «Про».
-   Применяем до первой отрисовки, иначе цвет мигнёт. */
+   Тема меняет всю палитру: фон, поверхности, текст, границы, градиенты.
+   Тема и режим (светлый/тёмный) независимы, как в Telegram. */
 const THEMING = {
-  key: "pf_accent",
+  key: "pf_theme_id",
 
-  apply(preset) {
-    const r = document.documentElement;
-    if (!preset || !preset.accent) {
-      for (const v of ["--primary", "--primary-2", "--accent", "--grad-primary"]) r.style.removeProperty(v);
-      r.removeAttribute("data-accent");
+  current() { return localStorage.getItem(this.key) || ""; },
+
+  /* Перерисовать под текущий режим. Зовётся и при смене темы,
+     и при переключении светлая/тёмная. */
+  refresh() {
+    const id = this.current();
+    const mode = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    if (!id || typeof applyThemePalette !== "function") {
+      if (typeof clearThemePalette === "function") clearThemePalette();
       return;
     }
-    const dark = r.getAttribute("data-theme") === "dark";
-    r.style.setProperty("--primary", dark ? preset.dark : preset.accent);
-    r.style.setProperty("--primary-2", dark ? preset.dark2 : preset.accent2);
-    r.style.setProperty("--accent", dark ? preset.dark : preset.accent);
-    r.style.setProperty("--grad-primary",
-      `linear-gradient(135deg, ${dark ? preset.dark : preset.accent} 0%, ${dark ? preset.dark2 : preset.accent2} 100%)`);
-    r.setAttribute("data-accent", "custom");
+    applyThemePalette(id, mode);
   },
 
-  /* Пресет держим в браузере, чтобы применить мгновенно; источник правды —
-     сервер, оттуда он приезжает при обновлении сессии. */
-  restore() {
-    try { this.apply(JSON.parse(localStorage.getItem(this.key) || "null")); } catch {}
-  },
-  /* id === "" значит «как у сервиса»: ничего не храним и снимаем
-     переопределения, иначе инлайновые цвета перебьют смену темы. */
-  remember(id, preset) {
-    if (id && preset && preset.accent) localStorage.setItem(this.key, JSON.stringify(preset));
-    else { localStorage.removeItem(this.key); preset = null; }
-    this.apply(preset);
+  set(id) {
+    if (id) localStorage.setItem(this.key, id);
+    else localStorage.removeItem(this.key);
+    this.refresh();
   },
 };
-THEMING.restore();
 
 /* ============ Настройки профиля ============ */
 const SETTINGS = {
@@ -668,18 +659,20 @@ const SETTINGS = {
   /* --- Вкладка «Оформление» --- */
   render_look() {
     return `
-      <h4>Тема</h4>
-      <p class="hint">Светлая, тёмная или как в системе.</p>
+      <h4>Режим</h4>
+      <p class="hint">Работает с любой темой независимо.</p>
       <div class="theme-row">
-        <button class="btn small secondary" onclick="applyTheme('light')">Светлая</button>
-        <button class="btn small secondary" onclick="applyTheme('dark')">Тёмная</button>
+        <button class="btn small ${document.documentElement.getAttribute("data-theme") !== "dark" ? "" : "secondary"}"
+                onclick="applyTheme('light');SETTINGS.render()">Светлый</button>
+        <button class="btn small ${document.documentElement.getAttribute("data-theme") === "dark" ? "" : "secondary"}"
+                onclick="applyTheme('dark');SETTINGS.render()">Тёмный</button>
       </div>
 
       <hr>
-      <h4>Цвет сервиса</h4>
-      <p class="hint">Входит в тариф «Про». Выбранный цвет сохраняется в аккаунте
-      и применяется на всех ваших устройствах.</p>
-      <div id="accentBox" class="accent-grid">Загружаем…</div>`;
+      <h4>Тема оформления</h4>
+      <p class="hint">Меняет всю палитру сайта, а не только цвет кнопок.
+      Входит в тариф «Про», сохраняется в аккаунте и работает на всех ваших устройствах.</p>
+      <div id="accentBox" class="theme-grid">Загружаем…</div>`;
   },
 
   async loadThemes() {
@@ -687,25 +680,46 @@ const SETTINGS = {
     if (!box) return;
     try {
       const d = await API.themes.list();
-      box.innerHTML = d.themes.map(t => `
-        <button class="accent-chip ${d.current === t.id ? "on" : ""} ${d.allowed || t.id === "" ? "" : "locked"}"
-                onclick="SETTINGS.pickAccent('${t.id}')" title="${escapeHtml(t.title)}">
-          <span class="accent-dot" style="background:linear-gradient(135deg,${t.accent},${t.dark})"></span>
-          <span>${escapeHtml(t.title)}</span>
-          ${d.allowed || t.id === "" ? "" : '<span class="accent-lock">Про</span>'}
-        </button>`).join("");
+      const mode = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+      const list = typeof themeList === "function" ? themeList() : [];
+
+      box.innerHTML = list.map(t => {
+        const c = t[mode];
+        const locked = !d.allowed && t.id !== "default";
+        const on = (d.current || "default") === t.id;
+        /* Миниатюра показывает саму тему — фон, карточку и акцент,
+           чтобы было видно, что получишь, ещё до нажатия. */
+        return `
+          <button class="theme-card ${on ? "on" : ""} ${locked ? "locked" : ""}"
+                  onclick="SETTINGS.pickTheme('${t.id}')" title="${escapeHtml(t.title)}">
+            <span class="theme-prev" style="background:${c.bg}">
+              <span class="theme-prev-bar" style="background:${c.surface}"></span>
+              <span class="theme-prev-line" style="background:${c.accent}"></span>
+              <span class="theme-prev-line short" style="background:${c.accent};opacity:.4"></span>
+            </span>
+            <span class="theme-name">${escapeHtml(t.title)}</span>
+            ${locked ? '<span class="accent-lock">Про</span>' : ""}
+            ${on ? '<span class="theme-tick">✓</span>' : ""}
+          </button>`;
+      }).join("");
     } catch (e) {
       box.innerHTML = `<p class="hint">Не удалось загрузить: ${escapeHtml(e.message)}</p>`;
     }
   },
 
-  async pickAccent(id) {
+  async pickTheme(id) {
+    const send = id === "default" ? "" : id;
+    /* Показываем сразу, не дожидаясь сервера: выбор темы должен
+       ощущаться мгновенно. Откатим, если сервер откажет. */
+    const before = THEMING.current();
+    THEMING.set(send);
     try {
-      const r = await API.themes.set(id);
-      THEMING.remember(id, r.preset);
-      toast(id ? "Оформление применено" : "Вернули оформление сервиса");
+      await API.themes.set(send);
+      toast(send ? "Тема применена" : "Вернули тему сервиса");
       this.loadThemes();
     } catch (e) {
+      THEMING.set(before);
+      this.loadThemes();
       if (e.isPaywall) { this.close(); showPaywall(e.message); }
       else toast(e.message, "error");
     }
@@ -1158,9 +1172,9 @@ async function refreshSession() {
     const d = await API.me();
     PF.actions = d.actions || [];
     PF.payments = d.payments || [];
-    /* Оформление живёт в аккаунте: на новом устройстве оно должно
-       примениться само, без похода в настройки. */
-    if (d.user && !d.user.themeAccent) THEMING.remember("", null);
+    /* Тема живёт в аккаунте: на новом устройстве она должна примениться
+       сама, без похода в настройки. Сервер здесь — источник правды. */
+    if (d.user) THEMING.set(d.user.themeAccent || "");
     await PF.refreshQuota();
     if (JSON.stringify(d.user) !== before) window.dispatchEvent(new CustomEvent("pf:userchanged"));
     return d.user;
@@ -1171,7 +1185,7 @@ async function refreshSession() {
 }
 
 function initPage(active) {
-  initTheme();
+  initTheme();          // initTheme уже зовёт THEMING.refresh через applyTheme
   initAnalytics();
   renderHeader(active);
   renderFooter();
