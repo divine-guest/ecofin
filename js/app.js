@@ -184,18 +184,12 @@ function renderHeader(active) {
   /* В шапке лишнее прячем под «Ещё», а в мобильном меню показываем всё
      списком: там оно и так вертикальное, а выпадашка внутри выпадашки
      только мешает и растягивает страницу. */
-  /* На широком экране лишнее прячем под «Ещё». На узком шапка и так
-     переносится в два ряда, выпадашка там только мешает — поэтому те же
-     пункты выводятся плоским списком, а переключает их CSS. */
-  const links = pages.map(link).join("") +
-    (rest.length ? `<span class="nav-more">
-      <button type="button" class="nav-more-btn" aria-haspopup="true"
-              onclick="this.parentElement.classList.toggle('open')">Ещё</button>
-      <span class="nav-more-list">${rest.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</span>
-    </span>
-    <span class="nav-rest-flat">${rest.map(link).join("")}</span>` : "");
-
-  const mobileLinks = pages.map(link).join("") + rest.map(link).join("");
+  /* Никаких выпадающих меню в шапке: список в потоке накрывал соседние
+     пункты, а спрятанный за кнопкой раздел люди просто не находят.
+     В шапке — только то, что нужно этому человеку; всё прочее живёт
+     в подвале, он есть на каждой странице. */
+  const links = pages.map(link).join("");
+  const mobileLinks = links;
   const auth = u
     ? `<a href="dashboard.html" class="btn small">${avatarHtml(u)}${escapeHtml(u.name.split(" ")[0])}</a>`
     : `<a href="auth.html" class="btn small">Войти</a>`;
@@ -220,7 +214,13 @@ function renderFooter() {
   f.className = "site-footer";
   f.innerHTML = `<div class="container">
     <p><b>ПравоФин</b> — экосистема юридической и финансовой грамотности © 2026</p>
-    <p><a href="about.html">О сервисе</a> · <a href="faq.html">Частые вопросы</a> · <a href="legal.html">Правовые документы</a> · <a href="search.html">Поиск</a></p>
+    <p class="footer-nav">
+      <a href="tools.html">Инструменты</a> · <a href="calc.html">Калькуляторы</a> ·
+      <a href="knowledge.html">База знаний</a> · <a href="courses.html">Курсы</a> ·
+      <a href="games.html">Практикум</a> · <a href="expenses.html">Дневник трат</a> ·
+      <a href="search.html">Поиск</a>
+    </p>
+    <p><a href="about.html">О сервисе</a> · <a href="faq.html">Частые вопросы</a> · <a href="legal.html">Правовые документы</a></p>
     <p>Материалы носят информационный характер и не являются юридической консультацией.</p>
   </div>`;
   document.body.appendChild(f);
@@ -978,13 +978,6 @@ SETTINGS.render = function () {
     PF.refreshQuota().then(() => { if (this._tab === "subscription") _settingsRender(); });
   }
 };
-
-document.addEventListener("click", e => {
-  /* Выпадающее меню закрывается кликом мимо — иначе висит открытым. */
-  if (!e.target.closest(".nav-more")) {
-    document.querySelectorAll(".nav-more.open").forEach(n => n.classList.remove("open"));
-  }
-});
 
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
