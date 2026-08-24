@@ -150,15 +150,41 @@ function escapeHtml(s) {
 /* ============ Шапка (вставляется на каждую страницу) ============ */
 function renderHeader(active) {
   const u = PF.user();
-  const pages = [
-    ["index.html", "Главная"], ["tools.html", "Инструменты"], ["calc.html", "Калькуляторы"],
-    ["courses.html", "Курсы"], ["games.html", "Практикум"], ["knowledge.html", "База знаний"], ["dashboard.html", "Кабинет"],
+  /* Меню зависит от того, кто пришёл. Самозанятому не нужны «Курсы»
+     и «Практикум» в шапке — ему нужны налоги и документы. Наполнение
+     сайта одно и то же, различается только видимая часть; всё прочее
+     не удалено, а убрано в «Ещё». */
+  const status = (PF.prefs && PF.prefs().profile && PF.prefs().profile.status) || "";
+  const BY_STATUS = {
+    self:   [["calc.html", "Налоги"], ["tools.html", "Документы"], ["knowledge.html", "База знаний"]],
+    ip:     [["calc.html", "Налоги"], ["tools.html", "Документы"], ["knowledge.html", "База знаний"]],
+    ooo:    [["tools.html", "Документы"], ["calc.html", "Расчёты"], ["knowledge.html", "База знаний"]],
+    person: [["calc.html", "Калькуляторы"], ["tools.html", "Инструменты"], ["knowledge.html", "База знаний"]],
+    start:  [["knowledge.html", "База знаний"], ["courses.html", "Курсы"], ["calc.html", "Калькуляторы"]],
+  };
+  const main = BY_STATUS[status] || [
+    ["tools.html", "Инструменты"], ["calc.html", "Калькуляторы"], ["knowledge.html", "База знаний"],
   ];
+
+  const pages = [["index.html", "Главная"], ...main, ["dashboard.html", "Кабинет"]];
   /* Пункт «Админка» видят только админы и владелец. Прямой заход по адресу
      всё равно упрётся в проверку прав на сервере. */
   if (u && u.isAdmin) pages.push(["admin.html", "Админка"]);
+
+  const shown = new Set(pages.map(([h]) => h));
+  const rest = [
+    ["courses.html", "Курсы"], ["games.html", "Практикум"], ["calc.html", "Калькуляторы"],
+    ["tools.html", "Инструменты"], ["expenses.html", "Дневник трат"],
+    ["knowledge.html", "База знаний"], ["search.html", "Поиск"], ["faq.html", "Вопросы"],
+  ].filter(([h]) => !shown.has(h));
+
   const links = pages.map(([href, label]) =>
-    `<a href="${href}" class="${active === href ? "active" : ""}">${label}</a>`).join("");
+    `<a href="${href}" class="${active === href ? "active" : ""}">${label}</a>`).join("") +
+    (rest.length ? `<span class="nav-more">
+      <button type="button" class="nav-more-btn" aria-haspopup="true"
+              onclick="this.parentElement.classList.toggle('open')">Ещё</button>
+      <span class="nav-more-list">${rest.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</span>
+    </span>` : "");
   const auth = u
     ? `<a href="dashboard.html" class="btn small">${avatarHtml(u)}${escapeHtml(u.name.split(" ")[0])}</a>`
     : `<a href="auth.html" class="btn small">Войти</a>`;
@@ -942,6 +968,13 @@ SETTINGS.render = function () {
   }
 };
 
+document.addEventListener("click", e => {
+  /* Выпадающее меню закрывается кликом мимо — иначе висит открытым. */
+  if (!e.target.closest(".nav-more")) {
+    document.querySelectorAll(".nav-more.open").forEach(n => n.classList.remove("open"));
+  }
+});
+
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
   const bd = document.getElementById("settingsBackdrop");
@@ -1015,7 +1048,8 @@ const NOTIFY = {
     const box = document.getElementById("notifBox");
     if (!box) return;
     if (!this.items.length) {
-      box.innerHTML = `<p class="hint">Пока пусто. Здесь появятся напоминания о сроках.</p>`;
+      box.innerHTML = `<div class="empty"><b>Уведомлений нет</b>
+        <p>Здесь появятся напоминания о сроках — за три дня, за день и в сам день.</p></div>`;
       return;
     }
     box.innerHTML = this.items.map(n => `

@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=28">
+<link rel="stylesheet" href="css/style.css?v=30">
 </head>
 <body>
 <main class="section tint-navy">
@@ -32,10 +32,10 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=28"></script>
-<script src="js/api.js?v=28"></script>
-<script src="js/app.js?v=28"></script>
-<script src="js/ai.js?v=28"></script>
+<script src="js/themes.js?v=30"></script>
+<script src="js/api.js?v=30"></script>
+<script src="js/app.js?v=30"></script>
+<script src="js/ai.js?v=30"></script>
 <script>
 initPage("admin.html");
 
@@ -331,7 +331,11 @@ const AD = {
     box.textContent = "Загружаем…";
     try {
       const d = await API.admin.payments();
-      if (!d.payments.length) { box.textContent = "Операций пока нет."; return; }
+      if (!d.payments.length) {
+        box.innerHTML = `<div class="empty"><b>Операций пока нет</b>
+          <p>Здесь появятся оплаты, промокоды и подписки, выданные вручную.</p></div>`;
+        return;
+      }
       box.innerHTML = `
         <table class="cmp-table" style="width:100%">
           <tr style="font-size:var(--t-xs);color:var(--muted)">

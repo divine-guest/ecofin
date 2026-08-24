@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=28">
+<link rel="stylesheet" href="css/style.css?v=30">
 </head>
 <body>
 <main class="section">
@@ -33,12 +33,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=28"></script>
-<script src="js/api.js?v=28"></script>
-<script src="js/app.js?v=28"></script>
-<script src="js/ai.js?v=28"></script>
-<script src="js/competencies.js?v=28"></script>
-<script src="js/courses.js?v=28"></script>
+<script src="js/themes.js?v=30"></script>
+<script src="js/api.js?v=30"></script>
+<script src="js/app.js?v=30"></script>
+<script src="js/ai.js?v=30"></script>
+<script src="js/competencies.js?v=30"></script>
+<script src="js/courses.js?v=30"></script>
 <script>
 initPage("dashboard.html");
 
@@ -386,7 +386,9 @@ function renderCabinet() {
         <h3>История действий</h3>
         ${hist.length ? `<div style="max-height:420px;overflow-y:auto">
           ${hist.slice(0, 20).map(h => `<p style="padding:7px 0;border-bottom:1px solid var(--border);font-size:var(--t-sm)">${escapeHtml(h.text)}<br><span style="color:var(--muted);font-size:var(--t-xs)">${new Date(h.date).toLocaleString("ru-RU")}</span></p>`).join("")}
-        </div>` : `<p style="color:var(--muted)">История пуста</p>`}
+        </div>` : `<div class="empty"><b>Здесь появится история</b>
+          <p>Каждое действие в сервисе — расчёт, разбор документа, урок — попадает сюда.</p>
+          <a href="tools.html" class="btn small">Начать с инструментов</a></div>`}
       </div>
     </div>`;
 
@@ -548,7 +550,12 @@ function renderDocs() {
         <button class="btn small secondary" onclick="docDownload(${i})">Скачать</button>
         <button class="btn small danger" onclick="docDelete(${i})">Удалить</button>
       </p>`).join("")
-    : `<p style="color:var(--muted)">Пока пусто. Составьте документ во вкладке «Шаблоны без ИИ» и сохраните его здесь.</p>`;
+    : docQuery
+      ? `<p class="hint">По запросу «${escapeHtml(docQuery)}» ничего не нашлось.</p>`
+      : `<div class="empty"><b>Документов пока нет</b>
+          <p>Составьте договор, претензию или акт — и он сохранится здесь,
+          чтобы не искать его потом по перепискам.</p>
+          <a href="tools.html" class="btn small">Составить документ</a></div>`;
 }
 function docView(i) {
   const d = PF.docs()[i];
@@ -597,8 +604,9 @@ const REM = {
   render(d) {
     const box = document.getElementById("dlList");
     if (!this.items.length) {
-      box.innerHTML = `<p class="hint">Пока ничего не запланировано. Добавьте свой срок
-        или выберите готовый из налогового календаря выше.</p>`;
+      box.innerHTML = `<div class="empty"><b>Сроков пока нет</b>
+        <p>Пропущенный платёж по налогам — это блокировка счёта.
+        Добавьте свой срок выше или возьмите готовый из налогового календаря.</p></div>`;
       return;
     }
     const REPEAT_RU = { once: "", monthly: "ежемесячно", quarterly: "ежеквартально", yearly: "ежегодно" };
