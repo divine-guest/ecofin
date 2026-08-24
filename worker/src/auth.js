@@ -39,7 +39,13 @@ export async function currentUser(request, env) {
     `SELECT u.* FROM sessions s JOIN users u ON u.email = s.email
      WHERE s.token = ? AND s.expires_at > ?`
   ).bind(await sha256(raw), now()).first();
-  return row || null;
+  if (!row) return null;
+  /* Роль пересчитывается на каждом запросе, а не берётся из базы.
+     Иначе роль, однажды записанная в строку пользователя, действовала бы
+     сама по себе: убрать почту из OWNER_EMAILS было бы недостаточно,
+     чтобы отобрать права. Источник истины — окружение. */
+  row.role = roleFor(env, row.email, row.role);
+  return row;
 }
 
 async function issueSession(env, email) {
