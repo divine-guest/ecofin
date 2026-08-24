@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=48">
+<link rel="stylesheet" href="css/style.css?v=49">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -186,18 +186,25 @@
 
     <!-- 8. Календарь отчётности 2026 -->
     <div class="tab-panel game-stage" id="calc7">
-      <p style="color:var(--muted);margin-bottom:14px">Ключевые даты налогового календаря на 2026 год. Нажмите «+ в сроки» — событие появится в напоминаниях кабинета.</p>
+      <p style="color:var(--muted);margin-bottom:6px">Ключевые сроки для ИП и ООО на УСН. Нажмите «+ в сроки» — появится напоминание в кабинете с повтором раз в год.</p>
+      <p class="hint" style="margin-bottom:14px">
+        С 2023 года подача и уплата разведены: отчётность сдают до 25 числа,
+        деньги списывают с единого налогового счёта 28 числа. Если дата выпадает
+        на выходной, срок переносится на ближайший рабочий день.
+        Ежемесячно: уведомление по НДФЛ и взносам за работников — 25 числа,
+        уплата — 28 числа. НДС платят тремя равными долями 28 числа каждого месяца квартала.
+      </p>
       <div id="taxCal"></div>
     </div>
   </div>
 </main>
 
-<script src="js/partners.js?v=48"></script>
-<script src="js/rates.js?v=48"></script>
-<script src="js/themes.js?v=48"></script>
-<script src="js/api.js?v=48"></script>
-<script src="js/app.js?v=48"></script>
-<script src="js/ai.js?v=48"></script>
+<script src="js/partners.js?v=49"></script>
+<script src="js/rates.js?v=49"></script>
+<script src="js/themes.js?v=49"></script>
+<script src="js/api.js?v=49"></script>
+<script src="js/app.js?v=49"></script>
+<script src="js/ai.js?v=49"></script>
 <script>
 initPage("calc.html");
 
@@ -409,14 +416,20 @@ function saveInvoice() {
 }
 
 /* --- Календарь отчётности --- */
+/* Даты выверены по НК РФ. В прежней версии было три ошибки: итоговый
+   платёж УСН для ООО стоял на 28 января вместо 28 марта, декларации ИП
+   и ООО были свалены в одну дату, а срок подачи (25-е) путался со сроком
+   уплаты (28-е) — с 2023 года это разные дни из-за единого налогового
+   платежа. */
 const TAX_CAL = [
-  ["28 января", "УСН: итоговый платёж за 2025 (ООО) и НДС за IV кв."],
-  ["2 марта", "НДФЛ с зарплаты за февраль (при выплате) — 28 число каждого месяца"],
-  ["28 апреля", "Декларация УСН за 2025 (ИП) + аванс УСН I кв. + НДС I кв."],
-  ["28 июля", "Авансовый платёж УСН за полугодие + НДС II кв."],
-  ["28 октября", "Авансовый платёж УСН за 9 месяцев + НДС III кв."],
-  ["1 июля", "Взнос ИП 1% с дохода свыше 300 000 ₽"],
-  ["28 декабря", "Фиксированные взносы ИП за себя + НДС IV кв."],
+  ["25 марта", "Декларация по УСН за прошлый год — ООО"],
+  ["28 марта", "Итоговый платёж по УСН за прошлый год — ООО"],
+  ["25 апреля", "Декларация по УСН за прошлый год — ИП"],
+  ["28 апреля", "Итоговый платёж УСН за прошлый год (ИП) и аванс за I квартал"],
+  ["1 июля", "Взносы ИП: 1% с дохода свыше 300 000 ₽ за прошлый год"],
+  ["28 июля", "Авансовый платёж по УСН за полугодие"],
+  ["28 октября", "Авансовый платёж по УСН за 9 месяцев"],
+  ["28 декабря", "Фиксированные страховые взносы ИП за себя за текущий год"],
 ];
 document.getElementById("taxCal").innerHTML = `<table class="cmp-table">` + TAX_CAL.map(([d, t]) => `
   <tr><td style="white-space:nowrap"><b>${d}</b></td><td>${t}</td>
