@@ -57,6 +57,10 @@
   --grad-violet: linear-gradient(135deg, #2dd4bf 0%, #34d399 100%);
   --glass: rgba(13, 36, 32, .72);
   --header-bg: rgba(7, 24, 22, .82);
+  /* Этих трёх не было: тёмная тема тянула их из светлой. --accent в итоге
+     оставался тёмно-бирюзовым и почти сливался с тёмным фоном. */
+  --accent: #2dd4bf;
+  --grad-hero: linear-gradient(155deg, #04120f 0%, #073630 48%, #0a4436 100%);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
