@@ -1277,3 +1277,44 @@ input, select, textarea { border-radius: 10px; }
 .tier-home.best { border-color: var(--primary); border-width: 2px; }
 .tier-home .tier-perks { flex: 1; }
 .tier-home .btn { align-self: flex-start; }
+
+/* ===== Кабинет: вкладки ===== */
+.cab-tabs {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  margin: 0 0 24px; padding-bottom: 0;
+}
+.cab-tab {
+  border: none; background: none; cursor: pointer; font: inherit;
+  font-size: var(--t-sm); font-weight: 600; color: var(--muted);
+  padding: 11px 16px; border-bottom: 2px solid transparent;
+  border-radius: 10px 10px 0 0; transition: color .15s, border-color .15s;
+  min-height: 44px;
+}
+.cab-tab:hover { color: var(--text); }
+.cab-tab.on { color: var(--primary); border-bottom-color: var(--primary); }
+
+.cab-panel { display: none; }
+.cab-panel.on { display: block; }
+
+/* «Что сейчас»: единственный блок с ответом на вопрос, с которым заходят */
+.card.today { border-left: 3px solid var(--primary); margin-bottom: 20px; }
+.today-body { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.today-row {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  font: inherit; font-size: var(--t-sm);
+  padding: 11px 14px; border-radius: 10px; min-height: 44px;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  transition: border-color .15s, background .15s;
+}
+.today-row:hover { border-color: var(--primary); }
+.today-row.warn {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+@media (max-width: 560px) {
+  .cab-tabs { gap: 0; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .cab-tabs::-webkit-scrollbar { display: none; }
+  .cab-tab { padding: 11px 13px; white-space: nowrap; font-size: var(--t-xs); }
+}

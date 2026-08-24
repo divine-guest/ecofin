@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=22">
+<link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body>
 <main class="section">
@@ -33,11 +33,11 @@
   </div>
 </main>
 
-<script src="js/api.js?v=22"></script>
-<script src="js/app.js?v=22"></script>
-<script src="js/ai.js?v=22"></script>
-<script src="js/competencies.js?v=22"></script>
-<script src="js/courses.js?v=22"></script>
+<script src="js/api.js?v=24"></script>
+<script src="js/app.js?v=24"></script>
+<script src="js/ai.js?v=24"></script>
+<script src="js/competencies.js?v=24"></script>
+<script src="js/courses.js?v=24"></script>
 <script>
 initPage("dashboard.html");
 
@@ -214,7 +214,12 @@ function renderCabinet() {
       </div>
     </div>
 
-    <div class="grid cols-4" style="margin-bottom:28px">
+    <div class="card today" data-tab="overview" id="todayCard">
+      <h3>Что сейчас</h3>
+      <div id="todayBody" class="today-body"><span class="hint">Смотрим…</span></div>
+    </div>
+
+    <div class="grid cols-4" data-tab="overview" style="margin-bottom:28px">
       <div class="card"><div class="stat-value">${hist.length}</div><div class="stat-label">действий всего</div></div>
       <div class="card"><div class="stat-value">${COMP.index()}%</div><div class="stat-label">индекс грамотности</div></div>
       <div class="card"><div class="stat-value">${habitDone}</div><div class="stat-label">дней в «Копилке»</div></div>
@@ -222,7 +227,7 @@ function renderCabinet() {
     </div>
 
     ${u.profile ? `
-    <div class="card" style="margin-bottom:28px">
+    <div class="card" style="margin-bottom:28px" data-tab="overview">
       <h3>Рекомендуем для вас</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${recoLinks(u.profile).map(([href, label]) =>
@@ -231,7 +236,7 @@ function renderCabinet() {
     </div>` : ""}
 
     <!-- Копилка: календарь привычек -->
-    <div class="card" style="margin-bottom:28px">
+    <div class="card" style="margin-bottom:28px" data-tab="tasks">
       <div class="cal-header">
         <div>
           <h3 style="margin-bottom:6px">Копилка — «Отложил деньги»</h3>
@@ -258,7 +263,7 @@ function renderCabinet() {
     </div>
 
     <div class="grid cols-2" style="margin-bottom:28px">
-      <div class="card">
+      <div class="card" data-tab="account">
         <h3>Подписка и ИИ</h3>
         <p>Использований ИИ-инструментов осталось: <b>${quota}</b></p>
         ${PF.isPro()
@@ -281,11 +286,11 @@ function renderCabinet() {
             </p>`).join("")}
           </div>` : ""}
         <br><br>
-        <div class="card" id="refCard">
+        <div class="card" id="refCard" data-tab="account">
         <h3 style="margin-bottom:10px">Приглашайте друзей</h3>
         <div id="refBox">Загружаем…</div>
       </div>
-      <div class="card">
+      <div class="card" data-tab="learn">
         <h3>Профиль компетенций</h3>
         <p style="margin-bottom:4px">Индекс грамотности: <b style="font-size:var(--t-lg);color:var(--primary)">${COMP.index()}%</b>
           · ${COMP.level(COMP.index())}</p>
@@ -302,7 +307,7 @@ function renderCabinet() {
     </div>
 
     <!-- Индивидуальный план развития -->
-    <div class="card" style="margin-bottom:28px">
+    <div class="card" style="margin-bottom:28px" data-tab="learn">
       <h3>Индивидуальный план развития</h3>
       <p style="color:var(--muted);font-size:var(--t-sm)">Подобран по вашему профилю. Проходите материалы — компетенции растут автоматически.</p>
       <div class="grid cols-3" style="margin-top:14px">
@@ -327,12 +332,12 @@ function renderCabinet() {
 
     <!-- Документы и сроки -->
     <div class="grid cols-2" style="margin-bottom:28px">
-      <div class="card">
+      <div class="card" data-tab="tasks">
         <h3>Мои документы</h3>
         <p style="color:var(--muted);font-size:var(--t-sm)">Сохранённые шаблоны и генерации. Скачиваются в один клик.</p><br>
         <div id="docsList"></div>
       </div>
-      <div class="card">
+      <div class="card" data-tab="tasks">
         <h3>Сроки и напоминания</h3>
         <p class="hint" style="margin-bottom:12px">
           Напомним заранее — за 3 дня, за день и в сам день. С подпиской Pro
@@ -355,7 +360,7 @@ function renderCabinet() {
     </div>
 
     <div class="grid cols-2">
-      <div class="card">
+      <div class="card" data-tab="assistant">
         <h3>Личный чат с ИИ</h3>
         <p style="color:var(--muted);margin-bottom:12px">Приватная переписка с ИИ-консультантом — без ограничений подписки</p>
         <div class="chat-panel">
@@ -366,7 +371,7 @@ function renderCabinet() {
           </div>
         </div>
       </div>
-      <div class="card">
+      <div class="card" data-tab="account">
         <h3>История действий</h3>
         ${hist.length ? `<div style="max-height:420px;overflow-y:auto">
           ${hist.slice(0, 20).map(h => `<p style="padding:7px 0;border-bottom:1px solid var(--border);font-size:var(--t-sm)">${escapeHtml(h.text)}<br><span style="color:var(--muted);font-size:var(--t-xs)">${new Date(h.date).toLocaleString("ru-RU")}</span></p>`).join("")}
@@ -390,7 +395,134 @@ function renderCabinet() {
   NOTIF.checkDeadlines();
   const nb = document.getElementById("notifBtn");
   if (nb && NOTIF.enabled()) nb.style.display = "none";
+
+  CABINET.layout();
+  CABINET.today();
 }
+
+/* ============ Раскладка кабинета ============
+   Было тринадцать блоков в одну колонку: человек при входе видел стену
+   несвязанных карточек, и ни одна не отвечала на вопрос «что мне сделать
+   сейчас». Разделение по смыслу решает это надёжнее, чем перерисовка.
+
+   Блоки помечены в шаблоне атрибутом data-tab. Сетки, где карточки
+   относятся к разным вкладкам, разбираются поштучно — поэтому личный чат
+   и история действий оказываются в разных разделах. */
+const CABINET = {
+  key: "pf_cab_tab",
+  tabs: [
+    ["overview", "Обзор"],
+    ["tasks", "Дела"],
+    ["learn", "Обучение"],
+    ["assistant", "Помощник"],
+    ["account", "Аккаунт"],
+  ],
+
+  layout() {
+    const content = document.getElementById("content");
+    if (!content || content.querySelector(".cab-tabs")) return;
+
+    const head = content.firstElementChild;   // приветствие и кнопки — вне вкладок
+    const buckets = Object.fromEntries(this.tabs.map(([id]) => [id, []]));
+
+    [...content.children].forEach(el => {
+      if (el === head) return;
+      const own = el.getAttribute("data-tab");
+      if (own && buckets[own]) { buckets[own].push(el); return; }
+
+      const kids = [...el.children].filter(k => k.getAttribute("data-tab"));
+      if (el.classList.contains("grid") && kids.length) {
+        const byTab = {};
+        kids.forEach(k => { const t = k.getAttribute("data-tab"); (byTab[t] = byTab[t] || []).push(k); });
+        Object.entries(byTab).forEach(([tab, cards]) => {
+          const wrap = document.createElement("div");
+          wrap.className = el.className;
+          cards.forEach(c => wrap.appendChild(c));
+          if (buckets[tab]) buckets[tab].push(wrap);
+        });
+        el.remove();
+        return;
+      }
+      buckets.overview.push(el);
+    });
+
+    const bar = document.createElement("div");
+    bar.className = "cab-tabs";
+    bar.setAttribute("role", "tablist");
+    content.insertBefore(bar, head.nextSibling);
+
+    const saved = localStorage.getItem(this.key) || "overview";
+    this.tabs.forEach(([id, label]) => {
+      const panel = document.createElement("div");
+      panel.className = "cab-panel";
+      panel.id = "cab-" + id;
+      buckets[id].forEach(el => panel.appendChild(el));
+      content.appendChild(panel);
+
+      const btn = document.createElement("button");
+      btn.className = "cab-tab";
+      btn.type = "button";
+      btn.setAttribute("role", "tab");
+      btn.textContent = label;
+      btn.dataset.tab = id;
+      btn.onclick = () => this.show(id);
+      bar.appendChild(btn);
+    });
+    this.show(buckets[saved] && buckets[saved].length ? saved : "overview");
+  },
+
+  show(id) {
+    localStorage.setItem(this.key, id);
+    document.querySelectorAll(".cab-panel").forEach(p => p.classList.toggle("on", p.id === "cab-" + id));
+    document.querySelectorAll(".cab-tab").forEach(b => {
+      const on = b.dataset.tab === id;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+  },
+
+  /* «Что сейчас» — единственный блок, отвечающий на вопрос, с которым
+     человек заходит в кабинет. Пусто — тоже полезный ответ. */
+  async today() {
+    const box = document.getElementById("todayBody");
+    if (!box) return;
+    const items = [];
+
+    try {
+      const r = await API.reminders.list();
+      r.reminders.filter(x => x.daysLeft <= 7).slice(0, 3).forEach(x => items.push({
+        kind: x.daysLeft <= 1 ? "warn" : "info",
+        text: `${x.title} — ${x.daysLeft < 0 ? "просрочено" : x.daysLeft === 0 ? "сегодня" : x.daysLeft === 1 ? "завтра" : "через " + x.daysLeft + " дн."}`,
+        go: () => CABINET.show("tasks"),
+      }));
+    } catch {}
+
+    if (typeof NOTIFY !== "undefined" && NOTIFY.unread) {
+      items.push({ kind: "info", text: `Непрочитанных уведомлений: ${NOTIFY.unread}`, go: () => NOTIFY.open() });
+    }
+
+    const q = PF.quota;
+    if (q && q.tool.limit !== null && q.tool.left === 0) {
+      items.push({ kind: "warn", text: "Пробный запуск инструментов израсходован", go: () => PAY.open() });
+    } else if (q && q.ai.limit < 300 && q.ai.left <= 1) {
+      items.push({ kind: "info", text: `Вопросов ИИ осталось сегодня: ${q.ai.left}`, go: () => PAY.open() });
+    }
+
+    if (!items.length) {
+      box.innerHTML = `<p class="hint">Ничего срочного: ближайших сроков на неделю нет.</p>`;
+      return;
+    }
+    box.innerHTML = "";
+    items.slice(0, 4).forEach(it => {
+      const row = document.createElement("button");
+      row.className = "today-row " + it.kind;
+      row.type = "button";
+      row.textContent = it.text;
+      row.onclick = it.go;
+      box.appendChild(row);
+    });
+  },
+};
 
 /* Рисуем сразу по кэшу — чтобы не мигало, — и перерисовываем, когда сервер
    подтвердит роль, план и остатки. Подделанный кэш живёт до этого момента
