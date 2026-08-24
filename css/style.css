@@ -117,10 +117,13 @@ img { max-width: 100%; }
   display: flex; align-items: center; gap: 9px; letter-spacing: .3px;
 }
 .logo:hover { text-decoration: none; }
+/* Знак весов — вектор, не эмодзи: наследует цвет темы, одинаков
+   во всех системах и не зависит от того, как ОС рисует ⚖. */
 .logo .logo-mark {
-  background: var(--grad-gold);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 2px 6px rgba(201, 162, 39, .4));
+  width: 1.15em; height: 1.15em;
+  flex: 0 0 auto;
+  color: var(--primary);
+  vertical-align: -0.18em;
 }
 .logo b {
   background: var(--grad-primary);

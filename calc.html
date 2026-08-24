@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=45">
+<link rel="stylesheet" href="css/style.css?v=46">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -182,22 +182,22 @@
         <button class="btn secondary no-print" onclick="saveInvoice()">Сохранить в мои документы</button>
       </div>
       <div id="invoicePanel"><div id="invoicePaper"></div></div>
+    </div>
 
     <!-- 8. Календарь отчётности 2026 -->
     <div class="tab-panel game-stage" id="calc7">
       <p style="color:var(--muted);margin-bottom:14px">Ключевые даты налогового календаря на 2026 год. Нажмите «+ в сроки» — событие появится в напоминаниях кабинета.</p>
       <div id="taxCal"></div>
     </div>
-    </div>
   </div>
 </main>
 
-<script src="js/partners.js?v=45"></script>
-<script src="js/rates.js?v=45"></script>
-<script src="js/themes.js?v=45"></script>
-<script src="js/api.js?v=45"></script>
-<script src="js/app.js?v=45"></script>
-<script src="js/ai.js?v=45"></script>
+<script src="js/partners.js?v=46"></script>
+<script src="js/rates.js?v=46"></script>
+<script src="js/themes.js?v=46"></script>
+<script src="js/api.js?v=46"></script>
+<script src="js/app.js?v=46"></script>
+<script src="js/ai.js?v=46"></script>
 <script>
 initPage("calc.html");
 
@@ -421,16 +421,43 @@ const TAX_CAL = [
 document.getElementById("taxCal").innerHTML = `<table class="cmp-table">` + TAX_CAL.map(([d, t]) => `
   <tr><td style="white-space:nowrap"><b>${d}</b></td><td>${t}</td>
   <td style="text-align:right"><button class="btn small secondary" onclick="addTaxDeadline('${d}','${t.slice(0, 40)}')">+ в сроки</button></td></tr>`).join("") + `</table>`;
-function addTaxDeadline(day, title) {
-  const p = day.split(" ");
-  const months = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
-  const d = new Date(new Date().getFullYear(), months.indexOf(p[1]), +p[0]);
-  const key = "pf_deadlines_" + (PF.user() ? PF.user().email : "guest");
-  const list = JSON.parse(localStorage.getItem(key) || "[]");
-  if (list.some(x => x.title.startsWith(title.slice(0, 15)))) return toast("Уже добавлено");
-  localStorage.setItem(key, JSON.stringify([...list, { title, date: d.toISOString().slice(0, 10) }]));
-  PF.logAction("Из календаря добавлен срок: " + title.slice(0, 30));
-  toast("Добавлено в сроки кабинета");
+/* Раньше срок писался в localStorage старой системы, которую больше
+   никто не читает: кнопка «срабатывала», а в кабинете ничего не появлялось.
+   Теперь создаётся настоящее напоминание на сервере — с повтором раз в год,
+   потому что налоговые даты возвращаются каждый год. */
+async function addTaxDeadline(day, title) {
+  if (!PF.user()) {
+    toast("Войдите, чтобы сохранить срок");
+    return setTimeout(() => (location.href = "auth.html"), 1200);
+  }
+  const MONTHS = ["января","февраля","марта","апреля","мая","июня",
+                  "июля","августа","сентября","октября","ноября","декабря"];
+  const [dayNum, monthName] = day.split(" ");
+  const month = MONTHS.indexOf(monthName);
+  if (month < 0) return toast("Не разобрал дату");
+
+  /* Если дата в этом году уже прошла — ставим на следующий,
+     иначе напоминание пришло бы «просрочено» сразу после добавления. */
+  const today = new Date();
+  let year = today.getFullYear();
+  const pad = n => String(n).padStart(2, "0");
+  let due = `${year}-${pad(month + 1)}-${pad(+dayNum)}`;
+  if (due < today.toISOString().slice(0, 10)) {
+    due = `${year + 1}-${pad(month + 1)}-${pad(+dayNum)}`;
+  }
+
+  try {
+    await API.reminders.create({
+      title, due, repeat: "yearly",
+      channel: PF.isPro() ? "both" : "site",
+      note: "Из календаря отчётности",
+    });
+    trackEvent("calendar_deadline");
+    toast("Добавлено в сроки — напомним заранее");
+  } catch (e) {
+    if (e.isPaywall) showPaywall(e.message);
+    else toast(e.message, "error");
+  }
 }
 calcTax(); calcPenalty(); calcVacation(); calcSick(); calcDiv(); calcDeduction();
 renderPosInputs(); renderInvoice();

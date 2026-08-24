@@ -153,6 +153,19 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/* Знак весов рисуем вектором, а не эмодзи ⚖.
+   Эмодзи — цветной шрифт: он выглядит по-разному в каждой системе,
+   а под градиентной заливкой через background-clip вовсе превращался
+   в бесформенное пятно. Вектор наследует цвет темы и одинаков везде. */
+const SCALES_SVG = `<svg class="logo-mark" viewBox="0 0 24 24" aria-hidden="true"
+  fill="none" stroke="currentColor" stroke-width="1.5"
+  stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="3.1" r="1.3" fill="currentColor" stroke="none"/>
+  <path d="M12 4.6v14.6M8.6 19.2h6.8M4.5 7.4h15"/>
+  <path d="M4.5 7.4 2 12.4M4.5 7.4 7 12.4M19.5 7.4 17 12.4M19.5 7.4 22 12.4"/>
+  <path d="M2 12.4a2.5 2.5 0 0 0 5 0M17 12.4a2.5 2.5 0 0 0 5 0"/>
+</svg>`;
+
 /* ============ Шапка (вставляется на каждую страницу) ============ */
 function renderHeader(active) {
   const u = PF.user();
@@ -204,7 +217,7 @@ function renderHeader(active) {
   header.className = "site-header";
   header.innerHTML = `
     <div class="container nav">
-      <a href="index.html" class="logo"><span class="logo-mark">⚖</span>Право<b>Фин</b></a>
+      <a href="index.html" class="logo">${SCALES_SVG}Право<b>Фин</b></a>
       <button class="nav-burger" onclick="this.closest('.site-header').classList.toggle('menu-open')" aria-label="Меню">Меню</button>
       <nav class="nav-links">${links}</nav>
       ${u ? `<button class="theme-toggle notif-btn" onclick="NOTIFY.open()" title="Уведомления" aria-label="Уведомления">Уведомления</button>` : ""}
