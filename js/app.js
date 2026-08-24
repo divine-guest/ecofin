@@ -82,6 +82,9 @@ function logAction() {}
 function applyTheme(t) {
   document.documentElement.setAttribute("data-theme", t);
   localStorage.setItem(PF.themeKey, t);
+  /* Персональный цвет задаётся отдельными оттенками для светлой и тёмной.
+     Без пересчёта после переключения остаётся цвет прошлой темы. */
+  if (typeof THEMING !== "undefined") THEMING.restore();
   document.querySelectorAll(".theme-toggle").forEach(b => (b.textContent = t === "dark" ? "Тёмная тема" : "Светлая тема"));
 }
 function initTheme() {
@@ -458,7 +461,7 @@ const THEMING = {
   apply(preset) {
     const r = document.documentElement;
     if (!preset || !preset.accent) {
-      r.style.removeProperty("--accent-user");
+      for (const v of ["--primary", "--primary-2", "--accent", "--grad-primary"]) r.style.removeProperty(v);
       r.removeAttribute("data-accent");
       return;
     }
@@ -476,9 +479,11 @@ const THEMING = {
   restore() {
     try { this.apply(JSON.parse(localStorage.getItem(this.key) || "null")); } catch {}
   },
-  remember(preset) {
-    if (preset && preset.accent) localStorage.setItem(this.key, JSON.stringify(preset));
-    else localStorage.removeItem(this.key);
+  /* id === "" значит «как у сервиса»: ничего не храним и снимаем
+     переопределения, иначе инлайновые цвета перебьют смену темы. */
+  remember(id, preset) {
+    if (id && preset && preset.accent) localStorage.setItem(this.key, JSON.stringify(preset));
+    else { localStorage.removeItem(this.key); preset = null; }
     this.apply(preset);
   },
 };
@@ -697,7 +702,7 @@ const SETTINGS = {
   async pickAccent(id) {
     try {
       const r = await API.themes.set(id);
-      THEMING.remember(r.preset);
+      THEMING.remember(id, r.preset);
       toast(id ? "Оформление применено" : "Вернули оформление сервиса");
       this.loadThemes();
     } catch (e) {
@@ -1153,6 +1158,9 @@ async function refreshSession() {
     const d = await API.me();
     PF.actions = d.actions || [];
     PF.payments = d.payments || [];
+    /* Оформление живёт в аккаунте: на новом устройстве оно должно
+       примениться само, без похода в настройки. */
+    if (d.user && !d.user.themeAccent) THEMING.remember("", null);
     await PF.refreshQuota();
     if (JSON.stringify(d.user) !== before) window.dispatchEvent(new CustomEvent("pf:userchanged"));
     return d.user;
