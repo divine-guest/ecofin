@@ -105,6 +105,63 @@ ok(/Базовый/.test(over.data.error || ""), "в отказе назван �
 const after = await sql(`SELECT COUNT(*) AS n FROM ai_jobs WHERE email = '${em}'`);
 ok(Number(after[0].n) === 1 + left, `задач создано ровно по лимиту: ${after[0].n}`);
 
+console.log("\n— Подвисшая задача оживает —");
+/* Имитируем ровно то, что случилось в живом браузере: задача осталась
+   в pending, а попытка о себе не отчиталась. Опрос должен запустить
+   работу заново, а не оставить человека ждать вечно. */
+{
+  const q1 = await call("/api/quota", { token: t });
+  if (q1.data.ai.left === 0) {
+    /* Лимит выбран предыдущим блоком — заводим отдельный аккаунт. */
+    var rv = await call("/api/auth/register", {
+      method: "POST",
+      body: { name: "Оживание", email: `rev${st}@test.ru`, password: "parol12345" },
+    });
+  }
+  const rt = rv ? rv.data.token : t;
+  const started = await call("/api/ai/ask", {
+    method: "POST", token: rt,
+    body: { kind: "chat", prompt: "Что такое ЕНС?", maxTokens: 200 },
+  });
+  const rid = started.data.id;
+
+  /* Возвращаем задачу в состояние «попытка молчит»: аренды нет. */
+  await sql(`UPDATE ai_jobs SET status='pending', answer=NULL, error=NULL,
+             claimed_at=NULL, tries=0 WHERE id='${rid}'`);
+  const frozen = await sql(`SELECT status, claimed_at FROM ai_jobs WHERE id='${rid}'`);
+  ok(frozen[0].status === "pending" && frozen[0].claimed_at === null,
+     "задача приведена в подвисшее состояние");
+
+  let revived = null;
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    const s2 = await call("/api/ai/job?id=" + rid, { token: rt });
+    if (s2.data.job && s2.data.job.status !== "pending") { revived = s2.data.job; break; }
+  }
+  ok(revived !== null, "опрос перезапустил подвисшую задачу");
+  ok(revived?.status === "done", `задача доведена до ответа: ${revived?.status}`,
+     revived?.error || "");
+
+  const tries = await sql(`SELECT tries FROM ai_jobs WHERE id='${rid}'`);
+  ok(Number(tries[0].tries) >= 1, `попытка засчитана: ${tries[0].tries}`);
+}
+
+console.log("\n— Безнадёжная задача закрывается ошибкой —");
+/* После исчерпания попыток человек должен увидеть сообщение,
+   а не бесконечное «думаю». */
+{
+  const rows = await sql(`SELECT id FROM ai_jobs WHERE email = '${em}' LIMIT 1`);
+  if (rows.length) {
+    const did = rows[0].id;
+    await sql(`UPDATE ai_jobs SET status='pending', answer=NULL, error=NULL,
+               claimed_at=NULL, tries=9 WHERE id='${did}'`);
+    const r = await call("/api/ai/job?id=" + did, { token: t });
+    ok(r.data.job.status === "error", `статус: ${r.data.job.status}`);
+    ok((r.data.job.error || "").length > 10, "человеку показано понятное сообщение",
+       r.data.job.error);
+  }
+}
+
 console.log("\n— Пустой вопрос —");
 const empty = await call("/api/ai/ask", {
   method: "POST", token: t, body: { kind: "chat", prompt: "   " },
