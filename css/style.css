@@ -1462,3 +1462,26 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 
 /* Кнопки шапки не должны сжиматься: сжимается меню. */
 .header-pill, .nav .btn.small { flex: none; }
+
+
+/* ===== Таблица в результате расчёта =====
+   Разбивка важнее итога: человек должен видеть, из чего сложилась
+   сумма, иначе он ей не поверит и пойдёт пересчитывать вручную. */
+.calc-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: var(--t-sm); }
+.calc-table td { padding: 7px 0; border-bottom: 1px solid var(--border); }
+.calc-table td:last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.calc-table tr:last-child td { border-bottom: none; }
+
+
+/* ===== Ссылки на официальные реестры =====
+   Сведения о контрагенте мы не выдумываем: ведём туда, где они
+   достоверны и бесплатны. */
+.check-links { margin: 14px 0 18px; display: flex; flex-direction: column; gap: 8px; }
+.check-link {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 13px; border: 1px solid var(--border); border-radius: 10px;
+  text-decoration: none; color: var(--text); transition: border-color .2s;
+}
+.check-link:hover { border-color: var(--primary); text-decoration: none; }
+.check-link b { font-size: var(--t-sm); }
+.check-link span { font-size: var(--t-xs); color: var(--muted); }

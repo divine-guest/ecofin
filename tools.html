@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=55">
+<link rel="stylesheet" href="css/style.css?v=56">
 </head>
 <body>
 <main class="section tint-green">
@@ -34,9 +34,12 @@
     <div class="tabs">
       <button class="tab active" onclick="switchTool(0,this)">Генератор документов</button>
       <button class="tab" onclick="switchTool(1,this)">Анализ договоров</button>
-      <button class="tab" onclick="switchTool(2,this)">Налоговый помощник</button>
-      <button class="tab" onclick="switchTool(3,this)">Генератор чек-листов</button>
-      <button class="tab" onclick="switchTool(4,this)">Шаблоны без ИИ</button>
+      <button class="tab" onclick="switchTool(2,this)">Ответ на документ</button>
+      <button class="tab" onclick="switchTool(3,this)">Объяснить просто</button>
+      <button class="tab" onclick="switchTool(4,this)">Проверить контрагента</button>
+      <button class="tab" onclick="switchTool(5,this)">Налоговый помощник</button>
+      <button class="tab" onclick="switchTool(6,this)">Чек-листы</button>
+      <button class="tab" onclick="switchTool(7,this)">Шаблоны без ИИ</button>
     </div>
 
     <!-- Генератор документов -->
@@ -62,7 +65,6 @@
       <div class="ai-result" id="docResult"></div>
     </div>
 
-    <!-- Анализ договоров -->
     <div class="tab-panel game-stage" id="tool1">
       <div class="form-group">
         <label>Файл или фотография документа</label>
@@ -87,7 +89,91 @@
       <div class="ai-result" id="contractResult"></div>
     </div>
 
-    <!-- Налоговый помощник -->
+    <div class="tab-panel game-stage" id="toolReply">
+      <p style="color:var(--muted);margin-bottom:14px">
+        Пришла претензия, требование налоговой или иск — вставьте текст
+        и получите разбор: чем это грозит, какие сроки и что ответить.
+      </p>
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>Что пришло</label>
+          <select id="replyKind">
+            <option>Претензия от контрагента</option>
+            <option>Требование налоговой</option>
+            <option>Исковое заявление</option>
+            <option>Претензия от потребителя</option>
+            <option>Требование банка</option>
+            <option>Уведомление о расторжении договора</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ваша позиция</label>
+          <select id="replyStance">
+            <option>Не согласен полностью</option>
+            <option>Согласен частично</option>
+            <option>Согласен, нужна рассрочка</option>
+            <option>Пока не решил — нужен разбор</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Текст документа</label>
+        <textarea id="replyText" rows="9" placeholder="Вставьте текст того, что вам прислали…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Обстоятельства с вашей стороны (необязательно)</label>
+        <input type="text" id="replyFacts" placeholder="Например: работы сданы по акту 12.03, оплаты не было">
+      </div>
+      <button class="btn" onclick="genReply()">Разобрать и составить ответ</button>
+      <div class="ai-result" id="replyResult"></div>
+    </div>
+
+    <div class="tab-panel game-stage" id="toolPlain">
+      <p style="color:var(--muted);margin-bottom:14px">
+        Договор, письмо из налоговой, статья закона — вставьте казённый текст
+        и получите объяснение обычными словами: что это, чем грозит, что делать.
+      </p>
+      <div class="form-group">
+        <label>Как объяснить</label>
+        <select id="plainLevel">
+          <option value="simple">Совсем просто — как будто объясняют впервые</option>
+          <option value="business">По-деловому — коротко и по существу</option>
+          <option value="risks">Только риски и сроки — что может пойти не так</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Текст</label>
+        <textarea id="plainText" rows="10" placeholder="Вставьте непонятный текст…"></textarea>
+      </div>
+      <button class="btn" onclick="genPlain()">Объяснить</button>
+      <div class="ai-result" id="plainResult"></div>
+    </div>
+
+    <div class="tab-panel game-stage" id="toolCp">
+      <p style="color:var(--muted);margin-bottom:14px">
+        Порядок проверки перед сделкой и прямые ссылки на официальные реестры —
+        всё смотрится бесплатно. Сведения из реестров мы не выдумываем: показываем,
+        где и что искать.
+      </p>
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>ИНН контрагента</label>
+          <input type="text" id="cpInn" placeholder="7701234567" oninput="renderInnLinks()">
+        </div>
+        <div class="form-group">
+          <label>Название (необязательно)</label>
+          <input type="text" id="cpName" placeholder="ООО «Ромашка»">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Что за сделка</label>
+        <input type="text" id="cpDeal" placeholder="Например: поставка на 2 млн с отсрочкой 30 дней">
+      </div>
+      <div id="innLinks" class="check-links"></div>
+      <button class="btn" onclick="genCounterparty()">Собрать план проверки</button>
+      <div class="ai-result" id="cpResult"></div>
+    </div>
+
     <div class="tab-panel game-stage" id="tool2">
       <div class="grid cols-2">
         <div class="form-group">
@@ -109,7 +195,6 @@
       <div class="ai-result" id="taxResult"></div>
     </div>
 
-    <!-- Чек-листы -->
     <div class="tab-panel game-stage" id="tool3">
       <div class="form-group">
         <label>Тема чек-листа</label>
@@ -130,7 +215,6 @@
       <div class="ai-result" id="clResult"></div>
     </div>
 
-    <!-- Шаблоны без ИИ -->
     <div class="tab-panel game-stage" id="tool4">
       <p style="color:var(--muted);margin-bottom:16px">
         Готовые формы по российскому праву: заполните поля — документ составится автоматически.
@@ -150,13 +234,13 @@
   <div class="container"><div id="partnersTools"></div></div>
 </main>
 
-<script src="js/themes.js?v=55"></script>
-<script src="js/api.js?v=55"></script>
-<script src="js/app.js?v=55"></script>
-<script src="js/ai.js?v=55"></script>
-<script src="js/templates.js?v=55"></script>
-<script src="js/docscan.js?v=55"></script>
-<script src="js/partners.js?v=55"></script>
+<script src="js/themes.js?v=56"></script>
+<script src="js/api.js?v=56"></script>
+<script src="js/app.js?v=56"></script>
+<script src="js/ai.js?v=56"></script>
+<script src="js/templates.js?v=56"></script>
+<script src="js/docscan.js?v=56"></script>
+<script src="js/partners.js?v=56"></script>
 <script>
 initPage("tools.html");
 
@@ -276,13 +360,16 @@ async function runAI(prompt, offlineFn, resultId, action, system) {
   }
 
   const el = document.getElementById(resultId);
-  el.textContent = "⏳ Генерация…";
+  el.textContent = "Работаю над ответом. Можно уйти на другую страницу — результат не пропадёт.";
   el.classList.add("show");
 
   try {
-    const res = await API.ai(prompt, { kind: "tool", system, maxTokens: 3000 });
-    PF.quota = res.quota || PF.quota;
-    showResult(resultId, res.text);
+    /* Через очередь на сервере: прямой вызов обрывался, стоило уйти
+       со страницы, и работа пропадала вместе с потраченным лимитом. */
+    const res = await API.aiJobs.ask(action || prompt.slice(0, 120),
+      { kind: "tool", context: prompt, system, maxTokens: 3000 });
+    TOOLJOBS.remember(res.id, resultId, action);
+    TOOLJOBS.watch();
     trackEvent("tool_use");
   } catch (e) {
     if (e.isPaywall) {
@@ -450,6 +537,173 @@ function saveTemplate() {
   if (!lastTemplateDoc) return;
   PF.saveDoc(lastTemplateDoc.title, lastTemplateDoc.content);
   toast("Документ сохранён в кабинете");
+}
+
+/* ============ Ожидание результатов инструментов ============
+   Результат считает сервер. Браузер помнит только номера задач, поэтому
+   переход между разделами больше ничего не обрывает. */
+const TOOLJOBS = {
+  timer: null,
+  key: "pf_tool_jobs",
+
+  all() {
+    try { return JSON.parse(localStorage.getItem(this.key) || "[]"); }
+    catch { return []; }
+  },
+  save(list) { localStorage.setItem(this.key, JSON.stringify(list.slice(-6))); },
+  remember(id, resultId, action) {
+    if (id) this.save([...this.all(), { id, resultId, action, at: Date.now() }]);
+  },
+  forget(id) { this.save(this.all().filter(x => x.id !== id)); },
+
+  async tick() {
+    const jobs = this.all();
+    if (!jobs.length) { this.stop(); return; }
+
+    for (const j of jobs) {
+      const el = document.getElementById(j.resultId);
+      let d;
+      try { d = await API.aiJobs.status(j.id); }
+      catch { this.forget(j.id); continue; }
+
+      if (!d.job || d.job.status === "pending") {
+        if (el) {
+          const sec = Math.round((Date.now() - j.at) / 1000);
+          el.classList.add("show");
+          el.textContent = sec < 40
+            ? `Работаю над ответом · ${sec} с. Можно уйти на другую страницу — результат не пропадёт.`
+            : `Ответ подробный, поэтому дольше обычного · ${sec} с.`;
+        }
+        continue;
+      }
+
+      const text = d.job.status === "done"
+        ? d.job.answer
+        : (d.job.error || "Не получилось получить ответ. Попробуйте ещё раз.");
+      if (el) showResult(j.resultId, text);
+      this.forget(j.id);
+      refreshSession();
+    }
+    if (!this.all().length) this.stop();
+  },
+
+  watch() {
+    if (this.timer) return;
+    this.tick();
+    this.timer = setInterval(() => this.tick(), 2500);
+  },
+  stop() { clearInterval(this.timer); this.timer = null; },
+};
+/* Возвращаемся на страницу — подхватываем то, что считалось без нас. */
+if (TOOLJOBS.all().length) TOOLJOBS.watch();
+
+/* --- Ответ на присланный документ --- */
+function genReply() {
+  const kind = document.getElementById("replyKind").value;
+  const stance = document.getElementById("replyStance").value;
+  const text = document.getElementById("replyText").value.trim();
+  const facts = document.getElementById("replyFacts").value.trim();
+
+  if (text.length < 60) {
+    return toast("Вставьте текст документа — по паре строк разобрать не получится", "error");
+  }
+
+  return runAI(
+    `Разбери документ и составь ответ.\n\nВид документа: ${kind}.\n` +
+    `Позиция получателя: ${stance}.\n` +
+    (facts ? `Обстоятельства со стороны получателя: ${facts}.\n` : "") +
+    `\nТЕКСТ ДОКУМЕНТА:\n${text}`,
+    null, "replyResult", "Ответ на документ: " + kind,
+    `Ты — юрист, который готовит ответ на входящий документ по российскому праву.
+Структура ответа строго такая:
+1. ЧТО ЭТО. Одним абзацем: что за документ и чего от вас хотят.
+2. СРОКИ. Конкретно: сколько дней на ответ, с какой даты считать, что будет при пропуске.
+3. НАСКОЛЬКО ОБОСНОВАНО. По пунктам: какие требования законны, какие спорны, каких доказательств не хватает второй стороне.
+4. ЧЕМ ГРОЗИТ. Реальные последствия и примерные суммы.
+5. ЗАГОТОВКА ОТВЕТА. Готовый текст письма, который можно отправить после правки: шапка, суть, правовое обоснование со ссылками на статьи, требования, дата и подпись.
+6. ЧТО ПРИЛОЖИТЬ. Список документов.
+Ссылайся на конкретные статьи ГК РФ, НК РФ, ТК РФ, ЗоЗПП. Пиши по-русски, без англицизмов. Если чего-то в тексте нет — прямо скажи, что это нужно уточнить.`
+  );
+}
+
+/* --- Объяснить простыми словами --- */
+function genPlain() {
+  const level = document.getElementById("plainLevel").value;
+  const text = document.getElementById("plainText").value.trim();
+  if (text.length < 40) return toast("Вставьте текст, который нужно объяснить", "error");
+
+  const how = {
+    simple: `Объясняй так, как объясняют человеку без юридического образования: короткими предложениями, без терминов. Если термин необходим — сразу поясняй его в скобках простыми словами. Приводи бытовые примеры.`,
+    business: `Объясняй по-деловому: коротко, по существу, без воды. Владелец бизнеса читает это между делами.`,
+    risks: `Сосредоточься только на рисках и сроках: что может пойти не так, какие суммы на кону, к каким датам нужно успеть. Остальное опусти.`,
+  }[level];
+
+  return runAI(
+    `Объясни этот текст.\n\nТЕКСТ:\n${text}`,
+    null, "plainResult", "Объяснение документа",
+    `Ты объясняешь официальные российские документы обычным людям.
+${how}
+Структура:
+1. ЕСЛИ КОРОТКО — два-три предложения о сути.
+2. ЧТО ЭТО ЗНАЧИТ ДЛЯ ВАС — по пунктам, чем это оборачивается на практике.
+3. НА ЧТО ОБРАТИТЬ ВНИМАНИЕ — опасные места, невыгодные условия, скрытые обязанности.
+4. ЧТО ДЕЛАТЬ — конкретные шаги по порядку.
+Никаких англицизмов и канцелярита. Если в тексте есть срок или сумма — обязательно назови их отдельно.`
+  );
+}
+
+/* --- Проверка контрагента ---
+   Реестровые сведения не выдумываем: ИИ даёт порядок проверки и на что
+   смотреть, а ссылки ведут в официальные источники, где всё видно
+   бесплатно и достоверно. */
+const INN_SOURCES = [
+  ["Выписка из ЕГРЮЛ / ЕГРИП", "https://egrul.nalog.ru/", "кто директор, учредители, адрес, дата регистрации"],
+  ["Прозрачный бизнес (ФНС)", "https://pb.nalog.ru/", "долги по налогам, недостоверные сведения, дисквалификация"],
+  ["Картотека арбитражных дел", "https://kad.arbitr.ru/", "судится ли и с кем, кто чаще проигрывает"],
+  ["Банк данных ФССП", "https://fssp.gov.ru/iss/ip", "исполнительные производства — есть ли долги ко взысканию"],
+  ["Федресурс", "https://fedresurs.ru/", "банкротство, залоги, существенные факты"],
+  ["Реестр недобросовестных поставщиков", "https://zakupki.gov.ru/epz/dishonestsupplier/search/results.html", "срывал ли госконтракты"],
+];
+
+function renderInnLinks() {
+  const inn = (document.getElementById("cpInn").value || "").replace(/\D/g, "");
+  const box = document.getElementById("innLinks");
+  if (!box) return;
+
+  const bad = inn.length && inn.length !== 10 && inn.length !== 12;
+  box.innerHTML = `
+    ${bad ? `<p class="hint" style="color:var(--danger)">ИНН — это 10 цифр у организации или 12 у ИП. Сейчас ${inn.length}.</p>` : ""}
+    <p class="hint" style="margin-bottom:8px">Официальные источники — проверка бесплатна:</p>
+    ${INN_SOURCES.map(([name, url, what]) => `
+      <a class="check-link" href="${url}" target="_blank" rel="noopener">
+        <b>${name}</b><span>${what}</span>
+      </a>`).join("")}`;
+}
+renderInnLinks();
+
+function genCounterparty() {
+  const inn = (document.getElementById("cpInn").value || "").trim();
+  const name = (document.getElementById("cpName").value || "").trim();
+  const deal = (document.getElementById("cpDeal").value || "").trim();
+  if (!deal) return toast("Опишите сделку — от неё зависит, что проверять", "error");
+
+  return runAI(
+    `Составь план проверки контрагента перед сделкой.\n` +
+    (name ? `Контрагент: ${name}.\n` : "") +
+    (inn ? `ИНН: ${inn}.\n` : "") +
+    `Сделка: ${deal}.`,
+    null, "cpResult", "Проверка контрагента",
+    `Ты — юрист по договорной работе. Составь план проверки контрагента под конкретную сделку.
+ВАЖНО: не выдумывай никаких сведений о конкретной организации — ты их не знаешь. Пиши, ЧТО проверить и КАКОЙ результат должен насторожить.
+Структура:
+1. ЧЕМ РИСКУЕТЕ В ЭТОЙ СДЕЛКЕ — исходя из суммы, отсрочки и предмета.
+2. ЧТО ПРОВЕРИТЬ ОБЯЗАТЕЛЬНО — по пунктам, у каждого: где смотреть и какой признак опасен.
+3. КРАСНЫЕ ФЛАГИ — при каких находках от сделки лучше отказаться.
+4. ЧТО ЗАПРОСИТЬ У КОНТРАГЕНТА — список документов.
+5. ЧТО ЗАЩИТИТЬ В ДОГОВОРЕ — конкретные условия под этот риск: аванс, обеспечение, неустойка, порядок приёмки, подсудность.
+6. ДОЛЖНАЯ ОСМОТРИТЕЛЬНОСТЬ — что сохранить, чтобы налоговая не сняла расходы и вычеты.
+Ссылайся на статьи ГК РФ и НК РФ. Пиши по-русски, конкретно, без общих слов.`
+  );
 }
 </script>
 </body>

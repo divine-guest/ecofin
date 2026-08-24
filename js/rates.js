@@ -71,6 +71,68 @@ const RATES = {
 
   vatRate: 0.20,
 
+  /* --- Взносы работодателя за сотрудника, НК РФ ст. 425, 427 ---
+     Единый тариф применяется к выплатам нарастающим итогом: до
+     предельной базы — полная ставка, сверх неё — пониженная.
+     Малый и средний бизнес платит по льготной схеме: с части
+     в пределах МРОТ — полный тариф, со всего, что выше, — 15%. */
+  payrollContrib: {
+    base: 2759000,        // предельная база текущего года
+    rate: 0.30,           // единый тариф до базы
+    rateOverBase: 0.151,  // сверх базы
+    smallRateOverMrot: 0.15, // МСП: с превышения МРОТ
+    injuryMin: 0.002,     // травматизм: I класс риска
+    injuryMax: 0.085,     // травматизм: XXXII класс риска
+  },
+
+  /* --- Стандартные вычеты на детей, НК РФ ст. 218 ---
+     Применяются ежемесячно, пока доход с начала года не превысит предел. */
+  childDeduction: {
+    first: 1400,
+    second: 2800,
+    thirdPlus: 6000,
+    disabledChild: 12000,   // родителю или усыновителю
+    incomeLimit: 450000,    // предел дохода нарастающим итогом
+  },
+
+  /* --- НДС: ставки, гл. 21 НК РФ ---
+     5% и 7% — пониженные ставки для УСН при доходе выше порога
+     освобождения; при них нельзя принимать входной НДС к вычету. */
+  vatRates: [
+    { value: 0.20, label: "20% — основная" },
+    { value: 0.10, label: "10% — продукты, детские товары, лекарства, книги" },
+    { value: 0.07, label: "7% — УСН, доход свыше 250 млн" },
+    { value: 0.05, label: "5% — УСН, доход от 60 до 250 млн" },
+    { value: 0, label: "0% — экспорт и международные перевозки" },
+  ],
+
+  /* --- Госпошлина в суд общей юрисдикции по имущественным искам,
+     НК РФ ст. 333.19 (редакция с 09.09.2024) ---
+     Ступени: до какой цены иска, фиксированная часть, процент
+     с суммы сверх нижней границы ступени. */
+  courtFee: {
+    steps: [
+      { upTo: 100000,    base: 4000,   rate: 0,      from: 0 },
+      { upTo: 300000,    base: 4000,   rate: 0.03,   from: 100000 },
+      { upTo: 500000,    base: 10000,  rate: 0.025,  from: 300000 },
+      { upTo: 1000000,   base: 15000,  rate: 0.02,   from: 500000 },
+      { upTo: 3000000,   base: 25000,  rate: 0.01,   from: 1000000 },
+      { upTo: 8000000,   base: 45000,  rate: 0.007,  from: 3000000 },
+      { upTo: 24000000,  base: 80000,  rate: 0.0035, from: 8000000 },
+      { upTo: 50000000,  base: 136000, rate: 0.003,  from: 24000000 },
+      { upTo: 100000000, base: 214000, rate: 0.002,  from: 50000000 },
+      { upTo: Infinity,  base: 314000, rate: 0.0015, from: 100000000 },
+    ],
+    cap: 900000,          // выше этой суммы пошлина не растёт
+    nonProperty: 3000,    // неимущественный иск, физлицо
+    nonPropertyOrg: 20000, // неимущественный иск, организация
+  },
+
+  /* Среднемесячное число календарных дней — ТК РФ ст. 139.
+     Используется и в отпускных, и в компенсации при увольнении. */
+  avgMonthDays: 29.3,
+
+
   /* ---------- Производные величины и расчёты ---------- */
 
   /* Взносы ИП за себя при заданном годовом доходе. */
@@ -93,6 +155,40 @@ const RATES = {
   },
 
   ndfl(amount) { return this.progressive(amount, this.ndflScale); },
+
+  /* Взносы работодателя за год с указанной годовой зарплаты.
+     small — малое или среднее предприятие (льготный тариф). */
+  employerContrib(yearSalary, { small = true, injury = 0.002, mrotMonth = 27093 } = {}) {
+    const c = this.payrollContrib;
+    if (small) {
+      /* Льгота считается помесячно: полный тариф с МРОТ, 15% с остального. */
+      const perMonth = yearSalary / 12;
+      const atFull = Math.min(perMonth, mrotMonth);
+      const above = Math.max(0, perMonth - mrotMonth);
+      return (atFull * c.rate + above * c.smallRateOverMrot) * 12 + yearSalary * injury;
+    }
+    const upToBase = Math.min(yearSalary, c.base);
+    const overBase = Math.max(0, yearSalary - c.base);
+    return upToBase * c.rate + overBase * c.rateOverBase + yearSalary * injury;
+  },
+
+  /* Госпошлина по цене иска. */
+  courtFeeFor(claim) {
+    if (!(claim > 0)) return 0;
+    const step = this.courtFee.steps.find(x => claim <= x.upTo);
+    const fee = step.base + (claim - step.from) * step.rate;
+    return Math.min(this.courtFee.cap, Math.round(fee));
+  },
+
+  /* Взносы ИП за себя за неполный год: фиксированная часть считается
+     пропорционально дням, переменная — от фактического дохода. */
+  contributionsPartial(income, days, yearDays = 365) {
+    const c = this.ipContributions;
+    const fixed = c.fixed * Math.min(1, Math.max(0, days) / yearDays);
+    const extra = Math.min(c.extraCap, Math.max(0, income - c.extraThreshold) * c.extraRate);
+    return { fixed, extra, total: fixed + extra };
+  },
+
   dividendTax(amount) { return this.progressive(amount, this.dividendScale); },
 
   /* Максимальное дневное пособие по больничному. */

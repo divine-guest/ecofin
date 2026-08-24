@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=55">
+<link rel="stylesheet" href="css/style.css?v=56">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -65,13 +65,17 @@
 
     <div class="tabs">
       <button class="tab active" onclick="switchCalc(0,this)">Налоговые режимы</button>
-      <button class="tab" onclick="switchCalc(1,this)">Пеня и неустойка</button>
-      <button class="tab" onclick="switchCalc(2,this)">Отпускные</button>
-      <button class="tab" onclick="switchCalc(3,this)">Больничные</button>
-      <button class="tab" onclick="switchCalc(4,this)">Дивиденды</button>
-      <button class="tab" onclick="switchCalc(5,this)">Налоговые вычеты</button>
-      <button class="tab" onclick="switchCalc(6,this)">Счёт на оплату</button>
-      <button class="tab" onclick="switchCalc(7,this)">Календарь отчётности</button>
+      <button class="tab" onclick="switchCalc(1,this)">Зарплата на руки</button>
+      <button class="tab" onclick="switchCalc(2,this)">Взносы ИП за себя</button>
+      <button class="tab" onclick="switchCalc(3,this)">НДС</button>
+      <button class="tab" onclick="switchCalc(4,this)">Пеня и неустойка</button>
+      <button class="tab" onclick="switchCalc(5,this)">Госпошлина в суд</button>
+      <button class="tab" onclick="switchCalc(6,this)">Отпускные</button>
+      <button class="tab" onclick="switchCalc(7,this)">Больничные</button>
+      <button class="tab" onclick="switchCalc(8,this)">Дивиденды</button>
+      <button class="tab" onclick="switchCalc(9,this)">Налоговые вычеты</button>
+      <button class="tab" onclick="switchCalc(10,this)">Счёт на оплату</button>
+      <button class="tab" onclick="switchCalc(11,this)">Календарь отчётности</button>
     </div>
 
     <!-- 1. Налоговые режимы -->
@@ -90,8 +94,79 @@
       <p style="color:var(--muted);font-size:var(--t-xs);margin-top:14px" id="txNote"></p>
       <div id="partnersTax"></div>
     </div>
-
-    <!-- 2. Пеня -->
+    <div class="tab-panel game-stage" id="calcSalary">
+      <div class="calc-row">
+        <div style="flex:1;min-width:260px">
+          <div class="form-group">
+            <label>Зарплата «на бумаге» в месяц, ₽</label>
+            <input type="number" id="slGross" value="80000" oninput="calcSalary()">
+          </div>
+          <div class="form-group">
+            <label>Детей до 18 лет (или до 24 на очной учёбе)</label>
+            <input type="number" id="slKids" value="0" min="0" max="10" oninput="calcSalary()">
+          </div>
+          <div class="form-group">
+            <label>Предприятие</label>
+            <select id="slSmall" onchange="calcSalary()">
+              <option value="1">Малое или среднее — льготные взносы</option>
+              <option value="0">Крупное — обычный тариф</option>
+            </select>
+          </div>
+          <p class="hint">Считаем и то, что получит человек, и то, во что он обходится работодателю.</p>
+        </div>
+        <div class="calc-result" id="slOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Зарплата на руки')">Скачать / печать</button>
+      </div>
+    </div>
+    <div class="tab-panel game-stage" id="calcIpFee">
+      <div class="calc-row">
+        <div style="flex:1;min-width:260px">
+          <div class="form-group">
+            <label>Доход за год, ₽</label>
+            <input type="number" id="ipIncome" value="1500000" oninput="calcIpFee()">
+          </div>
+          <div class="form-group">
+            <label>Сколько дней в году был статус ИП</label>
+            <input type="number" id="ipDays" value="365" min="1" max="366" oninput="calcIpFee()">
+            <p class="hint">При регистрации или закрытии в середине года фиксированная часть считается пропорционально.</p>
+          </div>
+          <div class="form-group">
+            <label>Налоговый режим</label>
+            <select id="ipMode" onchange="calcIpFee()">
+              <option value="usn6">УСН «Доходы» без работников</option>
+              <option value="usn6w">УСН «Доходы» с работниками</option>
+              <option value="usn15">УСН «Доходы минус расходы»</option>
+              <option value="none">Просто посчитать взносы</option>
+            </select>
+          </div>
+        </div>
+        <div class="calc-result" id="ipOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Взносы ИП за себя')">Скачать / печать</button>
+      </div>
+    </div>
+    <div class="tab-panel game-stage" id="calcVat">
+      <div class="calc-row">
+        <div style="flex:1;min-width:260px">
+          <div class="form-group">
+            <label>Сумма, ₽</label>
+            <input type="number" id="vtSum" value="120000" oninput="calcVat()">
+          </div>
+          <div class="form-group">
+            <label>Ставка</label>
+            <select id="vtRate" onchange="calcVat()"></select>
+          </div>
+          <div class="form-group">
+            <label>Что делаем</label>
+            <select id="vtMode" onchange="calcVat()">
+              <option value="extract">Выделить НДС из суммы (НДС уже внутри)</option>
+              <option value="add">Начислить НДС сверху</option>
+            </select>
+          </div>
+        </div>
+        <div class="calc-result" id="vtOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'НДС')">Скачать / печать</button>
+      </div>
+    </div>
     <div class="tab-panel game-stage" id="calc1">
       <div class="calc-row">
         <div style="flex:1;min-width:240px">
@@ -103,8 +178,27 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Пеня и неустойка')">Скачать / печать</button>
       </div>
     </div>
-
-    <!-- 3. Отпускные -->
+    <div class="tab-panel game-stage" id="calcFee">
+      <div class="calc-row">
+        <div style="flex:1;min-width:260px">
+          <div class="form-group">
+            <label>Вид иска</label>
+            <select id="gpKind" onchange="calcCourtFee()">
+              <option value="prop">Имущественный — есть цена иска</option>
+              <option value="person">Неимущественный, подаёт человек</option>
+              <option value="org">Неимущественный, подаёт организация</option>
+            </select>
+          </div>
+          <div class="form-group" id="gpClaimBox">
+            <label>Цена иска, ₽</label>
+            <input type="number" id="gpClaim" value="250000" oninput="calcCourtFee()">
+          </div>
+          <p class="hint">Суд общей юрисдикции, первая инстанция. Ставки НК РФ ст. 333.19.</p>
+        </div>
+        <div class="calc-result" id="gpOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Госпошлина в суд')">Скачать / печать</button>
+      </div>
+    </div>
     <div class="tab-panel game-stage" id="calc2">
       <div class="calc-row">
         <div style="flex:1;min-width:240px">
@@ -115,8 +209,6 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Отпускные')">Скачать / печать</button>
       </div>
     </div>
-
-    <!-- 4. Больничные -->
     <div class="tab-panel game-stage" id="calc3">
       <div class="calc-row">
         <div style="flex:1;min-width:240px">
@@ -134,8 +226,6 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Больничные')">Скачать / печать</button>
       </div>
     </div>
-
-    <!-- 5. Дивиденды -->
     <div class="tab-panel game-stage" id="calc4">
       <div class="calc-row">
         <div style="flex:1;min-width:240px">
@@ -145,8 +235,6 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Дивиденды')">Скачать / печать</button>
       </div>
     </div>
-
-    <!-- 6. Вычеты -->
     <div class="tab-panel game-stage" id="calc5">
       <div class="calc-row">
         <div style="flex:1;min-width:240px">
@@ -157,8 +245,6 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налоговые вычеты')">Скачать / печать</button>
       </div>
     </div>
-
-    <!-- 7. Счёт на оплату -->
     <div class="tab-panel game-stage" id="calc6">
       <div class="grid cols-2 no-print">
         <div>
@@ -194,8 +280,6 @@
       </div>
       <div id="invoicePanel"><div id="invoicePaper"></div></div>
     </div>
-
-    <!-- 8. Календарь отчётности 2026 -->
     <div class="tab-panel game-stage" id="calc7">
       <p style="color:var(--muted);margin-bottom:6px">Ключевые сроки для ИП и ООО на УСН. Нажмите «+ в сроки» — появится напоминание в кабинете с повтором раз в год.</p>
       <p class="hint" style="margin-bottom:14px">
@@ -210,12 +294,12 @@
   </div>
 </main>
 
-<script src="js/partners.js?v=55"></script>
-<script src="js/rates.js?v=55"></script>
-<script src="js/themes.js?v=55"></script>
-<script src="js/api.js?v=55"></script>
-<script src="js/app.js?v=55"></script>
-<script src="js/ai.js?v=55"></script>
+<script src="js/partners.js?v=56"></script>
+<script src="js/rates.js?v=56"></script>
+<script src="js/themes.js?v=56"></script>
+<script src="js/api.js?v=56"></script>
+<script src="js/app.js?v=56"></script>
+<script src="js/ai.js?v=56"></script>
 <script>
 initPage("calc.html");
 
@@ -515,6 +599,167 @@ renderPosInputs(); renderInvoice();
 document.getElementById("ivDate").valueAsDate = new Date();
 renderInvoice();
 trackEvent("calc_page");
+
+/* --- Зарплата на руки ---
+   Считаем обе стороны: сколько получит человек и во что он обходится
+   работодателю. Второе спрашивают не реже первого. */
+function calcSalary() {
+  const gross = +document.getElementById("slGross").value || 0;
+  const kids = Math.max(0, +document.getElementById("slKids").value || 0);
+  const small = document.getElementById("slSmall").value === "1";
+  const year = gross * 12;
+
+  /* Вычет на детей действует, пока доход с начала года не превысит предел.
+     Считаем, сколько месяцев он успевает примениться. */
+  const cd = RATES.childDeduction;
+  let perMonthDeduction = 0;
+  for (let i = 1; i <= kids; i++) {
+    perMonthDeduction += i === 1 ? cd.first : i === 2 ? cd.second : cd.thirdPlus;
+  }
+  const monthsWithDeduction = gross > 0
+    ? Math.min(12, Math.floor(cd.incomeLimit / gross)) : 0;
+  const yearDeduction = Math.min(perMonthDeduction * monthsWithDeduction, year);
+
+  const taxBase = Math.max(0, year - yearDeduction);
+  const ndflYear = RATES.ndfl(taxBase);
+  const netYear = year - ndflYear;
+
+  const contrib = RATES.employerContrib(year, { small });
+  const costYear = year + contrib;
+
+  const saved = kids ? RATES.ndfl(year) - ndflYear : 0;
+
+  document.getElementById("slOut").innerHTML = `
+    <p>На руки в месяц:</p>
+    <div class="big">${fmt(netYear / 12)}</div>
+    <table class="calc-table">
+      <tr><td>Начислено за год</td><td>${fmt(year)}</td></tr>
+      <tr><td>НДФЛ за год</td><td>−${fmt(ndflYear)}</td></tr>
+      ${kids ? `<tr><td>Вычет на детей (${monthsWithDeduction} мес.)</td><td>экономия ${fmt(saved)}</td></tr>` : ""}
+      <tr><td><b>На руки за год</b></td><td><b>${fmt(netYear)}</b></td></tr>
+      <tr><td>Взносы работодателя</td><td>${fmt(contrib)}</td></tr>
+      <tr><td><b>Сотрудник стоит компании</b></td><td><b>${fmt(costYear)}</b> в год</td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+      ${kids && monthsWithDeduction < 12
+        ? `Вычет перестаёт действовать с ${monthsWithDeduction + 1}-го месяца: доход с начала года превышает ${fmt(cd.incomeLimit)}. `
+        : ""}
+      В стоимость включён взнос на травматизм по минимальной ставке ${(RATES.payrollContrib.injuryMin * 100).toFixed(1)}% — у рискованных видов деятельности он выше.
+    </p>`;
+}
+
+/* --- Взносы ИП «за себя» ---
+   Главное, чего не знают: взносы уменьшают налог, а на УСН «Доходы»
+   без работников — вплоть до нуля. */
+function calcIpFee() {
+  const income = +document.getElementById("ipIncome").value || 0;
+  const days = Math.min(366, Math.max(1, +document.getElementById("ipDays").value || 365));
+  const mode = document.getElementById("ipMode").value;
+  const r = RATES.contributionsPartial(income, days);
+
+  let taxBlock = "";
+  if (mode !== "usn15" && mode !== "none") {
+    const tax = income * RATES.usn.incomeRate;
+    /* Без работников налог уменьшается на всю сумму взносов,
+       с работниками — не более чем наполовину. */
+    const cut = mode === "usn6" ? Math.min(tax, r.total) : Math.min(tax / 2, r.total);
+    taxBlock = `
+      <tr><td>Налог УСН 6%</td><td>${fmt(tax)}</td></tr>
+      <tr><td>Уменьшение на взносы</td><td>−${fmt(cut)}</td></tr>
+      <tr><td><b>Налог к уплате</b></td><td><b>${fmt(tax - cut)}</b></td></tr>
+      <tr><td><b>Всего в бюджет</b></td><td><b>${fmt(tax - cut + r.total)}</b></td></tr>`;
+  } else if (mode === "usn15") {
+    taxBlock = `<tr><td colspan="2" style="color:var(--muted)">
+      На «Доходах минус расходах» взносы включаются в расходы и уменьшают налоговую базу.</td></tr>`;
+  }
+
+  document.getElementById("ipOut").innerHTML = `
+    <p>Взносы за себя:</p>
+    <div class="big">${fmt(r.total)}</div>
+    <table class="calc-table">
+      <tr><td>Фиксированная часть${days < 365 ? ` (за ${days} дн.)` : ""}</td><td>${fmt(r.fixed)}</td></tr>
+      <tr><td>1% с дохода свыше ${fmt(RATES.ipContributions.extraThreshold)}</td><td>${fmt(r.extra)}</td></tr>
+      ${taxBlock}
+    </table>
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+      Сроки: фиксированная часть — до 28 декабря, 1% с превышения — до 1 июля следующего года.
+      Взносы начисляются, даже если дохода не было совсем.
+    </p>`;
+}
+
+/* --- НДС --- */
+function calcVat() {
+  const sum = +document.getElementById("vtSum").value || 0;
+  const rate = +document.getElementById("vtRate").value;
+  const mode = document.getElementById("vtMode").value;
+
+  let base, vat, total;
+  if (mode === "extract") {
+    total = sum;
+    base = rate ? sum / (1 + rate) : sum;
+    vat = total - base;
+  } else {
+    base = sum;
+    vat = sum * rate;
+    total = base + vat;
+  }
+
+  document.getElementById("vtOut").innerHTML = `
+    <p>НДС по ставке ${(rate * 100).toFixed(0)}%:</p>
+    <div class="big">${fmt(vat)}</div>
+    <table class="calc-table">
+      <tr><td>Без НДС</td><td>${fmt(base)}</td></tr>
+      <tr><td>НДС</td><td>${fmt(vat)}</td></tr>
+      <tr><td><b>С НДС</b></td><td><b>${fmt(total)}</b></td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+      Для счёта: «${fmt(total)}, в том числе НДС ${(rate * 100).toFixed(0)}% — ${fmt(vat)}».
+      ${rate === 0.05 || rate === 0.07
+        ? "На пониженной ставке УСН входной НДС к вычету не принимается."
+        : "Если вы на УСН без НДС, писать «в том числе НДС» нельзя — иначе его придётся заплатить в бюджет."}
+    </p>`;
+}
+
+/* --- Госпошлина в суд --- */
+function calcCourtFee() {
+  const kind = document.getElementById("gpKind").value;
+  const box = document.getElementById("gpClaimBox");
+  box.style.display = kind === "prop" ? "" : "none";
+
+  let fee, note;
+  if (kind === "prop") {
+    const claim = +document.getElementById("gpClaim").value || 0;
+    fee = RATES.courtFeeFor(claim);
+    note = claim > 0
+      ? `${(fee / claim * 100).toFixed(2)}% от цены иска. Пошлина взыскивается с проигравшей стороны.`
+      : "Укажите цену иска.";
+  } else {
+    fee = kind === "org" ? RATES.courtFee.nonPropertyOrg : RATES.courtFee.nonProperty;
+    note = "Неимущественные требования: расторжение договора, признание права, компенсация морального вреда.";
+  }
+
+  document.getElementById("gpOut").innerHTML = `
+    <p>Госпошлина:</p>
+    <div class="big">${fmt(fee)}</div>
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+      ${note}<br>
+      По искам о защите прав потребителей до 1 млн ₽ и по взысканию зарплаты пошлина не платится.
+    </p>`;
+}
+
+/* Ставки НДС берём из RATES, чтобы список не разошёлся с расчётом. */
+{
+  const sel = document.getElementById("vtRate");
+  if (sel) {
+    sel.innerHTML = RATES.vatRates
+      .map(r => `<option value="${r.value}">${r.label}</option>`).join("");
+  }
+}
+
+calcSalary();
+calcIpFee();
+calcVat();
+calcCourtFee();
 </script>
 </body>
 </html>

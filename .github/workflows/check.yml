@@ -62,3 +62,6 @@ jobs:
             exit 1
           fi
           echo "все css и js подключены с версией"
+
+      - name: Проверка формул в калькуляторах
+        run: node tests/rates.mjs
