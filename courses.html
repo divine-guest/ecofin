@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=38">
+<link rel="stylesheet" href="css/style.css?v=39">
 </head>
 <body>
 <main class="section tint-green">
@@ -35,12 +35,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=38"></script>
-<script src="js/api.js?v=38"></script>
-<script src="js/app.js?v=38"></script>
-<script src="js/ai.js?v=38"></script>
-<script src="js/competencies.js?v=38"></script>
-<script src="js/courses.js?v=38"></script>
+<script src="js/themes.js?v=39"></script>
+<script src="js/api.js?v=39"></script>
+<script src="js/app.js?v=39"></script>
+<script src="js/ai.js?v=39"></script>
+<script src="js/competencies.js?v=39"></script>
+<script src="js/courses.js?v=39"></script>
 <script>
 initPage("courses.html");
 
@@ -106,7 +106,13 @@ async function openLesson(id, i) {
       l.body = body;                       // в пределах сессии не перезапрашиваем
     } catch (e) {
       if (e.isPaywall) { showPaywall(e.message); box.innerHTML = ""; return; }
-      box.innerHTML = `<p class="hint">Не удалось загрузить урок: ${escapeHtml(e.message)}</p>`;
+      /* 404 значит, что сервер ещё не знает про выдачу уроков — это
+         состояние выката, а не поломка у человека. Говорим по-человечески. */
+      box.innerHTML = e.status === 404
+        ? `<div class="empty"><b>Урок готовится</b>
+             <p>Материал скоро откроется. Остальные разделы работают как обычно.</p>
+             <a href="knowledge.html" class="btn small">Пока в базу знаний</a></div>`
+        : `<p class="hint">Не удалось загрузить урок: ${escapeHtml(e.message)}. Попробуйте ещё раз.</p>`;
       return;
     }
   }

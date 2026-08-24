@@ -155,18 +155,37 @@ const main = async () => {
 
   console.log("· база данных");
   let db = null;
+
+  /* Привязать базу можно, зная только её id — права на D1 API для этого
+     не нужны. Полезно, когда токен D1 недоступен: воркер всё равно
+     выкатится с рабочей базой, просто без применения схемы. */
+  if (cfg.D1_DATABASE_ID) {
+    bindings.push({ type: "d1", name: "DB", id: cfg.D1_DATABASE_ID });
+    db = { uuid: cfg.D1_DATABASE_ID, fromEnv: true };
+    console.log(`  база привязана по id из настроек (${cfg.D1_DATABASE_ID})`);
+    try {
+      await applySchema(cfg.D1_DATABASE_ID);
+    } catch (e) {
+      console.warn(`  схему применить не удалось (${e.message}) — на выкатку не влияет`);
+    }
+  }
+
   try {
+    if (db) throw { skip: true };
     db = await ensureDatabase(process.env.D1_NAME || "pravofin");
     await applySchema(db.uuid);
     bindings.push({ type: "d1", name: "DB", id: db.uuid });
   } catch (e) {
+    if (e && e.skip) { /* база уже привязана по id */ } else {
     /* Молча деплоить без базы нельзя: API останется живым, но перестанет
        работать целиком. Лучше упасть здесь. */
     console.error(`  ОШИБКА БАЗЫ: ${e.message}`);
     console.error("  Деплой прерван, чтобы не выкатить воркер без привязки DB.");
     console.error("  Если это осознанно (первый запуск без D1) — запустите с SKIP_DB=1");
+    console.error("  Либо укажите D1_DATABASE_ID в .env — тогда права на D1 API не нужны.");
     if (!process.env.SKIP_DB) process.exit(1);
     console.warn("  SKIP_DB=1 — продолжаю без базы");
+    }
   }
 
   console.log("· переменные и секреты");
