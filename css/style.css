@@ -1147,3 +1147,15 @@ input, select, textarea { border-radius: 10px; }
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
 }
+
+/* Пункты меню шли цветом --muted: в светлой теме это давало контраст 3.97
+   при норме 4.5. Навигацией пользуются все и постоянно — она должна
+   читаться без усилия, а не «достаточно». */
+.nav-links a,
+.mobile-menu a {
+  color: color-mix(in srgb, var(--text) 74%, var(--muted));
+}
+.nav-links a:hover,
+.mobile-menu a:hover { color: var(--text); }
+.nav-links a.active,
+.mobile-menu a.active { color: var(--primary); }
