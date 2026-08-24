@@ -56,6 +56,7 @@ const ROUTES = [
   ["POST", "/api/admin/reset-trial", admin.resetTrial, "admin"],
   ["POST", "/api/admin/delete-user", admin.removeUser, "admin"],
   ["POST", "/api/admin/reset-password", admin.resetPassword, "admin"],
+  ["POST", "/api/admin/run-reminders", admin.runRemindersNow, "admin"],
   ["POST", "/api/admin/set-role", admin.setRole, "owner"],
 ];
 

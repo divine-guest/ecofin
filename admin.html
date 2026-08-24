@@ -18,7 +18,7 @@
 <meta name="theme-color" content="#0e8f86">
 <!-- seo:end -->
 <meta name="robots" content="noindex, nofollow">
-<link rel="stylesheet" href="css/style.css?v=8">
+<link rel="stylesheet" href="css/style.css?v=9">
 </head>
 <body>
 <main class="section tint-navy">
@@ -29,9 +29,9 @@
   </div>
 </main>
 
-<script src="js/api.js?v=8"></script>
-<script src="js/app.js?v=8"></script>
-<script src="js/ai.js?v=8"></script>
+<script src="js/api.js?v=9"></script>
+<script src="js/app.js?v=9"></script>
+<script src="js/ai.js?v=9"></script>
 <script>
 initPage("admin.html");
 
@@ -160,6 +160,16 @@ const AD = {
           <button class="btn small secondary" onclick="AD.loadPayments()">Показать</button>
         </div>
         <div id="payLog" style="color:var(--muted);font-size:.88rem">Нажмите «Показать», чтобы загрузить последние 200 операций.</div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <h3 style="margin-bottom:6px">Напоминания</h3>
+        <p style="color:var(--muted);font-size:.85rem;margin-bottom:12px">
+          Обычно рассылку запускает расписание раз в час. Ручной прогон нужен,
+          чтобы проверить настройку или разослать сразу после правки сроков.
+        </p>
+        <button class="btn small secondary" onclick="AD.runReminders()">Прогнать рассылку сейчас</button>
+        <div id="remRun" style="margin-top:10px;color:var(--muted);font-size:.88rem"></div>
       </div>
 
       <div class="card" style="margin-top:20px">
@@ -301,6 +311,15 @@ const AD = {
         (d.actions.slice(0, 15).map(a => `  ${this.dateTime(a.at)} — ${a.text}`).join("\n") || "  нет")
       );
     } catch (e) { toast(e.message, "error"); }
+  },
+
+  async runReminders() {
+    const box = document.getElementById("remRun");
+    box.textContent = "Прогоняем…";
+    try {
+      const r = await API.request("/api/admin/run-reminders", { method: "POST" });
+      box.textContent = `Отправлено уведомлений: ${r.sent}. Перенесено повторяющихся сроков: ${r.rolled}.`;
+    } catch (e) { box.textContent = "Не удалось: " + e.message; }
   },
 
   async loadPayments() {

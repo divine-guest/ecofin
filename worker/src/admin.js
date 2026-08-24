@@ -3,6 +3,7 @@
 import { json, fail, now, normEmail, publicUser, isPro, hashPassword } from "./lib.js";
 import { extendUntil } from "./quota.js";
 import { adminEmails, ownerEmails, logAction } from "./auth.js";
+import { runReminders } from "./telegram.js";
 
 const PLAN_DAYS = { month: 30, year: 365 };
 
@@ -237,4 +238,13 @@ export async function resetPassword(request, env, origin, admin) {
   await logAction(env, email, "Администратор сбросил пароль");
   await logAction(env, admin.email, `Сбросил пароль пользователю ${email}`);
   return json(env, origin, { ok: true, tempPassword: temp });
+}
+
+/* POST /api/admin/run-reminders — прогнать рассылку немедленно.
+   Обычно её запускает крон раз в час; ручной запуск нужен, чтобы проверить
+   настройку и чтобы не ждать час после правки сроков. */
+export async function runRemindersNow(request, env, origin, admin) {
+  const r = await runReminders(env);
+  await logAction(env, admin.email, `Ручной прогон напоминаний: отправлено ${r.sent}`);
+  return json(env, origin, r);
 }
