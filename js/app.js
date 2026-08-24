@@ -6,7 +6,13 @@ const PF = {
   themeKey: "pf_theme",
 
   user() { return API.cached(); },
-  isPro() { const u = this.user(); return !!u && (u.plan === "pro" || u.isAdmin); },
+  /* «Есть платная подписка» — любой платный тариф, не только старший.
+     После появления «Базового» проверка на plan === "pro" молча считала
+     платящего человека бесплатным. */
+  isPro() { const u = this.user(); return !!u && (u.tier ? u.tier !== "free" : u.plan !== "free"); },
+  tier() { const u = this.user(); return u ? (u.tier || u.plan || "free") : "free"; },
+  /* Возможности конкретного тарифа: courses, theming, telegram, priority. */
+  hasFeature(name) { const u = this.user(); return !!(u && u.features && u.features[name]); },
   isAdmin() { const u = this.user(); return !!u && u.isAdmin; },
   isOwner() { const u = this.user(); return !!u && u.isOwner; },
 

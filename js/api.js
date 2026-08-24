@@ -94,6 +94,9 @@ const API = {
   sessions() { return this.request("/api/auth/sessions"); },
   referral() { return this.request("/api/referral"); },
   points() { return this.request("/api/points"); },
+  courseLesson(course, lesson) {
+    return API.request(`/api/courses/lesson?course=${encodeURIComponent(course)}&lesson=${lesson}`);
+  },
   themes: {
     list() { return API.request("/api/themes"); },
     set(id) { return API.request("/api/themes", { method: "POST", body: { id } }); },

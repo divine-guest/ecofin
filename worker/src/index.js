@@ -10,6 +10,7 @@ import { checkLimits, checkOnly, sweep as sweepLimits } from "./ratelimit.js";
 import * as referral from "./referral.js";
 import * as reminders from "./reminders.js";
 import * as points from "./points.js";
+import * as courses from "./courses.js";
 import * as telegram from "./telegram.js";
 
 /* Маршруты: [метод, путь, обработчик, доступ] */
@@ -30,6 +31,7 @@ const ROUTES = [
   ["GET", "/api/quota", ai.handleQuota, "user"],
   ["GET", "/api/referral", referral.status, "user"],
   ["GET", "/api/points", points.status, "user"],
+  ["GET", "/api/courses/lesson", courses.lesson, "user"],
   ["GET", "/api/themes", auth.listThemes, "user"],
   ["POST", "/api/themes", auth.setTheme, "user"],
 

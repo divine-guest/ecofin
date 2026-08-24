@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=37">
+<link rel="stylesheet" href="css/style.css?v=38">
 </head>
 <body>
 <main class="section tint-green">
@@ -35,12 +35,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=37"></script>
-<script src="js/api.js?v=37"></script>
-<script src="js/app.js?v=37"></script>
-<script src="js/ai.js?v=37"></script>
-<script src="js/competencies.js?v=37"></script>
-<script src="js/courses.js?v=37"></script>
+<script src="js/themes.js?v=38"></script>
+<script src="js/api.js?v=38"></script>
+<script src="js/app.js?v=38"></script>
+<script src="js/ai.js?v=38"></script>
+<script src="js/competencies.js?v=38"></script>
+<script src="js/courses.js?v=38"></script>
 <script>
 initPage("courses.html");
 
@@ -50,9 +50,9 @@ function renderCourses() {
   document.getElementById("coursesView").innerHTML = `<div class="grid cols-3">` + COURSES.map(c => {
     const done = (prog[c.id] || []).length;
     const pct = Math.round((done / c.lessons.length) * 100);
-    const locked = !c.free && !PF.isPro();
+    const locked = !c.free && !PF.hasFeature("courses");
     return `
-      <div class="card" onclick="${locked ? `showPaywall()` : `openCourse('${c.id}')`}" style="cursor:pointer">
+      <div class="card" onclick="${locked ? `showPaywall('Курс «${c.title}» входит в тариф «Про»')` : `openCourse('${c.id}')`}" style="cursor:pointer">
         <h3>${c.title} ${c.free ? '<span class="badge ok">Бесплатно</span>' : '<span class="badge pro">Pro</span>'}</h3>
         <p>${c.desc}</p><br>
         <p style="font-size:var(--t-sm);color:var(--muted)">${c.lessons.length} уроков · ${c.lessons.reduce((s, l) => s + l.mins, 0)} минут</p>
@@ -89,14 +89,32 @@ function openCourse(id) {
     </div>`;
 }
 
-function openLesson(id, i) {
+async function openLesson(id, i) {
   const c = COURSES.find(x => x.id === id);
   const l = c.lessons[i];
   const prog = new Set(COURSE_PROGRESS.get()[id] || []);
-  document.getElementById("lessonBox").innerHTML = `
+  const box = document.getElementById("lessonBox");
+
+  /* Текст платного урока лежит на сервере и приходит только тому,
+     у кого есть доступ. В файле курсов его нет. */
+  let body = l.body;
+  if (!body && l.locked) {
+    box.innerHTML = `<p class="hint">Открываем урок…</p>`;
+    try {
+      const r = await API.courseLesson(id, i);
+      body = r.lesson.body;
+      l.body = body;                       // в пределах сессии не перезапрашиваем
+    } catch (e) {
+      if (e.isPaywall) { showPaywall(e.message); box.innerHTML = ""; return; }
+      box.innerHTML = `<p class="hint">Не удалось загрузить урок: ${escapeHtml(e.message)}</p>`;
+      return;
+    }
+  }
+
+  box.innerHTML = `
     <h3>Урок ${i + 1}. ${l.title}</h3>
     <p style="color:var(--muted);font-size:var(--t-sm)">≈ ${l.mins} минут</p>
-    <div class="ai-result show" style="border-image:none">${escapeHtml(l.body)}</div>
+    <div class="ai-result show" style="border-image:none">${escapeHtml(body || "")}</div>
     <br>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       ${i > 0 ? `<button class="btn small secondary" onclick="openLesson('${id}', ${i - 1})">← Предыдущий</button>` : ""}
