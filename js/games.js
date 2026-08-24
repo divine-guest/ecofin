@@ -80,7 +80,8 @@ const DETECTIVE = (() => {
     render();
   }
   function restart() { idx = 0; score = 0; render(); }
-  return { render, answer, next, restart };
+  /* cases открыты наружу: «Задание недели» показывает название дела. */
+  return { render, answer, next, restart, cases };
 })();
 
 /* ---------- 3. ФинЗарядка (быстрая викторина на время) ---------- */
@@ -195,7 +196,7 @@ const CASECLUB = (() => {
     current = (current + dir + cases.length) % cases.length;
     render();
   }
-  return { render, reveal, next };
+  return { render, reveal, next, cases };
 })();
 
 /* ---------- 4. Найди ошибку в договоре ---------- */

@@ -1370,3 +1370,20 @@ input, select, textarea { border-radius: 10px; }
    что нужно конкретному человеку, но ничего не должно теряться. */
 .footer-nav { line-height: 2.1; }
 .footer-nav a { white-space: nowrap; }
+
+
+/* ===== Задание недели =====
+   Практикум был разовым развлечением. Одно дело на всех, меняется
+   по понедельникам — повод вернуться, не требующий нового контента. */
+.card.weekly { border-left: 3px solid var(--primary); margin-bottom: 22px; }
+.card.weekly.done { border-left-color: var(--muted); opacity: .85; }
+.weekly-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 6px;
+}
+.weekly-label {
+  font-size: var(--t-xs); font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--primary);
+}
+.card.weekly h3 { margin: 0 0 4px; }
+.weekly-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }

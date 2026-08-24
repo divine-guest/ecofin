@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=41">
+<link rel="stylesheet" href="css/style.css?v=44">
 </head>
 <body>
 <main class="section tint-green">
@@ -35,12 +35,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=41"></script>
-<script src="js/api.js?v=41"></script>
-<script src="js/app.js?v=41"></script>
-<script src="js/ai.js?v=41"></script>
-<script src="js/competencies.js?v=41"></script>
-<script src="js/courses.js?v=41"></script>
+<script src="js/themes.js?v=44"></script>
+<script src="js/api.js?v=44"></script>
+<script src="js/app.js?v=44"></script>
+<script src="js/ai.js?v=44"></script>
+<script src="js/competencies.js?v=44"></script>
+<script src="js/courses.js?v=44"></script>
 <script>
 initPage("courses.html");
 
@@ -52,12 +52,12 @@ function renderCourses() {
     const pct = Math.round((done / c.lessons.length) * 100);
     const locked = !c.free && !PF.hasFeature("courses");
     return `
-      <div class="card" onclick="${locked ? `showPaywall('Курс «${c.title}» входит в тариф «Про»')` : `openCourse('${c.id}')`}" style="cursor:pointer">
+      <div class="card" onclick="openCourse('${c.id}')" style="cursor:pointer">
         <h3>${c.title} ${c.free ? '<span class="badge ok">Бесплатно</span>' : '<span class="badge pro">Pro</span>'}</h3>
         <p>${c.desc}</p><br>
         <p style="font-size:var(--t-sm);color:var(--muted)">${c.lessons.length} уроков · ${c.lessons.reduce((s, l) => s + l.mins, 0)} минут</p>
         <div class="progress-bar" style="margin:10px 0 6px"><div style="width:${pct}%"></div></div>
-        <p style="font-size:var(--t-xs);color:var(--muted)">${locked ? "Откроется по подписке" : `Пройдено ${pct}%`}</p>
+        <p style="font-size:var(--t-xs);color:var(--muted)">${locked ? "Первый урок бесплатно, остальные — в «Про»" : `Пройдено ${pct}%`}</p>
       </div>`;
   }).join("") + `</div>`;
 }
@@ -104,6 +104,7 @@ async function openLesson(id, i) {
       const r = await API.courseLesson(id, i);
       body = r.lesson.body;
       l.body = body;                       // в пределах сессии не перезапрашиваем
+      l.preview = Boolean(r.preview);
     } catch (e) {
       if (e.isPaywall) { showPaywall(e.message); box.innerHTML = ""; return; }
       /* 404 значит, что сервер ещё не знает про выдачу уроков — это
@@ -121,6 +122,12 @@ async function openLesson(id, i) {
     <h3>Урок ${i + 1}. ${l.title}</h3>
     <p style="color:var(--muted);font-size:var(--t-sm)">≈ ${l.mins} минут</p>
     <div class="ai-result show" style="border-image:none">${escapeHtml(body || "")}</div>
+    ${l.preview ? `<div class="empty" style="margin-top:16px;text-align:left">
+        <b>Это первый урок из ${c.lessons.length}</b>
+        <p>Остальные разбирают первичку, кассу, отчётность и проверки —
+        с формулировками, которые можно применять сразу.</p>
+        <button class="btn small gold" onclick="PAY.open('pro')">Открыть весь курс</button>
+      </div>` : ""}
     <br>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       ${i > 0 ? `<button class="btn small secondary" onclick="openLesson('${id}', ${i - 1})">← Предыдущий</button>` : ""}

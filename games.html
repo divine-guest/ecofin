@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=41">
+<link rel="stylesheet" href="css/style.css?v=44">
 </head>
 <body>
 <main class="section tint-gold">
@@ -30,6 +30,16 @@
       <div class="line"></div>
       <p class="subtitle">Кейсы из судебной практики и экспресс-тесты — проверка знаний на реальных сценариях</p>
         <p class="hint" id="pracNote" style="margin-top:6px"></p>
+    </div>
+
+    <div class="card weekly" id="weeklyCard">
+      <div class="weekly-head">
+        <span class="weekly-label">Задание недели</span>
+        <span class="hint" id="weeklyLeft"></span>
+      </div>
+      <h3 id="weeklyTitle">Загружаем…</h3>
+      <p id="weeklyText" class="hint"></p>
+      <div class="weekly-actions" id="weeklyActions"></div>
     </div>
 
     <div class="tabs">
@@ -110,15 +120,95 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=41"></script>
-<script src="js/rates.js?v=41"></script>
-<script src="js/api.js?v=41"></script>
-<script src="js/app.js?v=41"></script>
-<script src="js/ai.js?v=41"></script>
-<script src="js/competencies.js?v=41"></script>
-<script src="js/games.js?v=41"></script>
+<script src="js/themes.js?v=44"></script>
+<script src="js/rates.js?v=44"></script>
+<script src="js/api.js?v=44"></script>
+<script src="js/app.js?v=44"></script>
+<script src="js/ai.js?v=44"></script>
+<script src="js/competencies.js?v=44"></script>
+<script src="js/games.js?v=44"></script>
 <script>
 initPage("games.html");
+
+/* ============ Задание недели ============
+   Одно дело на всех, меняется в понедельник. Смысл не в награде, а в
+   поводе вернуться: у практикума его не было вовсе. Номер недели даёт
+   одинаковое задание всем без всякого сервера. */
+const WEEKLY = {
+  key: "pf_weekly_done",
+
+  /* Номер недели от общей точки отсчёта: у всех совпадает,
+     часовые пояса роли не играют — точность до суток тут не нужна. */
+  weekNumber(d = new Date()) {
+    return Math.floor((d - new Date(2026, 0, 5)) / (7 * 86400000));
+  },
+
+  daysLeft() {
+    const d = new Date();
+    const dow = (d.getDay() + 6) % 7;          // понедельник = 0
+    return 7 - dow;
+  },
+
+  pick() {
+    const tasks = [];
+    if (typeof DETECTIVE !== "undefined" && DETECTIVE.cases)
+      DETECTIVE.cases.forEach((c, i) => tasks.push({ kind: "det", i, title: c.title,
+        text: "Разберите дело и найдите, где сторона нарушила закон." }));
+    if (typeof CASECLUB !== "undefined" && CASECLUB.cases)
+      CASECLUB.cases.forEach((c, i) => tasks.push({ kind: "case", i,
+        title: "Кейс-клуб: " + (c.field || c.title || "разбор ситуации"),
+        text: "Прочитайте ситуацию, решите сами, потом сверьтесь с разбором." }));
+    tasks.push({ kind: "err", i: 0, title: "Найти ошибки в договоре услуг",
+      text: "В тексте спрятаны опасные пункты. Найдите все." });
+    tasks.push({ kind: "tf", i: 0, title: "Верно или неверно: 12 утверждений",
+      text: "Быстрая проверка: где вы путаетесь в нормах." });
+    tasks.push({ kind: "warm", i: 0, title: "Экспресс-тест на 10 вопросов",
+      text: "Налоги, договоры, трудовое право — по одному вопросу на тему." });
+    return tasks.length ? tasks[this.weekNumber() % tasks.length] : null;
+  },
+
+  done() {
+    try { return JSON.parse(localStorage.getItem(this.key) || "[]"); } catch { return []; }
+  },
+  isDone() { return this.done().includes(this.weekNumber()); },
+  markDone() {
+    const d = this.done();
+    if (!d.includes(this.weekNumber())) {
+      localStorage.setItem(this.key, JSON.stringify([...d, this.weekNumber()].slice(-52)));
+      trackEvent("weekly_done");
+    }
+    this.render();
+  },
+
+  go(kind, i) {
+    const tabs = { det: 0, warm: 1, case: 2, err: 3, tf: 4 };
+    const btn = document.querySelectorAll(".tabs .tab")[tabs[kind] ?? 0];
+    if (btn) btn.click();
+    document.querySelector(".tabs").scrollIntoView({ behavior: "smooth" });
+    this.markDone();
+  },
+
+  render() {
+    const card = document.getElementById("weeklyCard");
+    if (!card) return;
+    const t = this.pick();
+    if (!t) { card.style.display = "none"; return; }
+
+    document.getElementById("weeklyTitle").textContent = t.title;
+    document.getElementById("weeklyText").textContent = t.text;
+    const left = this.daysLeft();
+    document.getElementById("weeklyLeft").textContent =
+      left === 1 ? "меняется завтра" : `меняется через ${left} дн.`;
+
+    const done = this.isDone();
+    card.classList.toggle("done", done);
+    document.getElementById("weeklyActions").innerHTML = done
+      ? `<span class="badge ok">Сделано на этой неделе</span>
+         <button class="btn small secondary" onclick="WEEKLY.go('${t.kind}', ${t.i})">Пройти ещё раз</button>`
+      : `<button class="btn" onclick="WEEKLY.go('${t.kind}', ${t.i})">Взяться за задание</button>`;
+  },
+};
+WEEKLY.render();
 
 /* Разборы и тесты опираются на нормы, а нормы меняются: без даты сверки
    правовой материал выглядит вечным и вводит в заблуждение. */

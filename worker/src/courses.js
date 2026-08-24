@@ -63,11 +63,19 @@ export async function lesson(request, env, origin, user) {
   if (!Number.isInteger(index) || index < 0 || index >= list.length)
     return fail(env, origin, "Урок не найден", 404);
 
-  if (!hasFeature(user, "courses")) {
+  /* Первый урок открыт всем. Закрытый курс — это стена: человек не может
+     оценить, за что платит, и чаще уходит, чем покупает. Один урок целиком
+     показывает уровень материала и стоит дешевле любой рекламы. */
+  const FREE_PREVIEW = 0;
+  if (index !== FREE_PREVIEW && !hasFeature(user, "courses")) {
     return json(env, origin, {
-      error: "Этот курс входит в тариф «Про»",
+      error: "Следующие уроки входят в тариф «Про»",
       paywall: true, kind: "courses",
     }, 402);
   }
-  return json(env, origin, { lesson: list[index] });
+  return json(env, origin, {
+    lesson: list[index],
+    preview: index === FREE_PREVIEW && !hasFeature(user, "courses"),
+    total: list.length,
+  });
 }
