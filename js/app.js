@@ -387,21 +387,56 @@ const CHATJOBS = {
     catch { return []; }
   },
   save(ids) { localStorage.setItem(this.key(), JSON.stringify(ids.slice(-5))); },
-  remember(id) { if (id) this.save([...this.pending(), id]); },
-  forget(id) { this.save(this.pending().filter(x => x !== id)); },
+  remember(id) {
+    if (!id) return;
+    this.save([...this.pending(), id]);
+    /* Время начала переживает переход между страницами — иначе счётчик
+       на новой странице пошёл бы с нуля и соврал. */
+    try {
+      const t = JSON.parse(localStorage.getItem("pf_chat_started") || "{}");
+      t[id] = Date.now();
+      localStorage.setItem("pf_chat_started", JSON.stringify(t));
+    } catch {}
+  },
+  forget(id) {
+    this.save(this.pending().filter(x => x !== id));
+    try {
+      const t = JSON.parse(localStorage.getItem("pf_chat_started") || "{}");
+      delete t[id];
+      localStorage.setItem("pf_chat_started", JSON.stringify(t));
+    } catch {}
+  },
 
-  /* Пузырь «печатает…» рисуется по номеру задачи, чтобы на любой
-     странице он появился ровно один раз. */
+  /* Пузырь ожидания рисуется по номеру задачи, чтобы на любой
+     странице он появился ровно один раз. Подробный ответ модель пишет
+     30–90 секунд: без счётчика такое ожидание выглядит зависшим. */
+  get started() {
+    try { return JSON.parse(localStorage.getItem("pf_chat_started") || "{}"); }
+    catch { return {}; }
+  },
+
   bubble(id) {
     let el = document.getElementById("job-" + id);
     if (el || !document.getElementById("chatMessages")) return el;
     el = document.createElement("div");
     el.className = "chat-msg bot thinking";
     el.id = "job-" + id;
-    el.textContent = "Думаю над ответом…";
+    if (!this.started[id]) this.started[id] = Date.now();
+    this.tickBubble(id);
     document.getElementById("chatMessages").appendChild(el);
     document.getElementById("chatMessages").scrollTop = 1e9;
     return el;
+  },
+
+  tickBubble(id) {
+    const el = document.getElementById("job-" + id);
+    if (!el) return;
+    const sec = Math.round((Date.now() - (this.started[id] || Date.now())) / 1000);
+    el.textContent = sec < 5
+      ? "Думаю над ответом"
+      : sec < 40
+        ? `Думаю над ответом · ${sec} с`
+        : `Ответ подробный, поэтому дольше обычного · ${sec} с`;
   },
 
   async tick() {
@@ -414,7 +449,7 @@ const CHATJOBS = {
       catch { this.forget(id); document.getElementById("job-" + id)?.remove(); continue; }
 
       const job = d.job;
-      if (!job || job.status === "pending") { this.bubble(id); continue; }
+      if (!job || job.status === "pending") { this.bubble(id); this.tickBubble(id); continue; }
 
       const answer = job.status === "done"
         ? job.answer
