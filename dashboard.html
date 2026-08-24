@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/style.css?v=26">
 </head>
 <body>
 <main class="section">
@@ -33,11 +33,11 @@
   </div>
 </main>
 
-<script src="js/api.js?v=25"></script>
-<script src="js/app.js?v=25"></script>
-<script src="js/ai.js?v=25"></script>
-<script src="js/competencies.js?v=25"></script>
-<script src="js/courses.js?v=25"></script>
+<script src="js/api.js?v=26"></script>
+<script src="js/app.js?v=26"></script>
+<script src="js/ai.js?v=26"></script>
+<script src="js/competencies.js?v=26"></script>
+<script src="js/courses.js?v=26"></script>
 <script>
 initPage("dashboard.html");
 
@@ -534,14 +534,6 @@ const CABINET = {
   },
 };
 
-/* Рисуем сразу по кэшу — чтобы не мигало, — и перерисовываем, когда сервер
-   подтвердит роль, план и остатки. Подделанный кэш живёт до этого момента
-   и исчезает сам. */
-renderCabinet();
-document.addEventListener("pf:ready", ({ detail }) => {
-  if (!detail.user) { location.href = "auth.html"; return; }
-  renderCabinet();
-});
 
 /* ============ Мои документы ============ */
 function renderDocs() {
@@ -779,6 +771,17 @@ async function pcSend() {
   }
   document.getElementById("pcMessages").scrollTop = 1e9;
 }
+
+/* ============ Запуск ============
+   Строго в конце файла. renderCabinet обращается к REM, CABINET и другим
+   объектам, объявленным через const ниже по тексту: если позвать его
+   раньше, весь скрипт падает на «Cannot access before initialization»,
+   и всё, что идёт следом, просто не выполняется. */
+renderCabinet();
+document.addEventListener("pf:ready", ({ detail }) => {
+  if (!detail.user) { location.href = "auth.html"; return; }
+  renderCabinet();
+});
 </script>
 </body>
 </html>
