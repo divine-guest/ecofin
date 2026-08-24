@@ -1030,8 +1030,11 @@ p, li { max-width: 68ch; }
    в кадре — это единственный надёжный сигнал «здесь есть что листать». */
 .hero {
   min-height: min(88vh, 780px);
-  padding-block: clamp(58px, 9vh, 90px) clamp(48px, 7vh, 70px);
+  /* Отступы поджаты так, чтобы содержимое героя укладывалось в 88vh и снизу
+     оставался виден край следующего блока — сигнал «страница продолжается». */
+  padding-block: clamp(38px, 5.5vh, 66px) clamp(30px, 4vh, 48px);
 }
+.hero .hero-stats { margin-top: 22px; }
 @media (max-height: 720px) {
   .hero { min-height: auto; }
 }
