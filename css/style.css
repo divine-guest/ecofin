@@ -1363,7 +1363,14 @@ input, select, textarea { border-radius: 10px; }
   .theme-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* Страховка: выпадающее меню не должно расширять страницу ни при каких
-   обстоятельствах — оно всегда вне потока. */
-.nav-more-list { position: absolute; max-width: min(240px, calc(100vw - 32px)); }
-.mobile-menu .nav-more { display: none; }
+/* На широком экране виден «Ещё», плоский список спрятан. На узком —
+   наоборот: шапка там переносится в два ряда, и выпадающее меню только
+   мешало, а его абсолютно позиционированный список растягивал страницу. */
+.nav-rest-flat { display: none; }
+.nav-more-list { max-width: min(240px, calc(100vw - 32px)); }
+.mobile-menu .nav-more, .mobile-menu .nav-rest-flat { display: none; }
+
+@media (max-width: 860px) {
+  .nav-more { display: none !important; }
+  .nav-rest-flat { display: contents; }
+}

@@ -184,12 +184,16 @@ function renderHeader(active) {
   /* В шапке лишнее прячем под «Ещё», а в мобильном меню показываем всё
      списком: там оно и так вертикальное, а выпадашка внутри выпадашки
      только мешает и растягивает страницу. */
+  /* На широком экране лишнее прячем под «Ещё». На узком шапка и так
+     переносится в два ряда, выпадашка там только мешает — поэтому те же
+     пункты выводятся плоским списком, а переключает их CSS. */
   const links = pages.map(link).join("") +
     (rest.length ? `<span class="nav-more">
       <button type="button" class="nav-more-btn" aria-haspopup="true"
               onclick="this.parentElement.classList.toggle('open')">Ещё</button>
       <span class="nav-more-list">${rest.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</span>
-    </span>` : "");
+    </span>
+    <span class="nav-rest-flat">${rest.map(link).join("")}</span>` : "");
 
   const mobileLinks = pages.map(link).join("") + rest.map(link).join("");
   const auth = u
