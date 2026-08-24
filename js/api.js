@@ -129,6 +129,19 @@ const API = {
   ai(prompt, { kind = "chat", system, maxTokens } = {}) {
     return this.request("/api/ai", { method: "POST", body: { prompt, system, kind, maxTokens } });
   },
+
+  /* Фоновый ИИ: вопрос ставится в очередь на сервере и переживает
+     уход со страницы. context — то, что уходит модели (с предыдущими
+     репликами), prompt — то, что человек увидит в переписке. */
+  aiJobs: {
+    ask(prompt, { kind = "chat", context, system, maxTokens } = {}) {
+      return API.request("/api/ai/ask", {
+        method: "POST", body: { prompt, context, system, kind, maxTokens },
+      });
+    },
+    status(id) { return API.request("/api/ai/job?id=" + encodeURIComponent(id)); },
+    list()     { return API.request("/api/ai/jobs"); },
+  },
   analyze({ text, images, fileName }) {
     return this.request("/api/analyze", { method: "POST", body: { text, images, fileName }, timeout: 120000 });
   },

@@ -1410,3 +1410,33 @@ input, select, textarea { border-radius: 10px; }
 .contact-what {
   min-width: 96px; font-weight: 600; font-size: var(--t-sm); color: var(--muted);
 }
+
+
+/* ===== Ожидание ответа ИИ =====
+   Ответ считает сервер, поэтому пузырь переживает переход на другую
+   страницу. Точки показывают, что работа идёт, а не зависла. */
+.chat-msg.thinking { color: var(--muted); font-style: italic; }
+.chat-msg.thinking::after {
+  content: "";
+  display: inline-block;
+  width: 1.1em; text-align: left;
+  animation: pf-dots 1.2s steps(4, end) infinite;
+}
+@keyframes pf-dots {
+  0%   { content: ""; }
+  25%  { content: "."; }
+  50%  { content: ".."; }
+  75%  { content: "..."; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-msg.thinking::after { animation: none; content: "..."; }
+}
+
+/* Значок чата подсвечивается, когда ответ ещё готовится: человек видит
+   это с любой страницы, даже не открывая переписку. */
+.chat-toggle.busy { box-shadow: 0 0 0 3px var(--primary-soft, rgba(20,160,130,.35)); }
+
+
+/* Часть кнопок привычек — переходы в разделы, а не переключатели.
+   Выглядеть они должны одинаково. */
+a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }

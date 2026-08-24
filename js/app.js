@@ -174,20 +174,16 @@ const SCALES_SVG = `<svg class="logo-mark" viewBox="0 0 24 24" aria-hidden="true
 /* ============ Шапка (вставляется на каждую страницу) ============ */
 function renderHeader(active) {
   const u = PF.user();
-  /* Меню зависит от того, кто пришёл. Самозанятому не нужны «Курсы»
-     и «Практикум» в шапке — ему нужны налоги и документы. Наполнение
-     сайта одно и то же, различается только видимая часть; всё прочее
-     не удалено, а убрано в «Ещё». */
-  const status = (PF.prefs && PF.prefs().profile && PF.prefs().profile.status) || "";
-  const BY_STATUS = {
-    self:   [["calc.html", "Налоги"], ["tools.html", "Документы"], ["knowledge.html", "База знаний"]],
-    ip:     [["calc.html", "Налоги"], ["tools.html", "Документы"], ["knowledge.html", "База знаний"]],
-    ooo:    [["tools.html", "Документы"], ["calc.html", "Расчёты"], ["knowledge.html", "База знаний"]],
-    person: [["calc.html", "Калькуляторы"], ["tools.html", "Инструменты"], ["knowledge.html", "База знаний"]],
-    start:  [["knowledge.html", "База знаний"], ["courses.html", "Курсы"], ["calc.html", "Калькуляторы"]],
-  };
-  const main = BY_STATUS[status] || [
-    ["tools.html", "Инструменты"], ["calc.html", "Калькуляторы"], ["knowledge.html", "База знаний"],
+  /* Состав шапки постоянный. Раньше он подстраивался под тип
+     пользователя и из-за этого прятал разделы: «Практикум» не
+     показывался никому, «ИИ-инструменты» исчезали, стоило указать
+     статус в профиле. Человек не ищет пропавший пункт — он решает,
+     что раздела нет. Предсказуемость здесь важнее умности. */
+  const main = [
+    ["tools.html", "ИИ-инструменты"],
+    ["calc.html", "Калькуляторы"],
+    ["games.html", "Практикум"],
+    ["knowledge.html", "База знаний"],
   ];
 
   const pages = [["index.html", "Главная"], ...main, ["dashboard.html", "Кабинет"]];
@@ -197,21 +193,15 @@ function renderHeader(active) {
 
   const shown = new Set(pages.map(([h]) => h));
   const rest = [
-    ["courses.html", "Курсы"], ["games.html", "Практикум"], ["calc.html", "Калькуляторы"],
-    ["tools.html", "Инструменты"], ["expenses.html", "Дневник трат"],
-    ["knowledge.html", "База знаний"], ["search.html", "Поиск"], ["faq.html", "Вопросы"],
+    ["courses.html", "Курсы"], ["expenses.html", "Дневник трат"],
+    ["search.html", "Поиск"], ["faq.html", "Вопросы"],
   ].filter(([h]) => !shown.has(h));
 
   const link = ([href, label]) =>
     `<a href="${href}" class="${active === href ? "active" : ""}">${label}</a>`;
 
-  /* В шапке лишнее прячем под «Ещё», а в мобильном меню показываем всё
-     списком: там оно и так вертикальное, а выпадашка внутри выпадашки
-     только мешает и растягивает страницу. */
-  /* Никаких выпадающих меню в шапке: список в потоке накрывал соседние
-     пункты, а спрятанный за кнопкой раздел люди просто не находят.
-     В шапке — только то, что нужно этому человеку; всё прочее живёт
-     в подвале, он есть на каждой странице. */
+  /* Никаких выпадающих меню: список в потоке накрывал соседние пункты,
+     а спрятанный за кнопкой раздел люди просто не находят. */
   const links = pages.map(link).join("");
   /* На телефоне меню и так вертикальное, места хватает — показываем всё,
      чтобы «Практикум» и «Дневник трат» не приходилось искать в подвале.
@@ -336,6 +326,9 @@ function chatToggle() {
   const box = document.getElementById("chatBox");
   box.classList.toggle("open");
   restoreChat();
+  if (box.classList.contains("open")) {
+    document.getElementById("chatMessages").scrollTop = 1e9;
+  }
 }
 function addMsg(role, text) {
   const d = document.createElement("div");
@@ -357,24 +350,20 @@ async function chatSend() {
   }
 
   input.value = "";
+
+  /* Вопрос сохраняем СРАЗУ, до всякой отправки. Раньше он попадал в
+     историю только вместе с ответом — и пропадал, если человек уходил
+     со страницы, не дождавшись. */
+  const context = chatContext(text);
+  chatSave([...chatHistory(), { role: "user", text }]);
   addMsg("user", text);
-  const thinking = document.createElement("div");
-  thinking.className = "chat-msg bot";
-  thinking.textContent = "…";
-  document.getElementById("chatMessages").appendChild(thinking);
-  document.getElementById("chatMessages").scrollTop = 1e9;
 
   try {
     trackEvent("ai_chat");
-    const res = await API.ai(chatContext(text), { kind: "chat" });
-    thinking.textContent = res.text;
-    PF.quota = res.quota || PF.quota;
-    chatSave([...chatHistory(), { role: "user", text }, { role: "bot", text: res.text }]);
-    if (res.quota && !res.quota.pro && res.quota.ai.left === 0) {
-      addMsg("bot", "Это было последнее бесплатное обращение на сегодня. Лимит обновится завтра, а с Pro его нет совсем.");
-    }
+    const res = await API.aiJobs.ask(text, { kind: "chat", context });
+    CHATJOBS.remember(res.id);
+    CHATJOBS.watch();
   } catch (e) {
-    thinking.remove();
     if (e.isPaywall) {
       addMsg("bot", e.message);
       showPaywall();
@@ -382,8 +371,105 @@ async function chatSend() {
       addMsg("bot", "Не получилось: " + e.message);
     }
   }
-  document.getElementById("chatMessages").scrollTop = 1e9;
 }
+
+/* ============ Ожидание ответов ИИ ============
+   Ответ считает сервер, а не вкладка. Браузер помнит только номера
+   задач: можно уйти на другую страницу, закрыть её и вернуться —
+   ответ дождётся и встанет в переписку сам. */
+const CHATJOBS = {
+  timer: null,
+
+  key() { return "pf_chat_jobs_" + (PF.user() ? PF.user().email : "guest"); },
+
+  pending() {
+    try { return JSON.parse(localStorage.getItem(this.key()) || "[]"); }
+    catch { return []; }
+  },
+  save(ids) { localStorage.setItem(this.key(), JSON.stringify(ids.slice(-5))); },
+  remember(id) { if (id) this.save([...this.pending(), id]); },
+  forget(id) { this.save(this.pending().filter(x => x !== id)); },
+
+  /* Пузырь «печатает…» рисуется по номеру задачи, чтобы на любой
+     странице он появился ровно один раз. */
+  bubble(id) {
+    let el = document.getElementById("job-" + id);
+    if (el || !document.getElementById("chatMessages")) return el;
+    el = document.createElement("div");
+    el.className = "chat-msg bot thinking";
+    el.id = "job-" + id;
+    el.textContent = "Думаю над ответом…";
+    document.getElementById("chatMessages").appendChild(el);
+    document.getElementById("chatMessages").scrollTop = 1e9;
+    return el;
+  },
+
+  async tick() {
+    const ids = this.pending();
+    if (!ids.length) { this.stop(); return; }
+
+    for (const id of ids) {
+      let d;
+      try { d = await API.aiJobs.status(id); }
+      catch { this.forget(id); document.getElementById("job-" + id)?.remove(); continue; }
+
+      const job = d.job;
+      if (!job || job.status === "pending") { this.bubble(id); continue; }
+
+      const answer = job.status === "done"
+        ? job.answer
+        : "Не получилось получить ответ. Попробуйте спросить ещё раз.";
+
+      /* В историю дописываем один раз: если вкладок несколько,
+         вторая увидит, что ответ уже сохранён. */
+      const hist = chatHistory();
+      const already = hist.some(m => m.jobId === id);
+      if (!already) chatSave([...hist, { role: "bot", text: answer, jobId: id }]);
+
+      const el = document.getElementById("job-" + id);
+      if (el) {
+        el.classList.remove("thinking");
+        el.textContent = answer;
+        el.removeAttribute("id");
+      } else if (document.getElementById("chatMessages") && !already) {
+        addMsg("bot", answer);
+      }
+      this.forget(id);
+      refreshSession();
+    }
+
+    if (!this.pending().length) this.stop();
+  },
+
+  /* Значок чата подсвечен, пока ответ готовится: человек видит это
+     на любой странице, даже не открывая переписку. */
+  mark(busy) {
+    document.querySelector(".chat-toggle")?.classList.toggle("busy", busy);
+  },
+
+  watch() {
+    this.pending().forEach(id => this.bubble(id));
+    this.mark(true);
+    if (this.timer) return;
+    this.tick();
+    this.timer = setInterval(() => this.tick(), 2500);
+  },
+  stop() { clearInterval(this.timer); this.timer = null; this.mark(false); },
+
+  /* При открытии любой страницы подбираем всё, что осталось висеть:
+     и то, что помнит эта вкладка, и то, что сервер уже досчитал. */
+  async resume() {
+    if (!PF.user()) return;
+    if (this.pending().length) return this.watch();
+    try {
+      const d = await API.aiJobs.list();
+      const hist = chatHistory();
+      const lost = (d.jobs || []).filter(
+        j => j.kind === "chat" && j.status === "pending" && !hist.some(m => m.jobId === j.id));
+      if (lost.length) { this.save(lost.map(j => j.id)); this.watch(); }
+    } catch {}
+  },
+};
 
 /* ============ Тарифы и оплата ============
    Три уровня вместо одного. Смысл именно в среднем: рядом с «Базовым»
@@ -1256,6 +1342,12 @@ function initPage(active) {
   renderHeader(active);
   renderFooter();
   renderChatWidget();
+  /* Историю рисуем сразу, а не при первом открытии: иначе пузырь
+     «думаю над ответом» встал бы выше предыдущих реплик. Вызов стоит
+     здесь, а не внутри renderChatWidget, чтобы не зависеть от порядка
+     объявлений в файле — на этом проект уже спотыкался. */
+  restoreChat();
+  CHATJOBS.resume();
   initRevealAnimations();
 
   if (!document.querySelector('link[rel="manifest"]')) {

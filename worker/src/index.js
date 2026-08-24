@@ -9,6 +9,7 @@ import * as billing from "./billing.js";
 import { checkLimits, checkOnly, sweep as sweepLimits } from "./ratelimit.js";
 import * as referral from "./referral.js";
 import * as reminders from "./reminders.js";
+import * as aijobs from "./aijobs.js";
 import * as points from "./points.js";
 import * as courses from "./courses.js";
 import * as telegram from "./telegram.js";
@@ -40,6 +41,11 @@ const ROUTES = [
   ["POST", "/api/reminders/update", reminders.update, "user"],
   ["POST", "/api/reminders/delete", reminders.remove, "user"],
   ["POST", "/api/reminders/preset", reminders.addPreset, "user"],
+  /* Фоновые задачи ИИ: вопрос переживает переход на другую страницу. */
+  ["POST", "/api/ai/ask", aijobs.ask, "user"],
+  ["GET", "/api/ai/job", aijobs.status, "user"],
+  ["GET", "/api/ai/jobs", aijobs.list, "user"],
+
   ["GET", "/api/notifications", reminders.listNotifications, "user"],
   ["POST", "/api/notifications/read", reminders.markRead, "user"],
   ["POST", "/api/notifications/clear", reminders.clearNotifications, "user"],
@@ -179,7 +185,7 @@ export default {
     const throttled = await throttle(request, env, origin, path);
     if (throttled) return throttled;
 
-    if (access === "public") return handler(request, env, origin);
+    if (access === "public") return handler(request, env, origin, null, ctx);
 
     const user = await auth.currentUser(request, env);
     if (!user) return fail(env, origin, "Требуется вход", 401);
@@ -190,6 +196,8 @@ export default {
       return fail(env, origin, "Действие доступно только владельцу сервиса", 403);
 
     await maybeSweep(env, ctx);
-    return handler(request, env, origin, user);
+    /* ctx нужен обработчикам, которые доделывают работу после ответа
+       браузеру: так фоновая задача ИИ переживает уход со страницы. */
+    return handler(request, env, origin, user, ctx);
   },
 };

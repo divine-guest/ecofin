@@ -20,15 +20,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=52">
+<link rel="stylesheet" href="css/style.css?v=53">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
     .tab-panel { display: none !important; }
+    /* Печатается та панель, которую попросили. Раньше здесь был жёстко
+       прописан счёт — из-за этого расчёт налогов сохранить было нечем. */
+    .tab-panel.printing { display: block !important; }
     #invoicePanel { display: block !important; }
     body::before, body::after { display: none; }
     #invoicePaper { box-shadow: none; border: none; }
+    .print-title { display: block !important; margin-bottom: 14px; }
   }
+  .print-title { display: none; }
   .calc-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
   .calc-result {
     background: var(--surface-2); border-radius: 14px; padding: 18px; min-width: 240px; flex: 1;
@@ -80,6 +85,7 @@
           </div>
         </div>
         <div class="calc-result" id="txOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налоговые режимы')">Скачать / печать</button>
       </div>
       <p style="color:var(--muted);font-size:var(--t-xs);margin-top:14px" id="txNote"></p>
       <div id="partnersTax"></div>
@@ -94,6 +100,7 @@
           <div class="form-group"><label>Дней просрочки</label><input type="number" id="pnDays" value="30" oninput="calcPenalty()"></div>
         </div>
         <div class="calc-result" id="pnOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Пеня и неустойка')">Скачать / печать</button>
       </div>
     </div>
 
@@ -105,6 +112,7 @@
           <div class="form-group"><label>Дней отпуска</label><input type="number" id="vpDays" value="14" oninput="calcVacation()"></div>
         </div>
         <div class="calc-result" id="vpOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Отпускные')">Скачать / печать</button>
       </div>
     </div>
 
@@ -123,6 +131,7 @@
           <div class="form-group"><label>Дней больничного</label><input type="number" id="blDays" value="10" oninput="calcSick()"></div>
         </div>
         <div class="calc-result" id="blOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Больничные')">Скачать / печать</button>
       </div>
     </div>
 
@@ -133,6 +142,7 @@
           <div class="form-group"><label>Сумма к распределению, ₽</label><input type="number" id="dvSum" value="1000000" oninput="calcDiv()"></div>
         </div>
         <div class="calc-result" id="dvOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Дивиденды')">Скачать / печать</button>
       </div>
     </div>
 
@@ -144,6 +154,7 @@
           <div class="form-group"><label>Уплаченный НДФЛ за год, ₽</label><input type="number" id="vdTax" value="80000" oninput="calcDeduction()"></div>
         </div>
         <div class="calc-result" id="vdOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налоговые вычеты')">Скачать / печать</button>
       </div>
     </div>
 
@@ -199,12 +210,12 @@
   </div>
 </main>
 
-<script src="js/partners.js?v=52"></script>
-<script src="js/rates.js?v=52"></script>
-<script src="js/themes.js?v=52"></script>
-<script src="js/api.js?v=52"></script>
-<script src="js/app.js?v=52"></script>
-<script src="js/ai.js?v=52"></script>
+<script src="js/partners.js?v=53"></script>
+<script src="js/rates.js?v=53"></script>
+<script src="js/themes.js?v=53"></script>
+<script src="js/api.js?v=53"></script>
+<script src="js/app.js?v=53"></script>
+<script src="js/ai.js?v=53"></script>
 <script>
 initPage("calc.html");
 
@@ -361,6 +372,33 @@ function calcDeduction() {
 
 /* --- 7. Счёт --- */
 let posRows = [{ name: "Услуга по договору № ___", qty: 1, price: 10000 }];
+/* Печать одного расчёта. Popup-окна блокируются браузерами, поэтому
+   печатаем текущую страницу, временно пометив нужную панель: остальное
+   скрывают правила @media print выше. */
+function printPanel(btn, title) {
+  const panel = btn.closest(".tab-panel");
+  if (!panel) return;
+
+  /* Заголовок нужен на бумаге: без него лист непонятно о чём. */
+  let head = panel.querySelector(".print-title");
+  if (!head) {
+    head = document.createElement("h2");
+    head.className = "print-title";
+    panel.prepend(head);
+  }
+  head.textContent = title + " — ПравоФин, " + new Date().toLocaleDateString("ru-RU");
+
+  panel.classList.add("printing");
+  const done = () => {
+    panel.classList.remove("printing");
+    window.removeEventListener("afterprint", done);
+  };
+  window.addEventListener("afterprint", done);
+  window.print();
+  /* Запасной путь: в части браузеров afterprint не срабатывает. */
+  setTimeout(done, 1500);
+}
+
 function addPosRow() { posRows.push({ name: "", qty: 1, price: 0 }); renderPosInputs(); renderInvoice(); }
 function delPosRow(i) { posRows.splice(i, 1); renderPosInputs(); renderInvoice(); }
 function updPos(i, f, v) { posRows[i][f] = f === "name" ? v : (+v || 0); renderInvoice(); }

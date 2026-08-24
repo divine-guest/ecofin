@@ -33,7 +33,13 @@ const ANALYZE_SYSTEM = `Ты — юрист-аналитик сервиса «П
 Если текст обрывочный или скан читается плохо — прямо скажи, какие места не разобрал, и не выдумывай их содержание.
 В конце одной строкой: разбор информационный, не заменяет юридическую консультацию.`;
 
-async function callProvider(env, { model, messages, maxTokens }) {
+/* Какая модель отвечает. Разбор картинок требует зрячей модели,
+   всё остальное идёт на обычную — она дешевле и быстрее. */
+export const MODEL_FOR = (env, kind) =>
+  kind === "vision" ? (env.AI_VISION_MODEL || "gpt-4o-mini")
+                    : (env.AI_MODEL || "deepseek-chat");
+
+export async function callProvider(env, { model, messages, maxTokens }) {
   const base = env.AI_BASE_URL || "https://api.aitunnel.ru/v1";
   const r = await fetch(base + "/chat/completions", {
     method: "POST",

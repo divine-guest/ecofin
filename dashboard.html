@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=52">
+<link rel="stylesheet" href="css/style.css?v=53">
 </head>
 <body>
 <main class="section">
@@ -33,12 +33,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=52"></script>
-<script src="js/api.js?v=52"></script>
-<script src="js/app.js?v=52"></script>
-<script src="js/ai.js?v=52"></script>
-<script src="js/competencies.js?v=52"></script>
-<script src="js/courses.js?v=52"></script>
+<script src="js/themes.js?v=53"></script>
+<script src="js/api.js?v=53"></script>
+<script src="js/app.js?v=53"></script>
+<script src="js/ai.js?v=53"></script>
+<script src="js/competencies.js?v=53"></script>
+<script src="js/courses.js?v=53"></script>
 <script>
 initPage("dashboard.html");
 
@@ -46,8 +46,8 @@ initPage("dashboard.html");
 const CAL = (() => {
   const HABITS_LIST = [
     { id: "money", icon: "💰", label: "Отложил деньги", active: true },
-    { id: "expenses", icon: "📊", label: "Внёс траты", active: false },
-    { id: "learn", icon: "📚", label: "Почитал статью", active: false },
+    { id: "expenses", icon: "📊", label: "Внести траты", active: false, href: "expenses.html" },
+    { id: "learn", icon: "📚", label: "Почитать статью", active: false, href: "knowledge.html" },
   ];
   let view = null; // просматриваемый месяц {y, m}
 
@@ -110,10 +110,13 @@ const CAL = (() => {
 
     // Кнопки привычек
     const markedToday = set.has(tISO);
+    /* Раньше две кнопки были выключены с пометкой «скоро». Выключенная
+       кнопка на готовом продукте читается как недоделка, а обещание
+       никто не выполнял. Теперь это живые переходы в те самые разделы. */
     document.getElementById("habitActions").innerHTML = HABITS_LIST.map(h =>
       h.active
         ? `<button class="habit-btn ${markedToday ? "active" : ""}" onclick="CAL.toggleToday()">${h.icon} ${h.label} ${markedToday ? "✓" : ""}</button>`
-        : `<button class="habit-btn" disabled>${h.icon} ${h.label} <span class="soon">скоро</span></button>`
+        : `<a class="habit-btn" href="${h.href}">${h.icon} ${h.label}</a>`
     ).join("");
 
     // Статистика
@@ -503,6 +506,9 @@ const CABINET = {
 
     try {
       const r = await API.reminders.list();
+      /* Нужно для подсказки ниже: человеку без единого срока стоит
+         предложить именно срок, а не калькулятор. */
+      this.hasReminders = (r.reminders || []).length > 0;
       r.reminders.filter(x => x.daysLeft <= 7).slice(0, 3).forEach(x => items.push({
         kind: x.daysLeft <= 1 ? "warn" : "info",
         text: `${x.title} — ${x.daysLeft < 0 ? "просрочено" : x.daysLeft === 0 ? "сегодня" : x.daysLeft === 1 ? "завтра" : "через " + x.daysLeft + " дн."}`,
@@ -521,8 +527,35 @@ const CABINET = {
       items.push({ kind: "info", text: `Вопросов ИИ осталось сегодня: ${q.ai.left}`, go: () => PAY.open() });
     }
 
+    /* Пусто — честный ответ, но не полезный: человек посмотрел и ушёл.
+       Предлагаем одно конкретное дело, глядя на то, чего он ещё не делал.
+       Порядок важен: сначала то, что даёт пользу быстрее всего. */
     if (!items.length) {
-      box.innerHTML = `<p class="hint">Ничего срочного: ближайших сроков на неделю нет.</p>`;
+      const steps = [];
+
+      if (!this.hasReminders) {
+        steps.push({ text: "Поставьте первый срок — напомним заранее, чтобы не пропустить",
+                     btn: "Добавить срок", go: () => CABINET.show("tasks") });
+      }
+      if (!PF.user().profile) {
+        steps.push({ text: "Расскажите, кто вы — подскажем, что считать именно вам",
+                     btn: "Заполнить профиль", go: () => SETTINGS.open("profile") });
+      }
+      if (q && q.tool.limit !== null && q.tool.left > 0) {
+        steps.push({ text: "Проверьте договор на опасные пункты — один разбор бесплатно",
+                     btn: "Разобрать договор", go: () => (location.href = "tools.html") });
+      }
+      steps.push({ text: "Посчитайте, какой налоговый режим выгоднее",
+                   btn: "Открыть калькулятор", go: () => (location.href = "calc.html") });
+
+      const step = steps[0];
+      box.innerHTML = `<p class="hint" style="margin-bottom:12px">Срочного ничего нет. ${escapeHtml(step.text)}.</p>`;
+      const b = document.createElement("button");
+      b.className = "btn small";
+      b.type = "button";
+      b.textContent = step.btn;
+      b.onclick = step.go;
+      box.appendChild(b);
       return;
     }
     box.innerHTML = "";
