@@ -1,0 +1,30 @@
+# Функциональные проверки.
+#
+# Запускаются по кнопке, а не на каждую отправку кода: сюиты бьют по
+# боевому серверу и заводят в базе настоящие аккаунты. Гонять их на
+# каждый коммит — значит без нужды дёргать живой сервис.
+#
+# Вкладка Actions → «Проверки» → Run workflow.
+
+name: Проверки
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Статическая проверка страниц
+        run: python3 check.py
+
+      - name: Функциональные проверки
+        env:
+          D1_API_TOKEN: ${{ secrets.D1_API_TOKEN }}
+        run: node tests/run-all.mjs
