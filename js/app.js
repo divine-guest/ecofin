@@ -91,7 +91,12 @@ function applyTheme(t) {
   /* Персональный цвет задаётся отдельными оттенками для светлой и тёмной.
      Без пересчёта после переключения остаётся цвет прошлой темы. */
   if (typeof THEMING !== "undefined") THEMING.refresh();
-  document.querySelectorAll(".theme-toggle").forEach(b => (b.textContent = t === "dark" ? "Тёмная тема" : "Светлая тема"));
+  /* Только у самого переключателя. Раньше кнопка уведомлений носила тот же
+     класс ради оформления, и подпись темы затирала её текст — в шапке
+     оказывались две кнопки «Светлая тема». */
+  document.querySelectorAll("button.theme-toggle").forEach(b => {
+    b.textContent = t === "dark" ? "Тёмная тема" : "Светлая тема";
+  });
 }
 function initTheme() {
   const saved = localStorage.getItem(PF.themeKey) ||
@@ -220,8 +225,8 @@ function renderHeader(active) {
       <a href="index.html" class="logo">${SCALES_SVG}Право<b>Фин</b></a>
       <button class="nav-burger" onclick="this.closest('.site-header').classList.toggle('menu-open')" aria-label="Меню">Меню</button>
       <nav class="nav-links">${links}</nav>
-      ${u ? `<button class="theme-toggle notif-btn" onclick="NOTIFY.open()" title="Уведомления" aria-label="Уведомления">Уведомления</button>` : ""}
-      <button class="theme-toggle" onclick="toggleTheme()" title="Сменить тему">${themeLabel}</button>
+      ${u ? `<button class="header-pill notif-btn" onclick="NOTIFY.open()" title="Уведомления" aria-label="Уведомления">Уведомления</button>` : ""}
+      <button class="header-pill theme-toggle" onclick="toggleTheme()" title="Сменить тему">${themeLabel}</button>
       ${auth}
     </div>
     <nav class="mobile-menu">${mobileLinks}</nav>`;

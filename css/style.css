@@ -181,14 +181,19 @@ img { max-width: 100%; }
 .btn.small { padding: 8px 18px; font-size: .86rem; }
 .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 
-.theme-toggle {
+/* Общий вид кнопок-таблеток в шапке. Оформление вынесено в отдельный
+   класс: раньше кнопка уведомлений носила класс переключателя темы
+   ради стилей, и смена темы переписывала ей текст. */
+.header-pill, .theme-toggle {
   background: var(--surface); border: 1.5px solid var(--border); border-radius: 999px;
   padding: 9px 16px; cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--text);
   font-family: inherit; white-space: nowrap;
   display: inline-flex; align-items: center; justify-content: center;
   transition: transform .25s, border-color .2s;
 }
-.theme-toggle:hover { transform: translateY(-1px); border-color: var(--gold); color: var(--gold); }
+.header-pill:hover, .theme-toggle:hover {
+  transform: translateY(-1px); border-color: var(--primary); color: var(--primary);
+}
 
 /* Аватар в шапке и настройках */
 .avatar {
@@ -536,7 +541,8 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
   /* двухслойная шапка: название+кнопки сверху, пункты — ниже в два ряда */
   .nav { height: auto; flex-wrap: wrap; padding: 10px 0; row-gap: 4px; }
   .logo { order: 0; font-size: 1.02rem; gap: 6px; }
-  .theme-toggle { order: 1; margin-left: auto; padding: 7px 9px; font-size: .7rem; }
+  .header-pill, .theme-toggle { order: 1; padding: 7px 9px; font-size: .7rem; }
+  .theme-toggle { margin-left: auto; }
   .nav > .btn { order: 2; padding: 7px 11px; font-size: .76rem; }
   .nav-burger {
     order: 3; display: inline-flex; align-items: center; justify-content: center;
