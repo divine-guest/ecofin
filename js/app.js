@@ -178,13 +178,20 @@ function renderHeader(active) {
     ["knowledge.html", "База знаний"], ["search.html", "Поиск"], ["faq.html", "Вопросы"],
   ].filter(([h]) => !shown.has(h));
 
-  const links = pages.map(([href, label]) =>
-    `<a href="${href}" class="${active === href ? "active" : ""}">${label}</a>`).join("") +
+  const link = ([href, label]) =>
+    `<a href="${href}" class="${active === href ? "active" : ""}">${label}</a>`;
+
+  /* В шапке лишнее прячем под «Ещё», а в мобильном меню показываем всё
+     списком: там оно и так вертикальное, а выпадашка внутри выпадашки
+     только мешает и растягивает страницу. */
+  const links = pages.map(link).join("") +
     (rest.length ? `<span class="nav-more">
       <button type="button" class="nav-more-btn" aria-haspopup="true"
               onclick="this.parentElement.classList.toggle('open')">Ещё</button>
       <span class="nav-more-list">${rest.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</span>
     </span>` : "");
+
+  const mobileLinks = pages.map(link).join("") + rest.map(link).join("");
   const auth = u
     ? `<a href="dashboard.html" class="btn small">${avatarHtml(u)}${escapeHtml(u.name.split(" ")[0])}</a>`
     : `<a href="auth.html" class="btn small">Войти</a>`;
@@ -200,7 +207,7 @@ function renderHeader(active) {
       <button class="theme-toggle" onclick="toggleTheme()" title="Сменить тему">${themeLabel}</button>
       ${auth}
     </div>
-    <nav class="mobile-menu">${links}</nav>`;
+    <nav class="mobile-menu">${mobileLinks}</nav>`;
   document.body.prepend(header);
 }
 

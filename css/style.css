@@ -1362,3 +1362,8 @@ input, select, textarea { border-radius: 10px; }
 @media (max-width: 480px) {
   .theme-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Страховка: выпадающее меню не должно расширять страницу ни при каких
+   обстоятельствах — оно всегда вне потока. */
+.nav-more-list { position: absolute; max-width: min(240px, calc(100vw - 32px)); }
+.mobile-menu .nav-more { display: none; }
