@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=24">
+<link rel="stylesheet" href="css/style.css?v=25">
 </head>
 <body>
 <main class="section">
@@ -33,11 +33,11 @@
   </div>
 </main>
 
-<script src="js/api.js?v=24"></script>
-<script src="js/app.js?v=24"></script>
-<script src="js/ai.js?v=24"></script>
-<script src="js/competencies.js?v=24"></script>
-<script src="js/courses.js?v=24"></script>
+<script src="js/api.js?v=25"></script>
+<script src="js/app.js?v=25"></script>
+<script src="js/ai.js?v=25"></script>
+<script src="js/competencies.js?v=25"></script>
+<script src="js/courses.js?v=25"></script>
 <script>
 initPage("dashboard.html");
 
@@ -265,28 +265,38 @@ function renderCabinet() {
     <div class="grid cols-2" style="margin-bottom:28px">
       <div class="card" data-tab="account">
         <h3>Подписка и ИИ</h3>
-        <p>Использований ИИ-инструментов осталось: <b>${quota}</b></p>
-        ${PF.isPro()
-          ? `<p style="color:var(--muted)">${u.proUntil
-              ? `Pro активна до <b>${new Date(u.proUntil).toLocaleDateString("ru-RU")}</b>`
-              : "Pro активна без ограничения срока"}</p><br>
-             <div style="display:flex;gap:10px;flex-wrap:wrap">
-               <button class="btn gold" onclick="PAY.open()">Продлить</button>
-             </div>
-             <p style="color:var(--muted);font-size:var(--t-xs);margin-top:8px">
-               Автосписаний нет: подписка разовая и просто заканчивается в указанную дату.
-             </p>`
-          : `<br><button class="btn gold" onclick="PAY.open()">Оформить Pro · 490 ₽/мес</button>`}
+        <p>Тариф: <b>${escapeHtml(u.planTitle || "Старт")}</b>${
+          u.proUntil ? ` · до ${new Date(u.proUntil).toLocaleDateString("ru-RU")}` : ""}</p>
+        <p style="color:var(--muted)">Осталось: ${quota}</p>
+
+        <div class="points-banner" style="margin:14px 0">
+          <div>
+            <span class="points-num">${u.points || 0}</span>
+            <span class="points-cap">баллов</span>
+          </div>
+          <p class="hint">1 балл = 1 ₽ скидки при оплате, до половины стоимости.</p>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn gold" onclick="PAY.open()">${
+            PF.isPro() ? "Сменить или продлить" : "Выбрать тариф"}</button>
+          <button class="btn secondary" onclick="SETTINGS.open('subscription')">Подробнее</button>
+        </div>
+        <p style="color:var(--muted);font-size:var(--t-xs);margin-top:8px">
+          Автосписаний нет: подписка разовая и просто заканчивается в указанную дату.
+        </p>
+
         ${(PF.payments || []).length ? `
-          <br><h4 style="margin-bottom:8px">История платежей</h4>
+          <br><h4 style="margin-bottom:8px">История операций</h4>
           <div style="max-height:150px;overflow-y:auto">
-            ${[...u.payments].reverse().map(p => `<p style="padding:6px 0;border-bottom:1px solid var(--border);font-size:var(--t-sm)">
-              ${p.plan === "year" ? "Pro на год" : "Pro на месяц"} — <b>${p.amount} ₽</b>
-              <span style="color:var(--muted)">· ${p.method === "sbp" ? "СБП" : "карта"} · ${new Date(p.date).toLocaleDateString("ru-RU")}</span>
+            ${PF.payments.map(x => `<p style="padding:6px 0;border-bottom:1px solid var(--border);font-size:var(--t-sm)">
+              ${escapeHtml(String(x.plan))} — <b>${x.amount ? x.amount.toLocaleString("ru-RU") + " ₽" : (x.source === "promo" ? "промокод" : "подарок")}</b>
+              <span style="color:var(--muted)">· ${new Date(x.created_at).toLocaleDateString("ru-RU")}</span>
             </p>`).join("")}
           </div>` : ""}
-        <br><br>
-        <div class="card" id="refCard" data-tab="account">
+      </div>
+
+      <div class="card" id="refCard" data-tab="account">
         <h3 style="margin-bottom:10px">Приглашайте друзей</h3>
         <div id="refBox">Загружаем…</div>
       </div>
