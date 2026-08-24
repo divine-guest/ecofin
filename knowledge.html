@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=39">
+<link rel="stylesheet" href="css/style.css?v=40">
 </head>
 <body>
 <main class="section tint-navy">
@@ -51,12 +51,13 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=39"></script>
-<script src="js/api.js?v=39"></script>
-<script src="js/app.js?v=39"></script>
-<script src="js/ai.js?v=39"></script>
-<script src="js/competencies.js?v=39"></script>
-<script src="js/knowledge.js?v=39"></script>
+<script src="js/themes.js?v=40"></script>
+<script src="js/rates.js?v=40"></script>
+<script src="js/api.js?v=40"></script>
+<script src="js/app.js?v=40"></script>
+<script src="js/ai.js?v=40"></script>
+<script src="js/competencies.js?v=40"></script>
+<script src="js/knowledge.js?v=40"></script>
 <script>
 initPage("knowledge.html");
 
@@ -81,13 +82,56 @@ function openArticle(i) {
   const a = ARTICLES[i];
   const el = document.getElementById("articleFull");
   el.classList.add("show");
+  /* Правовой текст без даты проверки не заслуживает доверия и рискован
+     юридически: нормы меняются, а статья выглядит вечной. Дату берём
+     из единого конфига ставок, чтобы она не разъезжалась с расчётами. */
+  const checked = (typeof RATES !== "undefined")
+    ? new Date(RATES.checkedOn).toLocaleDateString("ru-RU") : null;
+
+  /* Ссылка на нужный калькулятор прямо из статьи: человек читает про УСН —
+     логично тут же посчитать свою нагрузку, а не искать раздел. */
+  const CALC_FOR = [
+    [/самозанят|НПД/i, "calc.html#tax", "Сравнить с УСН на калькуляторе"],
+    [/УСН|патент|ПСН|режим/i, "calc.html#tax", "Посчитать свою налоговую нагрузку"],
+    [/больничн/i, "calc.html", "Рассчитать больничный"],
+    [/отпуск/i, "calc.html", "Рассчитать отпускные"],
+    [/вычет/i, "calc.html", "Посчитать вычет"],
+    [/дивиденд/i, "calc.html", "Посчитать налог с дивидендов"],
+    [/неустойк|пени|пеня/i, "calc.html", "Посчитать пеню"],
+    [/договор|претенз|акт/i, "tools.html", "Разобрать свой договор"],
+  ];
+  const hit = CALC_FOR.find(([re]) => re.test(a.title + " " + a.body));
+
   el.innerHTML = `<span class="badge">${a.code}</span><h3 style="margin:10px 0">${a.title}</h3>
-    <div class="body">${escapeHtml(a.body)}</div><br>
-    <button class="btn small secondary" onclick="document.getElementById('articleFull').classList.remove('show')">Закрыть</button>`;
+    <div class="body">${escapeHtml(a.body)}</div>
+    ${checked ? `<p class="hint" style="margin-top:14px">
+      Сверено с первоисточником ${checked}. Нормы меняются — перед подачей
+      документов проверьте актуальную редакцию (сайт ФНС, КонсультантПлюс).
+      Материал информационный, не заменяет юридическую консультацию.</p>` : ""}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      ${hit ? `<a class="btn small" href="${hit[1]}">${hit[2]}</a>` : ""}
+      <button class="btn small secondary" onclick="askAboutArticle(${i})">Спросить ИИ по теме</button>
+      <button class="btn small secondary" onclick="document.getElementById('articleFull').classList.remove('show')">Закрыть</button>
+    </div>`;
   el.scrollIntoView({ behavior: "smooth" });
   COMP.award(COMP.articleArea(a.code), 2);
   PF.logAction("Чтение статьи: " + a.title);
 }
+/* Вопрос по статье уходит в чат-консультанта с уже подставленной темой:
+   это самый частый следующий шаг после чтения. */
+function askAboutArticle(i) {
+  const a = ARTICLES[i];
+  if (!PF.user()) {
+    sessionStorage.setItem("pf_pending_question", `По теме «${a.title}»: `);
+    toast("Войдите, чтобы спросить консультанта");
+    return setTimeout(() => (location.href = "auth.html"), 1200);
+  }
+  chatToggle();
+  const input = document.getElementById("chatInput");
+  input.value = `У меня вопрос по теме «${a.title}». `;
+  input.focus();
+}
+
 renderArticles();
 
 /* --- Тесты --- */
