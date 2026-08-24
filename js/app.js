@@ -1122,7 +1122,7 @@ function showPaywall(message) {
 
   bd.innerHTML = `
     <div class="modal" style="text-align:center">
-      <h3 style="font-family:'Playfair Display',Georgia,serif;margin:6px 0 10px">Нужна подписка Pro</h3>
+      <h3 style="font-family:"Onest", Georgia, serif;margin:6px 0 10px">Нужна подписка Pro</h3>
       <p style="color:var(--muted);margin-bottom:16px">${escapeHtml(reason)}</p>
       <ul style="text-align:left;color:var(--muted);font-size:var(--t-sm);margin:0 20px 18px;line-height:2">
         <li>Безлимитные ИИ-инструменты и калькуляторы</li>
