@@ -4,6 +4,8 @@
 import { CFG, json, fail, now, normEmail, publicUser } from "./lib.js";
 import { extendUntil } from "./quota.js";
 import { logAction } from "./auth.js";
+import { balanceOf, applyToPrice, grant, POINTS, RULES_TEXT } from "./points.js";
+import { rewardOnPayment } from "./referral.js";
 
 const YK = "https://api.yookassa.ru/v3";
 const PLAN_DAYS = { month: 30, year: 365 };
@@ -39,6 +41,7 @@ export function plans(env, origin) {
       { id: "month", title: "Pro на месяц", price: CFG.PRICES.month.rub, days: 30 },
       { id: "year", title: "Pro на год", price: CFG.PRICES.year.rub, days: 365, note: "2 месяца в подарок" },
     ],
+    points: { maxShare: POINTS.maxShareOfPrice, rules: RULES_TEXT },
   });
 }
 
@@ -52,23 +55,29 @@ export async function createPayment(request, env, origin, user) {
   const price = CFG.PRICES[plan];
   const returnUrl = String(env.SITE_URL || "https://divine-guest.github.io/ecofin/") + "dashboard.html";
 
+  /* Баллы уменьшают сумму к оплате, но не больше половины: подписка
+     обязана приносить живые деньги, иначе программа съедает сама себя.
+     Сколько списать, решает сервер — клиент это число не диктует. */
+  const balance = await balanceOf(env, user.email);
+  const { used, toPay } = applyToPrice(balance, price.rub);
+
   try {
     const payment = await ykFetch(env, "/payments", {
       method: "POST",
       idempotenceKey: crypto.randomUUID(),
       body: {
-        amount: { value: price.rub.toFixed(2), currency: "RUB" },
+        amount: { value: toPay.toFixed(2), currency: "RUB" },
         capture: true,
         confirmation: { type: "redirect", return_url: returnUrl },
         description: `ПравоФин — ${plan === "year" ? "Pro на год" : "Pro на месяц"} (${user.email})`,
         /* Сумму и план берём ТОЛЬКО отсюда при подтверждении: клиент их не диктует. */
-        metadata: { email: user.email, plan },
+        metadata: { email: user.email, plan, pointsUsed: String(used) },
         receipt: {
           customer: { email: user.email },
           items: [{
             description: plan === "year" ? "Подписка ПравоФин Pro, 12 мес." : "Подписка ПравоФин Pro, 1 мес.",
             quantity: "1.00",
-            amount: { value: price.rub.toFixed(2), currency: "RUB" },
+            amount: { value: toPay.toFixed(2), currency: "RUB" },
             vat_code: 1,
             payment_mode: "full_payment",
             payment_subject: "service",
@@ -80,11 +89,20 @@ export async function createPayment(request, env, origin, user) {
     await env.DB.prepare(
       `INSERT INTO payments (id, email, amount, plan, source, status, created_at)
        VALUES (?, ?, ?, ?, 'yookassa', 'pending', ?)`
-    ).bind(payment.id, user.email, price.rub, plan, now()).run();
+    ).bind(payment.id, user.email, toPay, plan, now()).run();
+
+    /* Баллы списываем сразу при создании платежа, чтобы их нельзя было
+       потратить дважды в двух вкладках. Если платёж отменится — вернём. */
+    if (used > 0) {
+      await grant(env, user.email, -used, `Оплата подписки (${plan})`, `pay-${payment.id}`);
+    }
 
     return json(env, origin, {
       paymentId: payment.id,
       confirmationUrl: payment.confirmation?.confirmation_url || null,
+      priceRub: price.rub,
+      pointsUsed: used,
+      toPay,
     });
   } catch (e) {
     return fail(env, origin, "Не удалось создать платёж. Попробуйте позже", 502);
@@ -108,7 +126,23 @@ async function applySucceeded(env, paymentId) {
     env.DB.prepare("UPDATE payments SET status = 'succeeded', completed_at = ? WHERE id = ?").bind(now(), paymentId),
   ]);
   await logAction(env, row.email, `Оплачена подписка Pro (${row.plan}), ${row.amount} ₽`);
+  /* Основная часть реферальной награды — именно здесь: пригласивший
+     получает баллы, когда приглашённый принёс деньги. */
+  await rewardOnPayment(env, row.email).catch(() => {});
   return { ok: true, until };
+}
+
+/* Отмена платежа: возвращаем списанные баллы, иначе человек теряет их
+   ни за что и перестаёт верить программе. */
+async function cancelPayment(env, paymentId) {
+  const row = await env.DB.prepare("SELECT email, status FROM payments WHERE id = ?").bind(paymentId).first();
+  if (!row || row.status !== "pending") return;
+  await env.DB.prepare("UPDATE payments SET status = 'canceled' WHERE id = ?").bind(paymentId).run();
+
+  const spent = await env.DB.prepare("SELECT delta FROM point_ops WHERE ref = ?").bind(`pay-${paymentId}`).first();
+  if (spent && spent.delta < 0) {
+    await grant(env, row.email, -spent.delta, "Возврат баллов за отменённый платёж", `refund-${paymentId}`);
+  }
 }
 
 /* POST /api/billing/webhook — вызывает ЮKassa. Тело не считаем доверенным:
@@ -125,7 +159,7 @@ export async function webhook(request, env, origin) {
     if (payment.status === "succeeded" && payment.paid) {
       await applySucceeded(env, paymentId);
     } else if (payment.status === "canceled") {
-      await env.DB.prepare("UPDATE payments SET status = 'canceled' WHERE id = ?").bind(paymentId).run();
+      await cancelPayment(env, paymentId);
     }
   } catch (e) {
     /* Отвечаем 200 всё равно: иначе ЮKassa будет ретраить сутки.
@@ -152,7 +186,7 @@ export async function check(request, env, origin, user) {
         const r = await applySucceeded(env, p.id);
         if (r.ok && !r.already) applied++;
       } else if (payment.status === "canceled") {
-        await env.DB.prepare("UPDATE payments SET status = 'canceled' WHERE id = ?").bind(p.id).run();
+        await cancelPayment(env, p.id);
       }
     } catch { /* переспросим в следующий раз */ }
   }

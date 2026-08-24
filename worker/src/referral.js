@@ -10,10 +10,17 @@
      иначе выгодно штамповать пустые аккаунты;
    - сам себя пригласить нельзя. */
 import { json, fail, now, normEmail } from "./lib.js";
-import { extendUntil } from "./quota.js";
+import { grant, POINTS } from "./points.js";
 import { logAction } from "./auth.js";
 
-export const REFERRAL_DAYS = { inviter: 14, invitee: 14 };
+/* Награда теперь в баллах, а не в днях подписки. Дни — это отданный
+   товар: человек месяц пользуется и не платит. Баллы — скидка, которая
+   срабатывает только вместе с реальной оплатой. */
+export const REFERRAL_REWARD = {
+  inviteeSignup: POINTS.inviteeSignup,
+  inviterActive: POINTS.inviterActive,
+  inviterPaid: POINTS.inviterPaid,
+};
 
 /* Код выводится из email — его не надо хранить и он не меняется.
    Формат PF-XXXX: короткий, читается вслух, без похожих символов. */
@@ -49,38 +56,42 @@ export async function attachReferral(env, email, rawCode) {
   await env.DB.prepare("UPDATE users SET referred_by = ? WHERE email = ? AND referred_by IS NULL")
     .bind(inviter, email).run();
   await logAction(env, inviter, `По вашей ссылке зарегистрировался ${email}`);
+  /* Приглашённому баллы сразу: это то, ради чего он перешёл по ссылке. */
+  await grant(env, email, REFERRAL_REWARD.inviteeSignup,
+    "Бонус за регистрацию по приглашению", `ref-signup-${email}`);
   return inviter;
 }
 
-/* Начисление награды. Зовём, когда приглашённый впервые реально
-   воспользовался сервисом — это отсекает пустые накрученные аккаунты. */
+/* Первая половина награды: приглашённый реально поработал, а не просто
+   завёл пустой аккаунт. Зовётся после успешного обращения к ИИ. */
 export async function rewardIfEarned(env, email) {
   const u = await env.DB.prepare(
     "SELECT email, referred_by, referral_paid FROM users WHERE email = ?"
   ).bind(email).first();
   if (!u || !u.referred_by || u.referral_paid) return false;
 
-  const inviter = await env.DB.prepare("SELECT email, pro_until FROM users WHERE email = ?")
-    .bind(u.referred_by).first();
-  if (!inviter) return false;
+  await env.DB.prepare("UPDATE users SET referral_paid = 1 WHERE email = ?").bind(email).run();
 
-  const invitee = await env.DB.prepare("SELECT pro_until FROM users WHERE email = ?")
-    .bind(email).first();
-
-  await env.DB.batch([
-    env.DB.prepare("UPDATE users SET plan = 'pro', pro_until = ? WHERE email = ?")
-      .bind(extendUntil(inviter.pro_until, REFERRAL_DAYS.inviter), inviter.email),
-    env.DB.prepare("UPDATE users SET plan = 'pro', pro_until = ?, referral_paid = 1 WHERE email = ?")
-      .bind(extendUntil(invitee?.pro_until, REFERRAL_DAYS.invitee), email),
-    env.DB.prepare(
-      `INSERT INTO payments (id, email, amount, plan, source, status, granted_by, created_at, completed_at)
-       VALUES (?, ?, 0, ?, 'referral', 'succeeded', ?, ?, ?)`
-    ).bind(`ref-${email}`, inviter.email, `${REFERRAL_DAYS.inviter}д`, email, now(), now()),
-  ]);
-
-  await logAction(env, inviter.email, `Награда за приглашение: +${REFERRAL_DAYS.inviter} дн. Pro`);
-  await logAction(env, email, `Бонус за регистрацию по приглашению: +${REFERRAL_DAYS.invitee} дн. Pro`);
+  await grant(env, u.referred_by, REFERRAL_REWARD.inviterActive,
+    "Друг начал пользоваться сервисом", `ref-active-${email}`);
+  await logAction(env, u.referred_by,
+    `Начислено ${REFERRAL_REWARD.inviterActive} баллов: приглашённый начал пользоваться сервисом`);
   return true;
+}
+
+/* Вторая, основная половина: приглашённый впервые заплатил.
+   Зовётся из оплаты — там же, где включается Pro. */
+export async function rewardOnPayment(env, email) {
+  const u = await env.DB.prepare("SELECT referred_by FROM users WHERE email = ?").bind(email).first();
+  if (!u || !u.referred_by) return false;
+
+  const r = await grant(env, u.referred_by, REFERRAL_REWARD.inviterPaid,
+    "Друг оформил подписку", `ref-paid-${email}`);
+  if (r.ok) {
+    await logAction(env, u.referred_by,
+      `Начислено ${REFERRAL_REWARD.inviterPaid} баллов: приглашённый оформил подписку`);
+  }
+  return r.ok;
 }
 
 /* GET /api/referral — что показать в кабинете. */
@@ -97,12 +108,17 @@ export async function status(request, env, origin, user) {
     rewarded: Boolean(r.referral_paid),
   }));
 
+  const earned = await env.DB.prepare(
+    "SELECT COALESCE(SUM(delta), 0) AS n FROM point_ops WHERE email = ? AND ref LIKE 'ref-%'"
+  ).bind(user.email).first();
+
   return json(env, origin, {
     code: codeFor(user.email),
     link: `${env.SITE_URL || "https://divine-guest.github.io/ecofin/"}auth.html?ref=${codeFor(user.email)}`,
-    days: REFERRAL_DAYS,
+    reward: REFERRAL_REWARD,
+    balance: user.points || 0,
     invited: list,
-    earnedDays: list.filter(x => x.rewarded).length * REFERRAL_DAYS.inviter,
+    earnedPoints: earned ? earned.n : 0,
   });
 }
 
@@ -119,6 +135,6 @@ export async function preview(request, env, origin) {
   return json(env, origin, {
     valid: true,
     inviter: (u?.name || "").split(" ")[0],
-    days: REFERRAL_DAYS.invitee,
+    bonus: REFERRAL_REWARD.inviteeSignup,
   });
 }

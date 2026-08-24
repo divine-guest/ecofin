@@ -9,6 +9,7 @@ import * as billing from "./billing.js";
 import { checkLimits, checkOnly, sweep as sweepLimits } from "./ratelimit.js";
 import * as referral from "./referral.js";
 import * as reminders from "./reminders.js";
+import * as points from "./points.js";
 import * as telegram from "./telegram.js";
 
 /* Маршруты: [метод, путь, обработчик, доступ] */
@@ -28,6 +29,7 @@ const ROUTES = [
   ["POST", "/api/analyze", ai.handleAnalyze, "user"],
   ["GET", "/api/quota", ai.handleQuota, "user"],
   ["GET", "/api/referral", referral.status, "user"],
+  ["GET", "/api/points", points.status, "user"],
 
   ["GET", "/api/reminders", reminders.list, "user"],
   ["POST", "/api/reminders", reminders.create, "user"],
@@ -58,6 +60,7 @@ const ROUTES = [
   ["POST", "/api/admin/delete-user", admin.removeUser, "admin"],
   ["POST", "/api/admin/reset-password", admin.resetPassword, "admin"],
   ["POST", "/api/admin/run-reminders", admin.runRemindersNow, "admin"],
+  ["POST", "/api/admin/points", points.adminAdjust, "admin"],
   ["POST", "/api/admin/set-role", admin.setRole, "owner"],
 ];
 

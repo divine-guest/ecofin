@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
   created_at    INTEGER NOT NULL,
   last_login_at INTEGER,
   referred_by   TEXT,                  -- email пригласившего, ставится один раз
-  referral_paid INTEGER NOT NULL DEFAULT 0   -- награда за это приглашение уже выдана
+  referral_paid INTEGER NOT NULL DEFAULT 0,  -- награда за это приглашение уже выдана
+  points        INTEGER NOT NULL DEFAULT 0   -- бонусные баллы, 1 балл = 1 ₽ скидки
 );
 CREATE INDEX IF NOT EXISTS idx_users_referred ON users(referred_by);
 
@@ -66,3 +67,14 @@ CREATE TABLE IF NOT EXISTS ratelimit (
   reset_at INTEGER NOT NULL    -- unix-секунды
 );
 CREATE INDEX IF NOT EXISTS idx_ratelimit_reset ON ratelimit(reset_at);
+
+-- Журнал операций с баллами: аудит и защита от повторного начисления.
+CREATE TABLE IF NOT EXISTS point_ops (
+  id     INTEGER PRIMARY KEY AUTOINCREMENT,
+  email  TEXT NOT NULL,
+  delta  INTEGER NOT NULL,
+  reason TEXT NOT NULL,
+  ref    TEXT UNIQUE,
+  at     INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_point_ops_email ON point_ops(email, at DESC);

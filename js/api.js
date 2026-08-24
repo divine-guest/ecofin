@@ -93,6 +93,7 @@ const API = {
   },
   sessions() { return this.request("/api/auth/sessions"); },
   referral() { return this.request("/api/referral"); },
+  points() { return this.request("/api/points"); },
 
   /* --- Напоминания и уведомления --- */
   reminders: {
@@ -152,6 +153,7 @@ const API = {
     deleteUser(email) { return API.request("/api/admin/delete-user", { method: "POST", body: { email } }); },
     setRole(email, role) { return API.request("/api/admin/set-role", { method: "POST", body: { email, role } }); },
     resetPassword(email) { return API.request("/api/admin/reset-password", { method: "POST", body: { email } }); },
+    points(email, delta, reason) { return API.request("/api/admin/points", { method: "POST", body: { email, delta, reason } }); },
   },
 };
 

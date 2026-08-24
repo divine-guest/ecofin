@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=17">
+<link rel="stylesheet" href="css/style.css?v=19">
 </head>
 <body>
 <main class="section">
@@ -33,11 +33,11 @@
   </div>
 </main>
 
-<script src="js/api.js?v=17"></script>
-<script src="js/app.js?v=17"></script>
-<script src="js/ai.js?v=17"></script>
-<script src="js/competencies.js?v=17"></script>
-<script src="js/courses.js?v=17"></script>
+<script src="js/api.js?v=19"></script>
+<script src="js/app.js?v=19"></script>
+<script src="js/ai.js?v=19"></script>
+<script src="js/competencies.js?v=19"></script>
+<script src="js/courses.js?v=19"></script>
 <script>
 initPage("dashboard.html");
 
@@ -535,6 +535,66 @@ const REM = {
     catch (e) { toast(e.message, "error"); }
   },
 };
+
+/* Реферальный блок. Восстановлен: при переделке сроков его определение
+   попало в вырезаемый кусок, а вызов остался — кабинет падал на ReferenceError.
+   Награда теперь в баллах: они дают скидку, а не отданный бесплатно месяц. */
+async function renderReferral() {
+  const box = document.getElementById("refBox");
+  if (!box) return;
+  try {
+    const d = await API.referral();
+    const rewarded = d.invited.filter(x => x.rewarded).length;
+    box.innerHTML = `
+      <div class="points-banner">
+        <div>
+          <span class="points-num">${d.balance}</span>
+          <span class="points-cap">баллов на счету</span>
+        </div>
+        <p class="hint">1 балл = 1 ₽ скидки. Баллами можно оплатить до половины стоимости подписки. Вывести их нельзя.</p>
+      </div>
+
+      <div class="ref-code-row">
+        <input type="text" id="refLink" value="${escapeHtml(d.link)}" readonly onclick="this.select()">
+        <button class="btn small" onclick="copyRef()">Копировать</button>
+        ${navigator.share ? '<button class="btn small secondary" onclick="shareRef()">Поделиться</button>' : ""}
+      </div>
+      <p class="hint">Ваш код: <b>${escapeHtml(d.code)}</b></p>
+
+      <div class="ref-stats">
+        <div><b>${d.invited.length}</b><span>приглашено</span></div>
+        <div><b>${rewarded}</b><span>дошли до дела</span></div>
+        <div><b>${d.earnedPoints}</b><span>баллов заработано</span></div>
+      </div>
+
+      ${d.invited.length ? `
+        <div class="ref-list">
+          ${d.invited.slice(0, 10).map(x => `
+            <div class="ref-row">
+              <span>${escapeHtml(x.hint)}</span>
+              <span class="badge ${x.rewarded ? "ok" : ""}">${x.rewarded ? `+${d.reward.inviterActive} баллов` : "ещё не пользовался"}</span>
+            </div>`).join("")}
+        </div>` : ""}
+
+      <p class="hint">
+        Друг переходит по ссылке и получает <b>${d.reward.inviteeSignup} баллов</b> сразу.
+        Вам — <b>${d.reward.inviterActive}</b>, когда он начнёт пользоваться сервисом,
+        и ещё <b>${d.reward.inviterPaid}</b>, когда впервые оформит подписку.
+        За пустые регистрации баллы не начисляются.
+      </p>`;
+  } catch (e) {
+    box.innerHTML = `<p class="hint">Не удалось загрузить: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function shareRef() {
+  trackEvent("referral_share");
+  navigator.share({
+    title: "ПравоФин",
+    text: "Юридические и налоговые вопросы — с ИИ-консультантом. Заходи по моей ссылке, обоим начислят баллы на подписку.",
+    url: document.getElementById("refLink").value,
+  }).catch(() => {});
+}
 
 function copyRef() {
   navigator.clipboard.writeText(PF.referralCode()).then(() => toast("Код скопирован")).catch(() => toast(PF.referralCode()));
