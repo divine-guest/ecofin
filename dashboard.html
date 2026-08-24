@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=33">
+<link rel="stylesheet" href="css/style.css?v=34">
 </head>
 <body>
 <main class="section">
@@ -33,12 +33,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=33"></script>
-<script src="js/api.js?v=33"></script>
-<script src="js/app.js?v=33"></script>
-<script src="js/ai.js?v=33"></script>
-<script src="js/competencies.js?v=33"></script>
-<script src="js/courses.js?v=33"></script>
+<script src="js/themes.js?v=34"></script>
+<script src="js/api.js?v=34"></script>
+<script src="js/app.js?v=34"></script>
+<script src="js/ai.js?v=34"></script>
+<script src="js/competencies.js?v=34"></script>
+<script src="js/courses.js?v=34"></script>
 <script>
 initPage("dashboard.html");
 
@@ -539,9 +539,29 @@ const CABINET = {
 
 
 /* ============ Мои документы ============ */
+/* Документов накапливаются десятки, и найти нужный без поиска нельзя.
+   Поле появляется только когда их больше трёх — раньше оно лишнее. */
+let docQuery = "";
+function docSearch(v) { docQuery = v.trim().toLowerCase(); renderDocs(); }
+
 function renderDocs() {
-  const docs = PF.docs();
-  document.getElementById("docsList").innerHTML = docs.length
+  const all = PF.docs();
+  const docs = docQuery
+    ? all.filter(d => (d.title + " " + d.content).toLowerCase().includes(docQuery))
+    : all;
+
+  const box = document.getElementById("docsList");
+  if (!box) return;
+  if (all.length > 3 && !document.getElementById("docFind")) {
+    const f = document.createElement("input");
+    f.id = "docFind";
+    f.type = "search";
+    f.placeholder = "Поиск по документам";
+    f.style.cssText = "width:100%;margin-bottom:10px";
+    f.oninput = e => docSearch(e.target.value);
+    box.parentElement.insertBefore(f, box);
+  }
+  box.innerHTML = docs.length
     ? docs.map((d, i) => `
       <p style="padding:8px 0;border-bottom:1px solid var(--border);font-size:var(--t-sm)">
         <b>${escapeHtml(d.title)}</b>
