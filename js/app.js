@@ -213,7 +213,10 @@ function renderHeader(active) {
      В шапке — только то, что нужно этому человеку; всё прочее живёт
      в подвале, он есть на каждой странице. */
   const links = pages.map(link).join("");
-  const mobileLinks = links;
+  /* На телефоне меню и так вертикальное, места хватает — показываем всё,
+     чтобы «Практикум» и «Дневник трат» не приходилось искать в подвале.
+     В шапке компьютера остаётся только нужное этому человеку. */
+  const mobileLinks = links + rest.map(link).join("");
   const auth = u
     ? `<a href="dashboard.html" class="btn small">${avatarHtml(u)}${escapeHtml(u.name.split(" ")[0])}</a>`
     : `<a href="auth.html" class="btn small">Войти</a>`;
