@@ -1,0 +1,23 @@
+name: Диагностика токенов
+on: { workflow_dispatch: {} }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Что умеет каждый токен
+        env:
+          W: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          D: ${{ secrets.D1_API_TOKEN }}
+          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          probe () {
+            local name="$1" tok="$2"
+            echo "--- $name ---"
+            for ep in "user/tokens/verify" "accounts" "accounts/$A/workers/scripts" "accounts/$A/d1/database" "accounts/$A/storage/kv/namespaces"; do
+              code=$(curl -s -o /tmp/o -w '%{http_code}' -H "Authorization: Bearer $tok" "https://api.cloudflare.com/client/v4/$ep")
+              ok=$(python3 -c "import json;d=json.load(open('/tmp/o'));print('OK' if d.get('success') else (d.get('errors') or [{}])[0].get('message','?'))" 2>/dev/null || echo '?')
+              printf '  %-38s %s  %s\n' "$ep" "$code" "$ok"
+            done
+          }
+          probe WORKERS "$W"
+          probe D1 "$D"
