@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0e8f86">
 <!-- seo:end -->
-<link rel="stylesheet" href="css/style.css?v=10">
+<link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
 <main class="section tint-gold">
@@ -69,7 +69,7 @@
         <span class="badge pro" id="ccField"></span>
         <span class="badge" id="ccNum"></span>
       </div>
-      <p id="ccText" style="font-size:1.05rem;margin:16px 0"></p>
+      <p id="ccText" style="font-size:var(--t-md);margin:16px 0"></p>
       <button class="btn secondary" onclick="CASECLUB.reveal()">Показать разбор</button>
       <div class="ai-result" id="ccAnswer"></div>
       <br>
@@ -81,7 +81,7 @@
     <div class="tab-panel game-stage" id="game3">
       <p class="badge" id="ehStatus"></p>
       <h3 id="ehTitle" style="margin:14px 0 8px"></h3>
-      <p style="color:var(--muted);font-size:.88rem;margin-bottom:14px">Кликайте по фрагментам, которые кажутся опасными. Найдите все 5 ловушек.</p>
+      <p style="color:var(--muted);font-size:var(--t-sm);margin-bottom:14px">Кликайте по фрагментам, которые кажутся опасными. Найдите все 5 ловушек.</p>
       <div id="ehText" style="background:var(--surface-2);border-radius:12px;padding:18px;line-height:2"></div>
       <div class="ai-result" id="ehResult"></div>
       <br>
@@ -106,11 +106,11 @@
   </div>
 </main>
 
-<script src="js/api.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
-<script src="js/ai.js?v=10"></script>
-<script src="js/competencies.js?v=10"></script>
-<script src="js/games.js?v=10"></script>
+<script src="js/api.js?v=13"></script>
+<script src="js/app.js?v=13"></script>
+<script src="js/ai.js?v=13"></script>
+<script src="js/competencies.js?v=13"></script>
+<script src="js/games.js?v=13"></script>
 <script>
 initPage("games.html");
 

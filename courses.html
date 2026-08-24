@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0e8f86">
 <!-- seo:end -->
-<link rel="stylesheet" href="css/style.css?v=10">
+<link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
 <main class="section tint-green">
@@ -32,11 +32,11 @@
   </div>
 </main>
 
-<script src="js/api.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
-<script src="js/ai.js?v=10"></script>
-<script src="js/competencies.js?v=10"></script>
-<script src="js/courses.js?v=10"></script>
+<script src="js/api.js?v=13"></script>
+<script src="js/app.js?v=13"></script>
+<script src="js/ai.js?v=13"></script>
+<script src="js/competencies.js?v=13"></script>
+<script src="js/courses.js?v=13"></script>
 <script>
 initPage("courses.html");
 
@@ -51,9 +51,9 @@ function renderCourses() {
       <div class="card" onclick="${locked ? `showPaywall()` : `openCourse('${c.id}')`}" style="cursor:pointer">
         <h3>${c.title} ${c.free ? '<span class="badge ok">Бесплатно</span>' : '<span class="badge pro">Pro</span>'}</h3>
         <p>${c.desc}</p><br>
-        <p style="font-size:.84rem;color:var(--muted)">${c.lessons.length} уроков · ${c.lessons.reduce((s, l) => s + l.mins, 0)} минут</p>
+        <p style="font-size:var(--t-sm);color:var(--muted)">${c.lessons.length} уроков · ${c.lessons.reduce((s, l) => s + l.mins, 0)} минут</p>
         <div class="progress-bar" style="margin:10px 0 6px"><div style="width:${pct}%"></div></div>
-        <p style="font-size:.8rem;color:var(--muted)">${locked ? "Откроется по подписке" : `Пройдено ${pct}%`}</p>
+        <p style="font-size:var(--t-xs);color:var(--muted)">${locked ? "Откроется по подписке" : `Пройдено ${pct}%`}</p>
       </div>`;
   }).join("") + `</div>`;
 }
@@ -91,7 +91,7 @@ function openLesson(id, i) {
   const prog = new Set(COURSE_PROGRESS.get()[id] || []);
   document.getElementById("lessonBox").innerHTML = `
     <h3>Урок ${i + 1}. ${l.title}</h3>
-    <p style="color:var(--muted);font-size:.82rem">≈ ${l.mins} минут</p>
+    <p style="color:var(--muted);font-size:var(--t-sm)">≈ ${l.mins} минут</p>
     <div class="ai-result show" style="border-image:none">${escapeHtml(l.body)}</div>
     <br>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -139,11 +139,11 @@ function checkCertificate(id) {
   bd.innerHTML = `
     <div class="modal" style="text-align:center;border:6px double var(--gold)">
       <p style="letter-spacing:2px;color:var(--gold);font-weight:800">СЕРТИФИКАТ</p>
-      <p style="color:var(--muted);font-size:.85rem">ПравоФин подтверждает, что</p>
+      <p style="color:var(--muted);font-size:var(--t-sm)">ПравоФин подтверждает, что</p>
       <h3 style="font-family:'Playfair Display',Georgia,serif;margin:8px 0">${escapeHtml(u ? u.name : "Пользователь")}</h3>
-      <p style="color:var(--muted);font-size:.85rem">успешно завершил(а) курс</p>
+      <p style="color:var(--muted);font-size:var(--t-sm)">успешно завершил(а) курс</p>
       <h4 style="margin:8px 0">«${c.title}»</h4>
-      <p style="color:var(--muted);font-size:.85rem">${c.lessons.length} уроков · ${new Date().toLocaleDateString("ru-RU")}</p>
+      <p style="color:var(--muted);font-size:var(--t-sm)">${c.lessons.length} уроков · ${new Date().toLocaleDateString("ru-RU")}</p>
       <br>
       <button class="btn" onclick="window.print()">Скачать / печать</button>
       <button class="btn secondary" onclick="document.getElementById('certBackdrop').classList.remove('open')">Закрыть</button>

@@ -18,7 +18,7 @@
 <meta name="theme-color" content="#0e8f86">
 <meta name="robots" content="noindex, nofollow">
 <!-- seo:end -->
-<link rel="stylesheet" href="css/style.css?v=10">
+<link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
 <main class="section">
@@ -30,11 +30,11 @@
   </div>
 </main>
 
-<script src="js/api.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
-<script src="js/ai.js?v=10"></script>
-<script src="js/competencies.js?v=10"></script>
-<script src="js/courses.js?v=10"></script>
+<script src="js/api.js?v=13"></script>
+<script src="js/app.js?v=13"></script>
+<script src="js/ai.js?v=13"></script>
+<script src="js/competencies.js?v=13"></script>
+<script src="js/courses.js?v=13"></script>
 <script>
 initPage("dashboard.html");
 
@@ -246,9 +246,9 @@ function renderCabinet() {
       <div class="cal-grid" id="calGrid"></div>
       <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
         <div class="progress-bar" style="flex:1"><div id="calBar" style="width:0"></div></div>
-        <span id="calPct" style="color:var(--muted);font-size:.84rem;font-weight:600;min-width:90px;text-align:right"></span>
+        <span id="calPct" style="color:var(--muted);font-size:var(--t-sm);font-weight:600;min-width:90px;text-align:right"></span>
       </div>
-      <p style="color:var(--muted);font-size:.84rem;margin-top:8px">
+      <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
         Клик по прошедшему дню — отметить или снять. Стрелками ‹ › листайте историю прошлых месяцев.
       </p>
     </div>
@@ -264,14 +264,14 @@ function renderCabinet() {
              <div style="display:flex;gap:10px;flex-wrap:wrap">
                <button class="btn gold" onclick="PAY.open()">Продлить</button>
              </div>
-             <p style="color:var(--muted);font-size:.8rem;margin-top:8px">
+             <p style="color:var(--muted);font-size:var(--t-xs);margin-top:8px">
                Автосписаний нет: подписка разовая и просто заканчивается в указанную дату.
              </p>`
           : `<br><button class="btn gold" onclick="PAY.open()">Оформить Pro · 490 ₽/мес</button>`}
         ${(PF.payments || []).length ? `
           <br><h4 style="margin-bottom:8px">История платежей</h4>
           <div style="max-height:150px;overflow-y:auto">
-            ${[...u.payments].reverse().map(p => `<p style="padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem">
+            ${[...u.payments].reverse().map(p => `<p style="padding:6px 0;border-bottom:1px solid var(--border);font-size:var(--t-sm)">
               ${p.plan === "year" ? "Pro на год" : "Pro на месяц"} — <b>${p.amount} ₽</b>
               <span style="color:var(--muted)">· ${p.method === "sbp" ? "СБП" : "карта"} · ${new Date(p.date).toLocaleDateString("ru-RU")}</span>
             </p>`).join("")}
@@ -283,12 +283,12 @@ function renderCabinet() {
       </div>
       <div class="card">
         <h3>Профиль компетенций</h3>
-        <p style="margin-bottom:4px">Индекс грамотности: <b style="font-size:1.2rem;color:var(--primary)">${COMP.index()}%</b>
+        <p style="margin-bottom:4px">Индекс грамотности: <b style="font-size:var(--t-lg);color:var(--primary)">${COMP.index()}%</b>
           · ${COMP.level(COMP.index())}</p>
         ${Object.entries(COMP.AREAS).map(([id, name]) => {
           const v = COMP.all()[id] || 0;
           return `<div style="margin:9px 0">
-            <div style="display:flex;justify-content:space-between;font-size:.82rem">
+            <div style="display:flex;justify-content:space-between;font-size:var(--t-sm)">
               <span>${name}</span><span style="color:var(--muted)">${v}% · ${COMP.level(v)}</span>
             </div>
             <div class="progress-bar" style="margin-top:4px"><div style="width:${v}%"></div></div>
@@ -300,23 +300,23 @@ function renderCabinet() {
     <!-- Индивидуальный план развития -->
     <div class="card" style="margin-bottom:28px">
       <h3>Индивидуальный план развития</h3>
-      <p style="color:var(--muted);font-size:.86rem">Подобран по вашему профилю. Проходите материалы — компетенции растут автоматически.</p>
+      <p style="color:var(--muted);font-size:var(--t-sm)">Подобран по вашему профилю. Проходите материалы — компетенции растут автоматически.</p>
       <div class="grid cols-3" style="margin-top:14px">
         ${COURSES.map(c => {
           const done = (JSON.parse(localStorage.getItem("pf_course_" + u.email) || "{}")[c.id] || []).length;
           const pct = Math.round(done / c.lessons.length * 100);
           const status = pct === 100 ? '<span class="badge ok">Сертификат</span>' : pct > 0 ? '<span class="badge">В процессе</span>' : '<span class="badge">Не начато</span>';
           return `<a class="card" href="courses.html" style="padding:18px">
-            <h3 style="font-size:.98rem">${c.title} ${c.free ? "" : '<span class="badge pro">Pro</span>'}</h3>
-            <p style="font-size:.8rem;color:var(--muted)">${COMP.AREAS[COMP.courseArea[c.id]]} · ${c.lessons.length} уроков</p>
+            <h3 style="font-size:var(--t-md)">${c.title} ${c.free ? "" : '<span class="badge pro">Pro</span>'}</h3>
+            <p style="font-size:var(--t-xs);color:var(--muted)">${COMP.AREAS[COMP.courseArea[c.id]]} · ${c.lessons.length} уроков</p>
             <div class="progress-bar" style="margin:8px 0 4px"><div style="width:${pct}%"></div></div>
-            <p style="font-size:.78rem">${status} ${pct}%</p>
+            <p style="font-size:var(--t-xs)">${status} ${pct}%</p>
           </a>`;
         }).join("")}
         <a class="card" href="knowledge.html" style="padding:18px">
-          <h3 style="font-size:.98rem">Аттестационные тесты</h3>
-          <p style="font-size:.8rem;color:var(--muted)">4 теста: налоги, право, финансы, бухучёт</p>
-          <p style="font-size:.78rem;margin-top:8px"><span class="badge">Проверка знаний</span></p>
+          <h3 style="font-size:var(--t-md)">Аттестационные тесты</h3>
+          <p style="font-size:var(--t-xs);color:var(--muted)">4 теста: налоги, право, финансы, бухучёт</p>
+          <p style="font-size:var(--t-xs);margin-top:8px"><span class="badge">Проверка знаний</span></p>
         </a>
       </div>
     </div>
@@ -325,7 +325,7 @@ function renderCabinet() {
     <div class="grid cols-2" style="margin-bottom:28px">
       <div class="card">
         <h3>Мои документы</h3>
-        <p style="color:var(--muted);font-size:.86rem">Сохранённые шаблоны и генерации. Скачиваются в один клик.</p><br>
+        <p style="color:var(--muted);font-size:var(--t-sm)">Сохранённые шаблоны и генерации. Скачиваются в один клик.</p><br>
         <div id="docsList"></div>
       </div>
       <div class="card">
@@ -365,7 +365,7 @@ function renderCabinet() {
       <div class="card">
         <h3>История действий</h3>
         ${hist.length ? `<div style="max-height:420px;overflow-y:auto">
-          ${hist.slice(0, 20).map(h => `<p style="padding:7px 0;border-bottom:1px solid var(--border);font-size:.88rem">${escapeHtml(h.text)}<br><span style="color:var(--muted);font-size:.78rem">${new Date(h.date).toLocaleString("ru-RU")}</span></p>`).join("")}
+          ${hist.slice(0, 20).map(h => `<p style="padding:7px 0;border-bottom:1px solid var(--border);font-size:var(--t-sm)">${escapeHtml(h.text)}<br><span style="color:var(--muted);font-size:var(--t-xs)">${new Date(h.date).toLocaleString("ru-RU")}</span></p>`).join("")}
         </div>` : `<p style="color:var(--muted)">История пуста</p>`}
       </div>
     </div>`;
@@ -402,9 +402,9 @@ function renderDocs() {
   const docs = PF.docs();
   document.getElementById("docsList").innerHTML = docs.length
     ? docs.map((d, i) => `
-      <p style="padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem">
+      <p style="padding:8px 0;border-bottom:1px solid var(--border);font-size:var(--t-sm)">
         <b>${escapeHtml(d.title)}</b>
-        <span style="color:var(--muted);font-size:.78rem"> · ${new Date(d.date).toLocaleDateString("ru-RU")}</span><br>
+        <span style="color:var(--muted);font-size:var(--t-xs)"> · ${new Date(d.date).toLocaleDateString("ru-RU")}</span><br>
         <button class="btn small secondary" onclick="docView(${i})">Открыть</button>
         <button class="btn small secondary" onclick="docDownload(${i})">Скачать</button>
         <button class="btn small danger" onclick="docDelete(${i})">Удалить</button>

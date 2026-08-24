@@ -1022,3 +1022,27 @@ p, li { max-width: 68ch; }
   .hero-ask .btn { width: 100%; }
   .hero-hints button { font-size: 12px; }
 }
+
+/* ===== Высота героя =====
+   С полем вопроса герой перерос экран: 110% высоты — значит ниже него
+   не видно вообще ничего, и человек не понимает, что страница продолжается.
+   Держим его в пределах экрана и оставляем «хвостик» следующего блока
+   в кадре — это единственный надёжный сигнал «здесь есть что листать». */
+.hero {
+  min-height: min(88vh, 780px);
+  padding-block: clamp(58px, 9vh, 90px) clamp(48px, 7vh, 70px);
+}
+@media (max-height: 720px) {
+  .hero { min-height: auto; }
+}
+@media (max-width: 640px) {
+  .hero { min-height: auto; padding-block: 42px 44px; }
+}
+
+/* Сетка на три колонки при 1280px давала 42 символа в строке — глазу тесно.
+   Колонки не фиксируем числом, а задаём минимальную ширину: браузер сам
+   решит, сколько их поместится, и строка не станет короче комфортной. */
+@media (min-width: 861px) {
+  .grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+  .grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+}

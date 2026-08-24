@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0e8f86">
 <!-- seo:end -->
-<link rel="stylesheet" href="css/style.css?v=10">
+<link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
 <main class="section tint-green">
@@ -58,10 +58,10 @@
   </div>
 </main>
 
-<script src="js/api.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
-<script src="js/ai.js?v=10"></script>
-<script src="js/competencies.js?v=10"></script>
+<script src="js/api.js?v=13"></script>
+<script src="js/app.js?v=13"></script>
+<script src="js/ai.js?v=13"></script>
+<script src="js/competencies.js?v=13"></script>
 <script>
 initPage("expenses.html");
 
@@ -86,7 +86,7 @@ function render() {
   document.getElementById("exLimit").textContent = lim ? Math.max(0, lim - total).toLocaleString("ru-RU") + " ₽ осталось" : "не задан";
 
   document.getElementById("exList").innerHTML = all().items.slice(0, 30).map((x, i) => `
-    <p style="padding:7px 0;border-bottom:1px solid var(--border);font-size:.88rem;display:flex;justify-content:space-between;gap:8px">
+    <p style="padding:7px 0;border-bottom:1px solid var(--border);font-size:var(--t-sm);display:flex;justify-content:space-between;gap:8px">
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${CAT_COLORS[CATS.indexOf(x.cat)] || "#888"}"></span>
         ${x.cat} · <span style="color:var(--muted)">${x.date.slice(8)}.${x.date.slice(5, 7)}</span></span>
       <span><b>${x.sum.toLocaleString("ru-RU")} ₽</b> <button class="btn small danger" onclick="delExp(${i})">✕</button></span>
@@ -96,11 +96,11 @@ function render() {
   document.getElementById("exStats").innerHTML = byCat.length
     ? byCat.sort((a, b) => b[1] - a[1]).map(([c, s]) => `
       <div style="margin:10px 0">
-        <div style="display:flex;justify-content:space-between;font-size:.84rem">
+        <div style="display:flex;justify-content:space-between;font-size:var(--t-sm)">
           <span>${c}</span><span style="color:var(--muted)">${s.toLocaleString("ru-RU")} ₽ · ${Math.round(s / total * 100)}%</span>
         </div>
         <div class="progress-bar" style="margin-top:4px"><div style="width:${s / total * 100}%;background:${CAT_COLORS[CATS.indexOf(c)]}"></div></div>
-      </div>`).join("") + `<p style="color:var(--muted);font-size:.8rem;margin-top:12px">Правило 50/30/20: обязательное ≤ 50%, желания ≤ 30%, сбережения ≥ 20%.</p>`
+      </div>`).join("") + `<p style="color:var(--muted);font-size:var(--t-xs);margin-top:12px">Правило 50/30/20: обязательное ≤ 50%, желания ≤ 30%, сбережения ≥ 20%.</p>`
     : `<p style="color:var(--muted)">Статистика появится после первых записей месяца.</p>`;
 }
 function addExp() {

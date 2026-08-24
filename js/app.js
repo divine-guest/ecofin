@@ -228,7 +228,7 @@ function renderChatWidget() {
   w.className = "chat-widget";
   w.innerHTML = `
     <div class="chat-box" id="chatBox">
-      <div class="chat-header">ИИ-консультант <button onclick="clearChat()" title="Очистить историю" style="margin-right:10px;font-size:.85rem">Очистить</button><button onclick="chatToggle()">✕</button></div>
+      <div class="chat-header">ИИ-консультант <button onclick="clearChat()" title="Очистить историю" style="margin-right:10px;font-size:var(--t-sm)">Очистить</button><button onclick="chatToggle()">✕</button></div>
       <div class="chat-messages" id="chatMessages"></div>
       <div class="chat-input">
         <input type="text" id="chatInput" placeholder="Задайте вопрос..." onkeydown="if(event.key==='Enter')chatSend()">
@@ -384,7 +384,7 @@ const PAY = {
           ${off ? "Оплата временно недоступна" : `Перейти к оплате — ${this.plans[this.step.plan].price} ₽`}
         </button>
         <div style="margin-top:16px;text-align:center">
-          <p style="color:var(--muted);font-size:.8rem;margin-bottom:6px">или введите промокод</p>
+          <p style="color:var(--muted);font-size:var(--t-xs);margin-bottom:6px">или введите промокод</p>
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
             <input type="text" id="promoInput2" placeholder="Промокод" style="max-width:170px">
             <button class="btn secondary" onclick="applyPromo('promoInput2')">Активировать</button>
@@ -915,14 +915,14 @@ function showPaywall(message) {
     <div class="modal" style="text-align:center">
       <h3 style="font-family:'Playfair Display',Georgia,serif;margin:6px 0 10px">Нужна подписка Pro</h3>
       <p style="color:var(--muted);margin-bottom:16px">${escapeHtml(reason)}</p>
-      <ul style="text-align:left;color:var(--muted);font-size:.9rem;margin:0 20px 18px;line-height:2">
+      <ul style="text-align:left;color:var(--muted);font-size:var(--t-sm);margin:0 20px 18px;line-height:2">
         <li>Безлимитные ИИ-инструменты и калькуляторы</li>
         <li>Анализ договоров: файлом и фотографией</li>
         <li>ИИ-консультант без дневного лимита</li>
         <li>Платные курсы и сертификаты</li>
       </ul>
       <button class="btn gold" onclick="closePaywall();PAY.open()">Оформить Pro</button>
-      <p style="color:var(--muted);font-size:.8rem;margin-top:14px;margin-bottom:6px">или введите промокод</p>
+      <p style="color:var(--muted);font-size:var(--t-xs);margin-top:14px;margin-bottom:6px">или введите промокод</p>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <input type="text" id="promoInput" placeholder="Промокод" style="max-width:170px">
         <button class="btn secondary" onclick="applyPromo('promoInput')">Активировать</button>

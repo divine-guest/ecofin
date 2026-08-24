@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0e8f86">
 <!-- seo:end -->
-<link rel="stylesheet" href="css/style.css?v=10">
+<link rel="stylesheet" href="css/style.css?v=13">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -31,10 +31,10 @@
     background: var(--surface-2); border-radius: 14px; padding: 18px; min-width: 240px; flex: 1;
   }
   .calc-result .big {
-    font-size: 1.6rem; font-weight: 800;
+    font-size:var(--t-xl); font-weight: 800;
     background: var(--grad-primary); -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  .cmp-table { width: 100%; border-collapse: collapse; font-size: .9rem; margin-top: 10px; }
+  .cmp-table { width: 100%; border-collapse: collapse; font-size:var(--t-sm); margin-top: 10px; }
   .cmp-table th, .cmp-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: left; }
   .cmp-table tr.best td { background: color-mix(in srgb, var(--primary) 12%, transparent); font-weight: 700; }
   #invoicePaper {
@@ -78,7 +78,7 @@
         </div>
         <div class="calc-result" id="txOut"></div>
       </div>
-      <p style="color:var(--muted);font-size:.8rem;margin-top:14px" id="txNote"></p>
+      <p style="color:var(--muted);font-size:var(--t-xs);margin-top:14px" id="txNote"></p>
       <div id="partnersTax"></div>
     </div>
 
@@ -189,11 +189,11 @@
   </div>
 </main>
 
-<script src="js/partners.js?v=10"></script>
-<script src="js/rates.js?v=10"></script>
-<script src="js/api.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
-<script src="js/ai.js?v=10"></script>
+<script src="js/partners.js?v=13"></script>
+<script src="js/rates.js?v=13"></script>
+<script src="js/api.js?v=13"></script>
+<script src="js/app.js?v=13"></script>
+<script src="js/ai.js?v=13"></script>
 <script>
 initPage("calc.html");
 
@@ -253,14 +253,14 @@ function calcTax() {
   const worst = valid.reduce((a, b) => (a.val >= b.val ? a : b));
 
   const vat = income > RATES.usn.vatThreshold
-    ? `<p style="color:var(--danger);font-size:.84rem;margin-top:10px">
+    ? `<p style="color:var(--danger);font-size:var(--t-sm);margin-top:10px">
          Доход выше ${(RATES.usn.vatThreshold / 1e6).toLocaleString("ru-RU")} млн ₽ — на УСН добавляется НДС, он в расчёт не включён.
        </p>` : "";
 
   document.getElementById("txOut").innerHTML = `
     <table class="cmp-table">
       ${rows.map(r => `<tr class="${r === best ? "best" : ""}">
-        <td>${r.name}<br><span style="font-size:.76rem;color:var(--muted)">${r.note}</span></td>
+        <td>${r.name}<br><span style="font-size:var(--t-xs);color:var(--muted)">${r.note}</span></td>
         <td style="text-align:right;white-space:nowrap"><b>${r.val === null ? "—" : fmt(r.val)}</b></td>
       </tr>`).join("")}
     </table>
@@ -269,7 +269,7 @@ function calcTax() {
         ? ` — на ${fmt(worst.val - best.val)} выгоднее худшего варианта`
         : ""}.</p>
     ${vat}
-    <p style="color:var(--muted);font-size:.78rem;margin-top:10px">Все суммы — налог вместе со страховыми взносами за год. ${RATES.disclaimer()}</p>`;
+    <p style="color:var(--muted);font-size:var(--t-xs);margin-top:10px">Все суммы — налог вместе со страховыми взносами за год. ${RATES.disclaimer()}</p>`;
 }
 
 /* --- 2. Пеня --- */
@@ -282,7 +282,7 @@ function calcPenalty() {
   document.getElementById("pnOut").innerHTML = `
     <p>Пеня за ${days} дн. по ставке ${rate}%/день:</p>
     <div class="big">${fmt(pen)}</div>
-    <p style="color:var(--muted);font-size:.82rem;margin-top:8px">
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
       ${share}Пеня выше 10–15% суммы долга обычно снижается судом по ст. 333 ГК РФ.
     </p>`;
 }
@@ -302,7 +302,7 @@ function calcVacation() {
     <p>Среднедневной заработок:</p><div class="big">${fmt(day)}</div>
     <p style="margin-top:10px">Начислено за ${d} дн.: <b>${fmt(gross)}</b></p>
     <p>К выплате (− НДФЛ ${(effective * 100).toFixed(1)}%): <b>${fmt(gross - ndfl)}</b></p>
-    <p style="color:var(--muted);font-size:.78rem;margin-top:8px">
+    <p style="color:var(--muted);font-size:var(--t-xs);margin-top:8px">
       Ставка НДФЛ рассчитана по прогрессивной шкале от годового дохода. ${RATES.disclaimer()}
     </p>`;
 }
@@ -319,8 +319,8 @@ function calcSick() {
   document.getElementById("blOut").innerHTML = `
     <p>Среднедневной (с учётом стажа ${k * 100}%):</p><div class="big">${fmt(day * k)}</div>
     <p style="margin-top:10px">Пособие за ${d} дн.: <b>${fmt(pay)}</b></p>
-    <p style="color:var(--muted);font-size:.82rem">Первые 3 дня оплачивает работодатель, остальные — СФР.</p>
-    <p style="color:var(--muted);font-size:.78rem;margin-top:6px">
+    <p style="color:var(--muted);font-size:var(--t-sm)">Первые 3 дня оплачивает работодатель, остальные — СФР.</p>
+    <p style="color:var(--muted);font-size:var(--t-xs);margin-top:6px">
       Максимум ${fmt(RATES.maxSickDaily())} в день — из предельных баз за ${RATES.sickLeave.baseYears.join(" и ")} гг. ${RATES.disclaimer()}
     </p>`;
 }
@@ -343,7 +343,7 @@ function calcDeduction() {
   const ret = Math.min(exp * 0.13, tax);
   document.getElementById("vdOut").innerHTML = `
     <p>Социальный вычет (лимит ${RATES.deductions.socialLimit.toLocaleString("ru-RU")} ₽/год):</p><div class="big">${fmt(ret)}</div>
-    <p style="color:var(--muted);font-size:.82rem;margin-top:8px">
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
       Возврат ограничен уплаченным НДФЛ (${fmt(tax)}). Подать можно за 3 предыдущих года через личный кабинет ФНС.
     </p>`;
 }
@@ -376,18 +376,18 @@ function renderInvoice() {
   }).join("");
   const vatSum = vat ? total * 0.2 : 0;
   document.getElementById("invoicePaper").innerHTML = `
-    <div style="text-align:center;font-weight:800;font-size:1.2rem">СЧЁТ № ${escapeHtml(g("ivNum") || "1")} от ${g("ivDate") || "___.___.20__"}</div>
-    <table style="width:100%;margin:18px 0;font-size:.9rem">
+    <div style="text-align:center;font-weight:800;font-size:var(--t-lg)">СЧЁТ № ${escapeHtml(g("ivNum") || "1")} от ${g("ivDate") || "___.___.20__"}</div>
+    <table style="width:100%;margin:18px 0;font-size:var(--t-sm)">
       <tr><td style="width:90px;vertical-align:top"><b>Поставщик:</b></td><td>${escapeHtml(g("ivSeller") || "—")}<br>ИНН ${escapeHtml(g("ivSellerInn") || "—")}<br>Р/с ${escapeHtml(g("ivSellerAcc") || "—")}<br>${escapeHtml(g("ivSellerBank") || "—")}</td></tr>
       <tr><td style="vertical-align:top;padding-top:8px"><b>Покупатель:</b></td><td style="padding-top:8px">${escapeHtml(g("ivBuyer") || "—")}<br>ИНН ${escapeHtml(g("ivBuyerInn") || "—")}</td></tr>
     </table>
-    <table style="width:100%;border-collapse:collapse;font-size:.9rem">
+    <table style="width:100%;border-collapse:collapse;font-size:var(--t-sm)">
       <tr style="background:#f2f2f2"><th style="padding:7px 8px;border:1px solid #ccc;text-align:left">Наименование</th><th style="border:1px solid #ccc;padding:7px 8px">Кол-во</th><th style="border:1px solid #ccc;padding:7px 8px">Цена, ₽</th><th style="border:1px solid #ccc;padding:7px 8px">Сумма, ₽</th></tr>
       ${rowsHtml}
     </table>
-    <div style="text-align:right;margin-top:14px;font-size:1.05rem">
+    <div style="text-align:right;margin-top:14px;font-size:var(--t-md)">
       ${vat ? `НДС 20%: <b>${vatSum.toLocaleString("ru-RU")} ₽</b><br>` : "Без НДС (УСН)<br>"}
-      <span style="font-size:1.25rem">Итого: <b>${total.toLocaleString("ru-RU")} ₽</b></span>
+      <span style="font-size:var(--t-lg)">Итого: <b>${total.toLocaleString("ru-RU")} ₽</b></span>
     </div>
     <div style="display:flex;gap:18px;align-items:center;margin-top:20px">
       <img id="invQr" alt="QR для оплаты" style="width:120px;height:120px;border:1px solid #ccc;border-radius:8px"
@@ -395,7 +395,7 @@ function renderInvoice() {
           'ST00012|Name=' + (g('ivSeller') || '—') + '|PersonalAcc=' + (g('ivSellerAcc') || '—') +
           '|BankName=' + (g('ivSellerBank') || '—') + '|Sum=' + Math.round(total * 100) +
           '|Purpose=Оплата по счёту ' + (g('ivNum') || '1'))}">
-      <p style="color:#555;font-size:.85rem">Оплата по QR (СБП): наведите камеру телефона.<br>Счёт действителен 5 банковских дней.</p>
+      <p style="color:#555;font-size:var(--t-sm)">Оплата по QR (СБП): наведите камеру телефона.<br>Счёт действителен 5 банковских дней.</p>
     </div>`;
 }
 function saveInvoice() {
