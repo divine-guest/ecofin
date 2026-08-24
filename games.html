@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=40">
+<link rel="stylesheet" href="css/style.css?v=41">
 </head>
 <body>
 <main class="section tint-gold">
@@ -29,6 +29,7 @@
       <h1>Практикум: разбор <span>реальных ситуаций</span></h1>
       <div class="line"></div>
       <p class="subtitle">Кейсы из судебной практики и экспресс-тесты — проверка знаний на реальных сценариях</p>
+        <p class="hint" id="pracNote" style="margin-top:6px"></p>
     </div>
 
     <div class="tabs">
@@ -109,14 +110,26 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=40"></script>
-<script src="js/api.js?v=40"></script>
-<script src="js/app.js?v=40"></script>
-<script src="js/ai.js?v=40"></script>
-<script src="js/competencies.js?v=40"></script>
-<script src="js/games.js?v=40"></script>
+<script src="js/themes.js?v=41"></script>
+<script src="js/rates.js?v=41"></script>
+<script src="js/api.js?v=41"></script>
+<script src="js/app.js?v=41"></script>
+<script src="js/ai.js?v=41"></script>
+<script src="js/competencies.js?v=41"></script>
+<script src="js/games.js?v=41"></script>
 <script>
 initPage("games.html");
+
+/* Разборы и тесты опираются на нормы, а нормы меняются: без даты сверки
+   правовой материал выглядит вечным и вводит в заблуждение. */
+{
+  const n = document.getElementById("pracNote");
+  if (n && typeof RATES !== "undefined") {
+    n.textContent = "Задания сверены с нормами на " +
+      new Date(RATES.checkedOn).toLocaleDateString("ru-RU") +
+      ". Материал учебный, не заменяет юридическую консультацию.";
+  }
+}
 
 function switchGame(i, btn) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
