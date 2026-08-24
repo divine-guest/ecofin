@@ -1,0 +1,64 @@
+name: Проверка сайта
+
+# Гоняем на каждый пуш и на каждое предложение изменений. Три худшие
+# поломки этого проекта были одного класса — незакрытый тег, из-за
+# которого целый раздел прятался внутри соседнего. Такое ловится
+# статически за секунду, но только если проверка запускается сама.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Разметка, ссылки, обработчики, утечки ключей
+        run: python3 check.py
+
+      - name: Синтаксис модулей
+        run: |
+          set -e
+          for f in js/*.js; do node --check "$f"; done
+          echo "модулей проверено: $(ls js/*.js | wc -l)"
+
+      - name: Синтаксис встроенных скриптов
+        run: |
+          set -e
+          python3 - <<'PY'
+          import io, re, glob, subprocess, sys, tempfile, os
+          bad = 0
+          for page in sorted(glob.glob("*.html")):
+              s = io.open(page, encoding="utf-8").read()
+              blocks = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", s, re.S)
+              if not blocks:
+                  continue
+              with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as f:
+                  f.write("\n;\n".join(blocks))
+                  tmp = f.name
+              r = subprocess.run(["node", "--check", tmp], capture_output=True, text=True)
+              os.unlink(tmp)
+              if r.returncode:
+                  print(f"::error file={page}::{r.stderr.strip().splitlines()[-1] if r.stderr else 'ошибка разбора'}")
+                  bad += 1
+          print(f"страниц проверено: {len(glob.glob('*.html'))}, с ошибками: {bad}")
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: Версии ресурсов проставлены
+        run: |
+          set -e
+          missing=$(grep -ho '\(src\|href\)="\(js\|css\)/[^"]*"' *.html | grep -v '?v=' || true)
+          if [ -n "$missing" ]; then
+            echo "::error::Есть ресурсы без версии — вернувшийся посетитель получит старую копию:"
+            echo "$missing"
+            exit 1
+          fi
+          echo "все css и js подключены с версией"

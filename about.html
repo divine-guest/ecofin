@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=50">
+<link rel="stylesheet" href="css/style.css?v=51">
 </head>
 <body>
 <main class="section">
@@ -83,12 +83,69 @@
       <p><b>Актуальность.</b> Ставки и нормы сверены с законодательством 2025–2026 годов и регулярно обновляются.</p>
     </div>
   </div>
+
+  <section class="section" id="contact">
+    <div class="container" style="max-width:760px">
+      <div class="section-title">
+        <h2>Связаться с нами</h2>
+        <div class="line"></div>
+        <p class="subtitle">Отвечаем на вопросы по сервису, подписке и доступу</p>
+      </div>
+      <div class="card" id="contactCard">
+        <p class="hint">Загружаем контакты…</p>
+      </div>
+    </div>
+  </section>
 </main>
 
-<script src="js/themes.js?v=50"></script>
-<script src="js/api.js?v=50"></script>
-<script src="js/app.js?v=50"></script>
-<script src="js/ai.js?v=50"></script>
-<script>initPage("about.html");</script>
+<script src="js/themes.js?v=51"></script>
+<script src="js/contacts.js?v=51"></script>
+<script src="js/api.js?v=51"></script>
+<script src="js/app.js?v=51"></script>
+<script src="js/ai.js?v=51"></script>
+<script>initPage("about.html");
+/* Раздел контактов. Показываем только заполненные каналы: неработающий
+   адрес хуже, чем его отсутствие. */
+{
+  const box = document.getElementById("contactCard");
+  if (box) {
+    const rows = [];
+    if (CONTACTS.telegram) rows.push(`
+      <div class="contact-row">
+        <span class="contact-what">Telegram</span>
+        <span>
+          <a href="https://t.me/${CONTACTS.telegram}" target="_blank" rel="noopener">@${CONTACTS.telegram}</a>
+          <span class="hint"> — быстрее всего, отвечаем ${CONTACTS.answerTime}</span>
+        </span>
+      </div>`);
+    if (CONTACTS.email) rows.push(`
+      <div class="contact-row">
+        <span class="contact-what">Почта</span>
+        <span><a href="mailto:${CONTACTS.email}">${CONTACTS.email}</a></span>
+      </div>`);
+    if (CONTACTS.phone) rows.push(`
+      <div class="contact-row">
+        <span class="contact-what">Телефон</span>
+        <span><a href="tel:${CONTACTS.phone.replace(/[^+\d]/g, "")}">${CONTACTS.phone}</a></span>
+      </div>`);
+
+    const legal = CONTACTS.legalName ? `
+      <hr>
+      <h4>Реквизиты</h4>
+      <p class="hint">
+        ${escapeHtml(CONTACTS.legalName)}${CONTACTS.inn ? ", ИНН " + escapeHtml(CONTACTS.inn) : ""}
+        ${CONTACTS.address ? "<br>" + escapeHtml(CONTACTS.address) : ""}
+      </p>` : "";
+
+    box.innerHTML = rows.join("") + `
+      <p class="hint" style="margin-top:14px">
+        С чем помогаем: восстановить доступ к аккаунту, разобраться с подпиской
+        и оплатой, подключить несколько клиентов на тарифе «Бухгалтер».
+        Мы не даём юридических консультаций в переписке — для этого есть
+        ИИ-консультант в сервисе.
+      </p>` + legal;
+  }
+}
+</script>
 </body>
 </html>

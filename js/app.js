@@ -244,7 +244,7 @@ function renderFooter() {
       <a href="games.html">Практикум</a> · <a href="expenses.html">Дневник трат</a> ·
       <a href="search.html">Поиск</a>
     </p>
-    <p><a href="about.html">О сервисе</a> · <a href="faq.html">Частые вопросы</a> · <a href="legal.html">Правовые документы</a></p>
+    <p><a href="about.html">О сервисе</a> · <a href="about.html#contact">Связаться</a> · <a href="faq.html">Частые вопросы</a> · <a href="legal.html">Правовые документы</a></p>
     <p>Материалы носят информационный характер и не являются юридической консультацией.</p>
   </div>`;
   document.body.appendChild(f);
@@ -637,7 +637,8 @@ const SETTINGS = {
       <div class="form-group">
         <label>Электронная почта</label>
         <input type="text" value="${escapeHtml(u.email)}" disabled>
-        <p class="hint">Почта — это логин, она не меняется. Нужен другой адрес — напишите в поддержку.</p>
+        <p class="hint">Почта — это логин, она не меняется. Нужен другой адрес —
+          <a href="about.html#contact" target="_blank" rel="noopener">напишите в поддержку</a>.</p>
       </div>
 
       <button class="btn wide" onclick="SETTINGS.save()">Сохранить изменения</button>`;
