@@ -135,7 +135,11 @@ img { max-width: 100%; }
 .nav-links {
   display: flex; gap: 0; margin-left: auto;
   flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
-  -ms-overflow-style: none; max-width: 100%;
+  -ms-overflow-style: none;
+  /* min-width: 0 обязателен: без него блок с прокруткой отказывается
+     сжиматься и вылезает под соседние кнопки. Из-за этого «Кабинет»
+     заезжал под плашку уведомлений. */
+  flex: 0 1 auto; min-width: 0;
 }
 .nav-links::-webkit-scrollbar { display: none; }
 .nav-links a {
@@ -1440,3 +1444,21 @@ input, select, textarea { border-radius: 10px; }
 /* Часть кнопок привычек — переходы в разделы, а не переключатели.
    Выглядеть они должны одинаково. */
 a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+
+
+/* ===== Значки в плашках шапки =====
+   Две подписи («Уведомления», «Тёмная тема») занимали около 260 пикселей
+   и выдавливали последний пункт меню под себя. На узких экранах остаётся
+   только значок; на широких подпись возвращается — значок без слова
+   понятен не каждому. */
+.pill-icon { width: 17px; height: 17px; flex: none; }
+.header-pill { gap: 7px; }
+.header-pill .pill-text { white-space: nowrap; }
+
+@media (max-width: 1180px) {
+  .header-pill .pill-text { display: none; }
+  .header-pill { padding: 9px 11px; }
+}
+
+/* Кнопки шапки не должны сжиматься: сжимается меню. */
+.header-pill, .nav .btn.small { flex: none; }

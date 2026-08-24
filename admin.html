@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=54">
+<link rel="stylesheet" href="css/style.css?v=55">
 </head>
 <body>
 <main class="section tint-navy">
@@ -32,10 +32,10 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=54"></script>
-<script src="js/api.js?v=54"></script>
-<script src="js/app.js?v=54"></script>
-<script src="js/ai.js?v=54"></script>
+<script src="js/themes.js?v=55"></script>
+<script src="js/api.js?v=55"></script>
+<script src="js/app.js?v=55"></script>
+<script src="js/ai.js?v=55"></script>
 <script>
 initPage("admin.html");
 
@@ -132,15 +132,22 @@ const AD = {
       </div>
 
       <div class="card" style="margin-top:20px">
-        <h3 style="margin-bottom:6px">Выдать Pro вручную</h3>
+        <h3 style="margin-bottom:6px">Выдать подписку вручную</h3>
         <p style="color:var(--muted);font-size:var(--t-sm);margin-bottom:14px">
           Подарочная подписка не попадает в выручку, но видна в журнале операций.
-          Если у человека уже есть Pro — срок продлевается, а не перезаписывается.
+          Если подписка уже есть — срок продлевается, а не перезаписывается.
         </p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
           <div class="form-group" style="margin:0;flex:1;min-width:220px">
             <label>Email пользователя</label>
             <input type="text" id="grantEmail" placeholder="user@example.com">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Тариф</label>
+            <select id="grantTier">
+              <option value="pro">Про — 690 ₽/мес</option>
+              <option value="basic">Базовый — 290 ₽/мес</option>
+            </select>
           </div>
           <div class="form-group" style="margin:0">
             <label>Срок</label>
@@ -244,18 +251,24 @@ const AD = {
     if (!email) return toast("Укажите email");
     const plan = document.getElementById("grantPlan").value;
     const days = Number(document.getElementById("grantDays").value) || 0;
-    this.act(() => API.admin.grant(email, plan, days), `Pro выдан: ${email}`);
+    const tier = document.getElementById("grantTier").value;
+    const name = tier === "basic" ? "Базовый" : "Про";
+    this.act(() => API.admin.grant(email, plan, days, tier), `«${name}» выдан: ${email}`);
   },
 
   quickGrant(enc) {
     const email = decodeURIComponent(enc);
-    const choice = prompt(`Выдать Pro пользователю ${email}.\nВведите: month — месяц, year — год, либо число дней.`, "month");
+    const tier = prompt(`Какой тариф выдать ${email}?\nВведите: pro — «Про», basic — «Базовый».`, "pro");
+    if (tier === null) return;
+    const t = tier.trim().toLowerCase() === "basic" ? "basic" : "pro";
+    const tName = t === "basic" ? "Базовый" : "Про";
+    const choice = prompt(`Выдать «${tName}» пользователю ${email}.\nВведите: month — месяц, year — год, либо число дней.`, "month");
     if (!choice) return;
     const v = choice.trim().toLowerCase();
-    if (v === "month" || v === "year") return this.act(() => API.admin.grant(email, v), `Pro выдан: ${email}`);
+    if (v === "month" || v === "year") return this.act(() => API.admin.grant(email, v, 0, t), `«${tName}» выдан: ${email}`);
     const days = Number(v);
     if (!days || days < 1) return toast("Не понял срок");
-    this.act(() => API.admin.grant(email, "days", days), `Pro на ${days} дн. выдан: ${email}`);
+    this.act(() => API.admin.grant(email, "days", days, t), `«${tName}» на ${days} дн. выдан: ${email}`);
   },
 
   revoke(enc) {

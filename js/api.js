@@ -167,7 +167,11 @@ const API = {
     },
     card(email) { return API.request("/api/admin/user?email=" + encodeURIComponent(email)); },
     payments() { return API.request("/api/admin/payments"); },
-    grant(email, plan, days) { return API.request("/api/admin/grant", { method: "POST", body: { email, plan, days } }); },
+    /* tier — какой именно тариф дарим: basic или pro. Без него сервер
+       по умолчанию выдаёт старший, и «Базовый» подарить было нельзя. */
+    grant(email, plan, days, tier) {
+      return API.request("/api/admin/grant", { method: "POST", body: { email, plan, days, tier } });
+    },
     revoke(email) { return API.request("/api/admin/revoke", { method: "POST", body: { email } }); },
     resetTrial(email) { return API.request("/api/admin/reset-trial", { method: "POST", body: { email } }); },
     deleteUser(email) { return API.request("/api/admin/delete-user", { method: "POST", body: { email } }); },

@@ -95,9 +95,23 @@ function applyTheme(t) {
      класс ради оформления, и подпись темы затирала её текст — в шапке
      оказывались две кнопки «Светлая тема». */
   document.querySelectorAll("button.theme-toggle").forEach(b => {
-    b.textContent = t === "dark" ? "Тёмная тема" : "Светлая тема";
+    const txt = b.querySelector(".pill-text");
+    if (txt) txt.textContent = t === "dark" ? "Тёмная тема" : "Светлая тема";
+    else b.textContent = t === "dark" ? "Тёмная тема" : "Светлая тема";
+    /* Значок меняется вместе с подписью. Переписывать кнопку целиком
+       нельзя — вместе с текстом улетел бы и он. */
+    const icon = b.querySelector(".pill-icon");
+    if (icon) icon.replaceWith(elFromHtml(t === "dark" ? MOON_SVG : SUN_SVG));
   });
 }
+/* Собирает элемент из строки разметки: нужен, чтобы заменить значок,
+   не переписывая кнопку целиком. */
+function elFromHtml(html) {
+  const t = document.createElement("template");
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
 function initTheme() {
   const saved = localStorage.getItem(PF.themeKey) ||
     (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
@@ -162,6 +176,29 @@ function escapeHtml(s) {
    Эмодзи — цветной шрифт: он выглядит по-разному в каждой системе,
    а под градиентной заливкой через background-clip вовсе превращался
    в бесформенное пятно. Вектор наследует цвет темы и одинаков везде. */
+/* Значки шапки — вектор, как и знак весов: наследуют цвет темы и
+   выглядят одинаково во всех системах. На узких экранах остаются
+   только они, подпись прячется. */
+const BELL_SVG = `<svg class="pill-icon" viewBox="0 0 24 24" aria-hidden="true"
+  fill="none" stroke="currentColor" stroke-width="1.7"
+  stroke-linecap="round" stroke-linejoin="round">
+  <path d="M18 8.5a6 6 0 1 0-12 0c0 6-2 7.5-2 7.5h16s-2-1.5-2-7.5"/>
+  <path d="M10.3 20a2 2 0 0 0 3.4 0"/>
+</svg>`;
+
+const SUN_SVG = `<svg class="pill-icon" viewBox="0 0 24 24" aria-hidden="true"
+  fill="none" stroke="currentColor" stroke-width="1.7"
+  stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="4.2"/>
+  <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/>
+</svg>`;
+
+const MOON_SVG = `<svg class="pill-icon" viewBox="0 0 24 24" aria-hidden="true"
+  fill="none" stroke="currentColor" stroke-width="1.7"
+  stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 14.2A8.4 8.4 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2z"/>
+</svg>`;
+
 const SCALES_SVG = `<svg class="logo-mark" viewBox="0 0 24 24" aria-hidden="true"
   fill="none" stroke="currentColor" stroke-width="1.5"
   stroke-linecap="round" stroke-linejoin="round">
@@ -210,7 +247,9 @@ function renderHeader(active) {
   const auth = u
     ? `<a href="dashboard.html" class="btn small">${avatarHtml(u)}${escapeHtml(u.name.split(" ")[0])}</a>`
     : `<a href="auth.html" class="btn small">Войти</a>`;
-  const themeLabel = document.documentElement.getAttribute("data-theme") === "dark" ? "Тёмная тема" : "Светлая тема";
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  const themeLabel = dark ? "Тёмная тема" : "Светлая тема";
+  const themeIcon = dark ? MOON_SVG : SUN_SVG;
   const header = document.createElement("header");
   header.className = "site-header";
   header.innerHTML = `
@@ -218,8 +257,8 @@ function renderHeader(active) {
       <a href="index.html" class="logo">${SCALES_SVG}Право<b>Фин</b></a>
       <button class="nav-burger" onclick="this.closest('.site-header').classList.toggle('menu-open')" aria-label="Меню">Меню</button>
       <nav class="nav-links">${links}</nav>
-      ${u ? `<button class="header-pill notif-btn" onclick="NOTIFY.open()" title="Уведомления" aria-label="Уведомления">Уведомления</button>` : ""}
-      <button class="header-pill theme-toggle" onclick="toggleTheme()" title="Сменить тему">${themeLabel}</button>
+      ${u ? `<button class="header-pill notif-btn" onclick="NOTIFY.open()" title="Уведомления" aria-label="Уведомления">${BELL_SVG}<span class="pill-text">Уведомления</span></button>` : ""}
+      <button class="header-pill theme-toggle" onclick="toggleTheme()" title="Сменить тему" aria-label="Сменить тему">${themeIcon}<span class="pill-text">${themeLabel}</span></button>
       ${auth}
     </div>
     <nav class="mobile-menu">${mobileLinks}</nav>`;

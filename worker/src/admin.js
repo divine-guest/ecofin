@@ -99,8 +99,9 @@ export async function grant(request, env, origin, admin) {
      VALUES (?, ?, 0, ?, 'manual', 'succeeded', ?, ?, ?)`
   ).bind(`manual-${now()}-${email}`, email, plan === "days" ? `${days}д` : plan, admin.email, now(), now()).run();
 
-  await logAction(env, email, `Администратор выдал Pro на ${days} дн.`);
-  await logAction(env, admin.email, `Выдал Pro (${days} дн.) пользователю ${email}`);
+  const tierName = PLANS[tier].title;
+  await logAction(env, email, `Администратор выдал «${tierName}» на ${days} дн.`);
+  await logAction(env, admin.email, `Выдал «${tierName}» (${days} дн.) пользователю ${email}`);
 
   const row = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
   return json(env, origin, { user: publicUser(row) });
