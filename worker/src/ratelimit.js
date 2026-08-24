@@ -56,6 +56,57 @@ export const LIMITS = {
   reset:    { perIp: [10, 3600] },
 };
 
+/* Посмотреть счётчик, ничего не списывая. Нужно для входа: списывать
+   попытку до проверки пароля нельзя — иначе человек, честно вошедший
+   девять раз за четверть часа, окажется заблокирован. */
+export async function peek(env, bucket, limit) {
+  try {
+    const row = await env.DB.prepare("SELECT n, reset_at FROM ratelimit WHERE bucket = ?")
+      .bind(bucket).first();
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (!row || row.reset_at <= nowSec) return { allowed: true };
+    return { allowed: row.n < limit, retryAfter: Math.max(1, row.reset_at - nowSec) };
+  } catch (e) {
+    console.error("ratelimit peek", e.message);
+    return { allowed: true };
+  }
+}
+
+/* Только проверяет, не блокирован ли вход, — без списания. */
+export async function checkOnly(env, request, action, key) {
+  const cfg = LIMITS[action];
+  if (!cfg) return null;
+  if (cfg.perIp) {
+    const r = await peek(env, `${action}:ip:${clientIp(request)}`, cfg.perIp[0]);
+    if (!r.allowed) return r.retryAfter;
+  }
+  if (cfg.perKey && key) {
+    const r = await peek(env, `${action}:key:${key}`, cfg.perKey[0]);
+    if (!r.allowed) return r.retryAfter;
+  }
+  return null;
+}
+
+/* Списать неудачную попытку. Зовётся ТОЛЬКО когда пароль не подошёл. */
+export async function penalize(env, request, action, key) {
+  const cfg = LIMITS[action];
+  if (!cfg) return;
+  if (cfg.perIp) await hit(env, `${action}:ip:${clientIp(request)}`, cfg.perIp[0], cfg.perIp[1]);
+  if (cfg.perKey && key) await hit(env, `${action}:key:${key}`, cfg.perKey[0], cfg.perKey[1]);
+}
+
+/* Сбросить счётчик после успешного входа: человек доказал, что он свой. */
+export async function forgive(env, request, action, key) {
+  const cfg = LIMITS[action];
+  if (!cfg) return;
+  const buckets = [];
+  if (cfg.perIp) buckets.push(`${action}:ip:${clientIp(request)}`);
+  if (cfg.perKey && key) buckets.push(`${action}:key:${key}`);
+  for (const b of buckets) {
+    await env.DB.prepare("DELETE FROM ratelimit WHERE bucket = ?").bind(b).run().catch(() => {});
+  }
+}
+
 /* Возвращает null, если можно продолжать, иначе — сколько ждать секунд. */
 export async function checkLimits(env, request, action, key) {
   const cfg = LIMITS[action];

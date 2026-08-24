@@ -6,7 +6,7 @@ import * as auth from "./auth.js";
 import * as ai from "./ai.js";
 import * as admin from "./admin.js";
 import * as billing from "./billing.js";
-import { checkLimits, sweep as sweepLimits } from "./ratelimit.js";
+import { checkLimits, checkOnly, sweep as sweepLimits } from "./ratelimit.js";
 import * as referral from "./referral.js";
 import * as reminders from "./reminders.js";
 import * as telegram from "./telegram.js";
@@ -15,6 +15,7 @@ import * as telegram from "./telegram.js";
 const ROUTES = [
   ["POST", "/api/auth/register", auth.register, "public"],
   ["POST", "/api/auth/login", auth.login, "public"],
+  ["POST", "/api/auth/owner-recover", auth.ownerRecover, "public"],
   ["POST", "/api/auth/logout", auth.logout, "public"],
   ["GET", "/api/auth/me", auth.me, "user"],
   ["POST", "/api/auth/profile", auth.updateProfile, "user"],
@@ -90,7 +91,11 @@ async function throttle(request, env, origin, path) {
     key = String(body.email || body.code || "").trim().toLowerCase().slice(0, 120);
   }
 
-  const retryAfter = await checkLimits(env, request, action, key);
+  /* Для входа только смотрим счётчик: списывать будет сам обработчик,
+     и только если пароль не подошёл. */
+  const retryAfter = action === "login"
+    ? await checkOnly(env, request, action, key)
+    : await checkLimits(env, request, action, key);
   if (retryAfter === null) return null;
 
   const minutes = Math.ceil(retryAfter / 60);
@@ -140,6 +145,10 @@ export default {
     /* Публичный: приглашённый видит, кто его позвал, ещё до регистрации. */
     if (path === "/api/referral/check") {
       if (!env.DB) return fail(env, origin, "База не подключена", 500);
+      /* Код выводится из почты, поэтому перебором можно проверять, кто
+         зарегистрирован. Лимит делает такой перебор бессмысленным. */
+      const wait = await checkLimits(env, request, "promo", "");
+      if (wait !== null) return fail(env, origin, "Слишком много запросов", 429);
       return referral.preview(request, env, origin);
     }
 

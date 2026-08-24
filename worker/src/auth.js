@@ -4,6 +4,7 @@ import {
   bearer, now, normEmail, validEmail, publicUser, normalizeAvatar,
 } from "./lib.js";
 import { attachReferral } from "./referral.js";
+import { penalize, forgive } from "./ratelimit.js";
 
 /* Три уровня доступа:
      owner — задан в OWNER_EMAILS, может выдавать и снимать админку через сайт;
@@ -88,7 +89,13 @@ export async function login(request, env, origin) {
   const ok = row
     ? await verifyPassword(password, row.pass_hash)
     : await verifyPassword(password, "100000:AAAAAAAAAAAAAAAAAAAAAA==:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
-  if (!row || !ok) return fail(env, origin, "Неверный email или пароль", 401);
+  if (!row || !ok) {
+    /* Промах — вот теперь списываем попытку. */
+    await penalize(env, request, "login", email);
+    return fail(env, origin, "Неверный email или пароль", 401);
+  }
+  /* Вошёл — счётчик обнуляем: прошлые опечатки больше не висят над человеком. */
+  await forgive(env, request, "login", email);
 
   /* Роль подтягиваем заново: список владельцев мог измениться,
      а выданная через сайт админка живёт в базе и должна пережить вход. */
@@ -186,4 +193,43 @@ export async function logoutEverywhere(request, env, origin, user) {
     .bind(user.email, keep).run();
   await logAction(env, user.email, "Выход на всех остальных устройствах");
   return json(env, origin, { ok: true, closed: r.meta?.changes ?? 0 });
+}
+
+/* POST /api/auth/owner-recover {email, secret, newPassword}
+
+   Зачем. Пароль пользователю сбрасывает администратор. Но если забыл пароль
+   сам владелец — сбрасывать некому, и сервис остаётся без хозяина навсегда.
+   Это аварийный ключ: работает только для адресов из OWNER_EMAILS и только
+   при совпадении секрета RECOVERY_SECRET, который лежит в настройках воркера
+   и известен лишь тому, кто может делать деплой. */
+export async function ownerRecover(request, env, origin) {
+  if (!env.RECOVERY_SECRET)
+    return fail(env, origin, "Аварийное восстановление не настроено", 503);
+
+  const b = await request.json().catch(() => ({}));
+  const email = normEmail(b.email);
+  const secret = String(b.secret || "");
+  const next = String(b.newPassword || "");
+
+  /* Сравнение постоянного времени: секрет нельзя подбирать по таймингам. */
+  const given = await sha256(secret);
+  const want = await sha256(env.RECOVERY_SECRET);
+  if (given !== want) return fail(env, origin, "Неверный ключ восстановления", 403);
+
+  if (!ownerEmails(env).includes(email))
+    return fail(env, origin, "Этот адрес не значится владельцем сервиса", 403);
+  if (next.length < 8) return fail(env, origin, "Пароль минимум 8 символов");
+
+  const row = await env.DB.prepare("SELECT email FROM users WHERE email = ?").bind(email).first();
+  if (!row) return fail(env, origin, "Аккаунт ещё не создан — просто зарегистрируйтесь", 404);
+
+  await env.DB.batch([
+    env.DB.prepare("UPDATE users SET pass_hash = ?, role = 'owner' WHERE email = ?")
+      .bind(await hashPassword(next), email),
+    env.DB.prepare("DELETE FROM sessions WHERE email = ?").bind(email),
+    /* Заодно снимаем блокировку входа, иначе новый пароль тоже не пустит. */
+    env.DB.prepare("DELETE FROM ratelimit WHERE bucket LIKE ?").bind(`login:key:${email}`),
+  ]);
+  await logAction(env, email, "Аварийное восстановление доступа владельца");
+  return json(env, origin, { ok: true });
 }

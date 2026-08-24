@@ -5,56 +5,56 @@
 
 :root {
   /* светлая тема — тёплая бумага + морская волна + зелёный + золото */
-  --bg: #f6f4ec;
-  --bg-2: #efece0;
+  --bg: #f2f6f3;
+  --bg-2: #e8efea;
   --surface: #ffffff;
-  --surface-2: #eef2ec;
-  --text: #12211f;
-  --muted: #58706b;
+  --surface-2: #eef4f0;
+  --text: #0d1c19;
+  --muted: #546b65;
   --primary: #0e8f86;
-  --primary-2: #14b8a6;
+  --primary-2: #17a673;
   --primary-dark: #0a6f68;
-  --navy: #16324f;
-  --gold: #c9a227;
-  --gold-2: #e6c96a;
-  --violet: #5b5bd6;
-  --danger: #d64545;
-  --accent: #14b8a6;
-  --border: #dfe4d9;
-  --shadow: 0 10px 34px rgba(10, 55, 50, .10);
-  --shadow-lg: 0 24px 60px rgba(10, 55, 50, .16);
-  --radius: 18px;
-  --grad-primary: linear-gradient(135deg, #0e8f86 0%, #14b8a6 45%, #22c55e 100%);
-  --grad-navy: linear-gradient(135deg, #16324f 0%, #235081 100%);
-  --grad-gold: linear-gradient(135deg, #b18f1f 0%, #d9b437 50%, #eed688 100%);
-  --grad-violet: linear-gradient(135deg, #5b5bd6 0%, #8b7cf0 100%);
-  --grad-hero: linear-gradient(160deg, #062a2a 0%, #0d4a44 45%, #16324f 100%);
+  --navy: #14342f;
+  --gold: #a8791b;
+  --gold-2: #c99a2e;
+  --violet: #0e8f86;
+  --danger: #b3392c;
+  --accent: #0e8f86;
+  --border: #d3ded8;
+  --shadow: 0 1px 2px rgba(13, 40, 36, .05);
+  --shadow-lg: 0 12px 32px -18px rgba(13, 40, 36, .45);
+  --radius: 12px;
+  --grad-primary: linear-gradient(135deg, #0e8f86 0%, #14a88c 50%, #17a673 100%);
+  --grad-navy: linear-gradient(135deg, #0d3a35 0%, #14564d 100%);
+  --grad-gold: linear-gradient(135deg, #0a6f68 0%, #0e8f86 50%, #17a673 100%);
+  --grad-violet: linear-gradient(135deg, #0e8f86 0%, #17a673 100%);
+  --grad-hero: linear-gradient(155deg, #061f1c 0%, #0a4a44 48%, #0f5c46 100%);
   --glass: rgba(255, 255, 255, .72);
   --header-bg: rgba(255, 255, 255, .82);
 }
 
 [data-theme="dark"] {
-  --bg: #071816;
-  --bg-2: #0a211d;
-  --surface: #0d2420;
-  --surface-2: #12302b;
-  --text: #e8f5f2;
-  --muted: #8fb3ac;
+  --bg: #071a17;
+  --bg-2: #0a201c;
+  --surface: #0c2521;
+  --surface-2: #10302a;
+  --text: #e4f1ed;
+  --muted: #8aa9a3;
   --primary: #2dd4bf;
-  --primary-2: #5eead4;
+  --primary-2: #34d399;
   --primary-dark: #14a89a;
-  --navy: #9cc0e8;
+  --navy: #a7c8c1;
   --gold: #d9b437;
-  --gold-2: #f0d87e;
-  --violet: #8b7cf0;
-  --danger: #e86a6a;
-  --border: #1c3a34;
-  --shadow: 0 10px 34px rgba(0, 0, 0, .45);
-  --shadow-lg: 0 24px 60px rgba(0, 0, 0, .6);
-  --grad-primary: linear-gradient(135deg, #0f9d8f 0%, #14b8a6 45%, #34d399 100%);
-  --grad-navy: linear-gradient(135deg, #16324f 0%, #2a5a8f 100%);
-  --grad-gold: linear-gradient(135deg, #a8871c 0%, #d9b437 50%, #f4dd8f 100%);
-  --grad-violet: linear-gradient(135deg, #5b5bd6 0%, #8b7cf0 100%);
+  --gold-2: #efd88a;
+  --violet: #2dd4bf;
+  --danger: #e57a6d;
+  --border: #1a3a34;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .5);
+  --shadow-lg: 0 12px 32px -18px rgba(0, 0, 0, .9);
+  --grad-primary: linear-gradient(135deg, #0f9d8f 0%, #17b894 50%, #22c55e 100%);
+  --grad-navy: linear-gradient(135deg, #0b2f2b 0%, #124c44 100%);
+  --grad-gold: linear-gradient(135deg, #0f9d8f 0%, #2dd4bf 50%, #34d399 100%);
+  --grad-violet: linear-gradient(135deg, #2dd4bf 0%, #34d399 100%);
   --glass: rgba(13, 36, 32, .72);
   --header-bg: rgba(7, 24, 22, .82);
 }
@@ -1048,4 +1048,98 @@ p, li { max-width: 68ch; }
 @media (min-width: 861px) {
   .grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
   .grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+}
+
+
+/* ===================================================================
+   ПЕРЕОФОРМЛЕНИЕ 2026
+   Зелёный и морская волна — единственный акцент. Золото осталось только
+   меткой Pro. Границы вместо теней: инструменту для денег идёт точность,
+   а не мягкость потребительских приложений.
+   =================================================================== */
+
+body {
+  font-family: "Golos Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-feature-settings: "ss01";
+  letter-spacing: -0.003em;
+}
+
+h1, h2, h3, h4,
+.section-title h1, .section-title h2,
+.hero h1, .stat-value, .logo {
+  font-family: "Onest", "Golos Text", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.022em;
+  font-weight: 700;
+}
+.hero h1 { font-weight: 800; letter-spacing: -0.032em; }
+
+/* Цифры денег и сроков выравниваем по разрядам: колонка сумм, в которой
+   единицы пляшут по горизонтали, читается как небрежность. */
+.stat-value, .cmp-table td, .pay-price, .big, .ref-stats b,
+.rem-meta, .notif-item .nd, .tile .num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Границы вместо теней */
+.card, .modal, .partner-card, .game-stage {
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+}
+.card:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
+
+.btn { border-radius: 10px; font-weight: 600; letter-spacing: -0.01em; }
+input, select, textarea { border-radius: 10px; }
+.badge { border-radius: 7px; font-weight: 600; }
+
+/* Золото — только метка Pro, больше нигде */
+.badge.pro {
+  background: color-mix(in srgb, var(--gold) 16%, transparent);
+  color: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 34%, transparent);
+}
+
+/* Кнопка «золотая» была вторым главным действием и спорила с первым.
+   Делаем её акцентной в той же зелёно-бирюзовой гамме. */
+.btn.gold {
+  background: var(--grad-primary);
+  color: #fff;
+  border: none;
+}
+.btn.gold:hover { filter: brightness(1.07); }
+
+/* Герой: весы становятся водяным знаком, а не действующим лицом.
+   Качающийся элемент рядом с заголовком перетягивает взгляд с текста. */
+.hero-scales { opacity: .14; }
+.scales-sway { animation: none !important; }
+.hero::after { opacity: .7; }
+
+/* Шапка: тонкая линия вместо размытого стекла — так видно границу
+   между шапкой и содержимым на любом фоне. */
+.site-header {
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: saturate(140%) blur(10px);
+}
+
+/* Разделы чередуются оттенком фона, а не разными цветными заливками:
+   четыре разноцветные секции подряд выглядели как набор чужих блоков. */
+.section.tint-green,
+.section.tint-gold,
+.section.tint-navy { background: var(--bg-2); }
+.section.tint-green + .section.tint-gold,
+.section.tint-gold + .section.tint-navy { background: var(--bg); }
+
+/* Заголовок раздела: короткая линия под ним была декоративной.
+   Оставляем, но привязываем к акценту и делаем тоньше. */
+.section-title .line {
+  height: 2px; width: 46px; border-radius: 2px;
+  background: var(--grad-primary);
+}
+
+/* Ссылки в тексте должны быть видны как ссылки */
+.card a:not(.btn), main p a:not(.btn) {
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
 }

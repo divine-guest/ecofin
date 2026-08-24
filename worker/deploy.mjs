@@ -24,7 +24,7 @@ if (!TOKEN || !ACCOUNT) {
 
 /* Что считать секретом, а что обычной переменной. Секреты не видны в дашборде
    после сохранения и не попадают в вывод этого скрипта. */
-const SECRET_KEYS = new Set(["AI_API_KEY", "YOOKASSA_SECRET_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET"]);
+const SECRET_KEYS = new Set(["AI_API_KEY", "YOOKASSA_SECRET_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET", "RECOVERY_SECRET"]);
 const VAR_KEYS = [
   "AI_BASE_URL", "AI_MODEL", "AI_VISION_MODEL",
   "ALLOWED_ORIGINS", "OWNER_EMAILS", "ADMIN_EMAILS", "SITE_URL", "PROMO_CODES",
