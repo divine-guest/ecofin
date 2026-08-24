@@ -23,6 +23,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SUITES = [
   ["e2e", "сквозной путь: регистрация, лимиты, роли, промокод"],
   ["security", "подделка токена, чужой домен, перебор пароля"],
+  ["aijobs", "фоновый ИИ: вопрос переживает уход со страницы"],
   ["access", "что закрыто бесплатному и открыто платному"],
   ["multidevice", "вход с нескольких устройств, список сессий"],
   ["tiers", "лимиты каждого тарифа, цены, оформление"],
@@ -83,7 +84,8 @@ for (const [file, what] of SUITES) {
 
 /* Убираем за собой всё, что могли оставить упавшие сюиты. */
 for (const t of ["reminders", "reminder_sent", "point_ops", "payments",
-                 "notifications", "sessions", "usage", "actions", "tg_link_codes"]) {
+                 "notifications", "sessions", "usage", "actions",
+                 "tg_link_codes", "ai_jobs"]) {
   try { await sql(`DELETE FROM ${t} WHERE email LIKE '%@test.ru'`); } catch {}
 }
 try { await sql("DELETE FROM users WHERE email LIKE '%@test.ru'"); } catch {}
