@@ -1173,3 +1173,107 @@ input, select, textarea { border-radius: 10px; }
 }
 .points-cap { font-size: var(--t-sm); color: var(--muted); margin-left: 6px; }
 .points-banner .hint { width: 100%; margin: 0; }
+
+/* ===== Тарифы ===== */
+.pay-modal { max-width: 880px; }
+
+.period-switch {
+  display: inline-flex; gap: 4px; padding: 4px; margin-bottom: 20px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
+}
+.period-switch button {
+  border: none; background: none; cursor: pointer; font: inherit;
+  font-size: var(--t-sm); font-weight: 600; color: var(--muted);
+  padding: 9px 18px; border-radius: 999px; transition: background .15s, color .15s;
+}
+.period-switch button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.period-switch .save {
+  font-size: var(--t-xs); font-weight: 700; color: var(--primary); margin-left: 4px;
+}
+
+.tier-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.tier {
+  position: relative; display: flex; flex-direction: column; gap: 7px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px 18px 18px; cursor: pointer;
+  background: var(--surface); transition: border-color .18s, transform .18s;
+}
+.tier:hover { border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+.tier.chosen { border-color: var(--primary); }
+/* Средний тариф выделен намеренно: рядом с ним крайние читаются как
+   «дешевле» и «мощнее», а не как единственная цена, которую надо принять. */
+.tier.best { border-color: var(--primary); border-width: 2px; }
+.tier-flag {
+  position: absolute; top: -10px; left: 16px;
+  background: var(--grad-primary); color: #fff;
+  font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  padding: 3px 10px; border-radius: 999px;
+}
+.tier-title { font-family: "Onest", system-ui, sans-serif; font-size: var(--t-lg); }
+.tier-tagline { font-size: var(--t-xs); color: var(--muted); }
+.tier-price { display: flex; align-items: baseline; gap: 6px; margin-top: 6px; }
+.tier-num {
+  font-family: "Onest", system-ui, sans-serif; font-size: 2.1rem; font-weight: 800;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.tier-per { font-size: var(--t-xs); color: var(--muted); }
+.tier-year { font-size: var(--t-xs); color: var(--primary); font-weight: 600; }
+.tier-perks {
+  list-style: none; padding: 0; margin: 10px 0 14px;
+  font-size: var(--t-sm); color: var(--muted); line-height: 1.6;
+}
+.tier-perks li { padding-left: 20px; position: relative; margin-bottom: 6px; }
+.tier-perks li::before {
+  content: "✓"; position: absolute; left: 0; color: var(--primary); font-weight: 700;
+}
+.tier-current { align-self: flex-start; }
+.tier .btn { margin-top: auto; }
+
+.tier-enterprise {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 14px; flex-wrap: wrap; margin-top: 18px; padding: 15px 17px;
+  background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius);
+}
+.tier-enterprise .hint { margin: 4px 0 0; }
+.points-note { text-align: center; margin: 14px 0 0; }
+.promo-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+.promo-row input { max-width: 190px; }
+
+/* ===== Выбор цвета сервиса ===== */
+.theme-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.accent-grid {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  margin-top: 12px;
+}
+.accent-chip {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface);
+  font: inherit; font-size: var(--t-sm); color: var(--text); text-align: left;
+  transition: border-color .15s;
+}
+.accent-chip:hover { border-color: var(--primary); }
+.accent-chip.on { border-color: var(--primary); border-width: 2px; font-weight: 600; }
+.accent-chip.locked { opacity: .6; }
+.accent-dot { width: 22px; height: 22px; min-width: 22px; border-radius: 50%; }
+.accent-lock {
+  margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: .05em;
+  color: var(--gold); border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+  padding: 2px 6px; border-radius: 5px;
+}
+
+@media (max-width: 560px) {
+  .tier-grid { grid-template-columns: 1fr; }
+  .period-switch { width: 100%; }
+  .period-switch button { flex: 1; }
+}
+
+/* Карточка тарифа на главной */
+.tier-home { position: relative; display: flex; flex-direction: column; }
+.tier-home.best { border-color: var(--primary); border-width: 2px; }
+.tier-home .tier-perks { flex: 1; }
+.tier-home .btn { align-self: flex-start; }

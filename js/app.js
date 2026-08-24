@@ -318,100 +318,171 @@ async function chatSend() {
   document.getElementById("chatMessages").scrollTop = 1e9;
 }
 
-/* ============ Платежи (подписка Pro) ============ */
-/* Формы карты здесь больше нет: реквизиты вводятся на стороне ЮKassa.
-   Сайт только создаёт платёж и уводит на защищённую страницу оплаты. */
+/* ============ Тарифы и оплата ============
+   Три уровня вместо одного. Смысл именно в среднем: рядом с «Базовым»
+   за 290 старший тариф выглядит выбором, а не преградой, и человек
+   сравнивает тарифы между собой, а не «платить или не платить». */
 const PAY = {
-  plans: {
-    month: { title: "Pro на месяц", price: 490, days: 30 },
-    year: { title: "Pro на год", price: 4900, days: 365, note: "2 месяца в подарок" },
-  },
-  enabled: null,
+  data: null,
+  period: "year",   // год открыт по умолчанию: так виднее выгода
+  chosen: "basic",
 
   async open(planId) {
     if (!PF.user()) return (location.href = "auth.html");
+    if (planId) this.chosen = planId;
+
     let bd = document.getElementById("payBackdrop");
     if (!bd) {
       bd = document.createElement("div");
       bd.id = "payBackdrop";
       bd.className = "modal-backdrop";
       document.body.appendChild(bd);
+      bd.addEventListener("click", e => { if (e.target === bd) PAY.close(); });
     }
     bd.classList.add("open");
-    this.step = { plan: planId || "month" };
-    this.render();
+    document.body.style.overflow = "hidden";
+    bd.innerHTML = '<div class="modal"><p class="hint">Загружаем тарифы…</p></div>';
+
     try {
-      const info = await API.billing.plans();
-      this.enabled = info.enabled;
-      if (info.plans) info.plans.forEach(p => { if (this.plans[p.id]) this.plans[p.id].price = p.price; });
-    } catch { this.enabled = false; }
+      this.data = await API.billing.plans();
+      const pts = await API.points().catch(() => ({ balance: 0 }));
+      this.balance = pts.balance || 0;
+    } catch (e) {
+      bd.innerHTML = `<div class="modal"><p>${escapeHtml(e.message)}</p></div>`;
+      return;
+    }
     this.render();
   },
+
   close() {
-    const bd = document.getElementById("payBackdrop");
-    if (bd) bd.classList.remove("open");
+    document.getElementById("payBackdrop")?.classList.remove("open");
+    document.body.style.overflow = "";
   },
-  selectPlan(id) { this.step.plan = id; this.render(); },
+
+  setPeriod(p) { this.period = p; this.render(); },
+  choose(id) { this.chosen = id; this.render(); },
 
   render() {
     const bd = document.getElementById("payBackdrop");
-    if (!bd) return;
-    const off = this.enabled === false;
+    if (!bd || !this.data) return;
+    const paid = this.data.plans.filter(p => p.price.month > 0);
+    const current = PF.user()?.tier || "free";
+
     bd.innerHTML = `
-      <div class="modal">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <h3 style="font-family:'Playfair Display',Georgia,serif">Оформление Pro</h3>
+      <div class="modal pay-modal">
+        <div class="settings-head">
+          <h3>Тарифы</h3>
           <button class="btn small secondary" onclick="PAY.close()">Закрыть</button>
         </div>
-        <div class="pay-plans">
-          ${Object.entries(this.plans).map(([id, p]) => `
-            <div class="pay-plan ${this.step.plan === id ? "selected" : ""}" onclick="PAY.selectPlan('${id}')">
-              <b>${p.title}</b>
-              <div class="pay-price">${p.price} ₽</div>
-              ${p.note ? `<span class="badge ok">${p.note}</span>` : ""}
-            </div>`).join("")}
+
+        <div class="period-switch" role="tablist">
+          <button role="tab" class="${this.period === "month" ? "on" : ""}" onclick="PAY.setPeriod('month')">На месяц</button>
+          <button role="tab" class="${this.period === "year" ? "on" : ""}" onclick="PAY.setPeriod('year')">
+            На год <span class="save">выгоднее</span>
+          </button>
         </div>
-        ${off ? `
-          <p class="pay-note" style="margin-top:16px">
-            Приём оплаты картой пока не подключён. Получить Pro можно по промокоду
-            или запросив доступ у администратора сервиса.
-          </p>` : `
-          <p class="pay-note" style="margin-top:16px">
-            Оплата проходит на защищённой странице ЮKassa. Реквизиты карты
-            вводятся там и на сайт ПравоФин не попадают.
-          </p>`}
-        <br><button class="btn gold" style="width:100%" ${off ? "disabled" : ""} onclick="PAY.submit()">
-          ${off ? "Оплата временно недоступна" : `Перейти к оплате — ${this.plans[this.step.plan].price} ₽`}
-        </button>
-        <div style="margin-top:16px;text-align:center">
-          <p style="color:var(--muted);font-size:var(--t-xs);margin-bottom:6px">или введите промокод</p>
-          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-            <input type="text" id="promoInput2" placeholder="Промокод" style="max-width:170px">
-            <button class="btn secondary" onclick="applyPromo('promoInput2')">Активировать</button>
-          </div>
+
+        <div class="tier-grid">
+          ${paid.map(p => this.card(p, current)).join("")}
         </div>
+
+        ${this.balance > 0 ? `
+          <p class="hint points-note">
+            У вас <b>${this.balance}</b> баллов — спишем автоматически,
+            до половины стоимости.
+          </p>` : ""}
+
+        ${this.data.enabled === false ? `
+          <p class="pay-note">Приём оплаты картой пока не подключён.
+          Получить доступ можно по промокоду или запросив его у администратора.</p>` : ""}
+
+        <div class="promo-row">
+          <input type="text" id="promoInput2" placeholder="Промокод">
+          <button class="btn secondary" onclick="applyPromo('promoInput2')">Активировать</button>
+        </div>
+
+        ${this.data.enterprise ? `
+          <div class="tier-enterprise">
+            <div>
+              <b>${escapeHtml(this.data.enterprise.title)}</b> · ${escapeHtml(this.data.enterprise.price)}
+              <p class="hint">${escapeHtml(this.data.enterprise.tagline)}. ${this.data.enterprise.perks.map(escapeHtml).join(" · ")}</p>
+            </div>
+            <a class="btn small secondary" href="about.html#contact">Обсудить</a>
+          </div>` : ""}
       </div>`;
   },
 
-  async submit() {
-    const btn = document.querySelector("#payBackdrop .btn.gold");
-    btn.disabled = true;
-    btn.textContent = "Создаём платёж…";
-    trackEvent("pay_click", { plan: this.step.plan, price: this.plans[this.step.plan].price });
+  card(p, current) {
+    const price = p.price[this.period];
+    const perMonth = this.period === "year" ? Math.round(price / 12) : price;
+    const isCurrent = current === p.id;
+    const best = p.id === "basic";
+
+    return `
+      <div class="tier ${this.chosen === p.id ? "chosen" : ""} ${best ? "best" : ""}" onclick="PAY.choose('${p.id}')">
+        ${best ? '<span class="tier-flag">Чаще всего выбирают</span>' : ""}
+        <b class="tier-title">${escapeHtml(p.title)}</b>
+        <span class="tier-tagline">${escapeHtml(p.tagline)}</span>
+        <div class="tier-price">
+          <span class="tier-num">${perMonth.toLocaleString("ru-RU")} ₽</span>
+          <span class="tier-per">в месяц</span>
+        </div>
+        ${this.period === "year"
+          ? `<span class="tier-year">${price.toLocaleString("ru-RU")} ₽ за год · экономия ${p.yearDiscount}%</span>`
+          : `<span class="tier-year">списывается раз в месяц</span>`}
+        <ul class="tier-perks">${p.perks.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
+        ${isCurrent
+          ? '<span class="badge ok tier-current">Ваш тариф</span>'
+          : `<button class="btn ${best ? "gold" : "secondary"} wide" onclick="event.stopPropagation();PAY.submit('${p.id}')">Выбрать</button>`}
+      </div>`;
+  },
+
+  async submit(planId) {
+    this.chosen = planId;
+    trackEvent("pay_click", { plan: planId, period: this.period });
     try {
-      const res = await API.billing.create(this.step.plan);
-      if (res.confirmationUrl) {
-        location.href = res.confirmationUrl;   // дальше платёж ведёт ЮKassa
-        return;
-      }
-      toast("Платёж создан, но ЮKassa не вернула ссылку. Напишите в поддержку", "error");
+      const res = await API.billing.create(planId, this.period);
+      if (res.confirmationUrl) { location.href = res.confirmationUrl; return; }
+      toast("Платёж создан, но ссылка не пришла. Напишите в поддержку", "error");
     } catch (e) {
       toast(e.message, "error");
     }
-    btn.disabled = false;
-    btn.textContent = `Перейти к оплате — ${this.plans[this.step.plan].price} ₽`;
   },
 };
+
+/* Персональное оформление — возможность тарифа «Про».
+   Применяем до первой отрисовки, иначе цвет мигнёт. */
+const THEMING = {
+  key: "pf_accent",
+
+  apply(preset) {
+    const r = document.documentElement;
+    if (!preset || !preset.accent) {
+      r.style.removeProperty("--accent-user");
+      r.removeAttribute("data-accent");
+      return;
+    }
+    const dark = r.getAttribute("data-theme") === "dark";
+    r.style.setProperty("--primary", dark ? preset.dark : preset.accent);
+    r.style.setProperty("--primary-2", dark ? preset.dark2 : preset.accent2);
+    r.style.setProperty("--accent", dark ? preset.dark : preset.accent);
+    r.style.setProperty("--grad-primary",
+      `linear-gradient(135deg, ${dark ? preset.dark : preset.accent} 0%, ${dark ? preset.dark2 : preset.accent2} 100%)`);
+    r.setAttribute("data-accent", "custom");
+  },
+
+  /* Пресет держим в браузере, чтобы применить мгновенно; источник правды —
+     сервер, оттуда он приезжает при обновлении сессии. */
+  restore() {
+    try { this.apply(JSON.parse(localStorage.getItem(this.key) || "null")); } catch {}
+  },
+  remember(preset) {
+    if (preset && preset.accent) localStorage.setItem(this.key, JSON.stringify(preset));
+    else localStorage.removeItem(this.key);
+    this.apply(preset);
+  },
+};
+THEMING.restore();
 
 /* ============ Настройки профиля ============ */
 const SETTINGS = {
@@ -454,6 +525,7 @@ const SETTINGS = {
     const tabs = [
       ["profile", "Профиль"],
       ["notify", "Уведомления"],
+      ["look", "Оформление"],
       ["security", "Безопасность"],
       ["subscription", "Подписка"],
       ["data", "Данные"],
@@ -588,6 +660,52 @@ const SETTINGS = {
     } catch (e) { toast(e.message, "error"); }
   },
 
+  /* --- Вкладка «Оформление» --- */
+  render_look() {
+    return `
+      <h4>Тема</h4>
+      <p class="hint">Светлая, тёмная или как в системе.</p>
+      <div class="theme-row">
+        <button class="btn small secondary" onclick="applyTheme('light')">Светлая</button>
+        <button class="btn small secondary" onclick="applyTheme('dark')">Тёмная</button>
+      </div>
+
+      <hr>
+      <h4>Цвет сервиса</h4>
+      <p class="hint">Входит в тариф «Про». Выбранный цвет сохраняется в аккаунте
+      и применяется на всех ваших устройствах.</p>
+      <div id="accentBox" class="accent-grid">Загружаем…</div>`;
+  },
+
+  async loadThemes() {
+    const box = document.getElementById("accentBox");
+    if (!box) return;
+    try {
+      const d = await API.themes.list();
+      box.innerHTML = d.themes.map(t => `
+        <button class="accent-chip ${d.current === t.id ? "on" : ""} ${d.allowed || t.id === "" ? "" : "locked"}"
+                onclick="SETTINGS.pickAccent('${t.id}')" title="${escapeHtml(t.title)}">
+          <span class="accent-dot" style="background:linear-gradient(135deg,${t.accent},${t.dark})"></span>
+          <span>${escapeHtml(t.title)}</span>
+          ${d.allowed || t.id === "" ? "" : '<span class="accent-lock">Про</span>'}
+        </button>`).join("");
+    } catch (e) {
+      box.innerHTML = `<p class="hint">Не удалось загрузить: ${escapeHtml(e.message)}</p>`;
+    }
+  },
+
+  async pickAccent(id) {
+    try {
+      const r = await API.themes.set(id);
+      THEMING.remember(r.preset);
+      toast(id ? "Оформление применено" : "Вернули оформление сервиса");
+      this.loadThemes();
+    } catch (e) {
+      if (e.isPaywall) { this.close(); showPaywall(e.message); }
+      else toast(e.message, "error");
+    }
+  },
+
   /* --- Вкладка «Безопасность» --- */
   render_security() {
     return `
@@ -617,23 +735,27 @@ const SETTINGS = {
   /* --- Вкладка «Подписка» --- */
   render_subscription(u) {
     const q = PF.quota;
-    const until = u.proUntil
-      ? new Date(u.proUntil).toLocaleDateString("ru-RU")
-      : null;
+    const until = u.proUntil ? new Date(u.proUntil).toLocaleDateString("ru-RU") : null;
     const daysLeft = u.proUntil ? Math.ceil((u.proUntil - Date.now()) / 86400000) : null;
 
     const status = u.isAdmin
       ? `<span class="badge pro">Полный доступ по роли</span>`
-      : PF.isPro()
-        ? `<span class="badge pro">Pro</span> ${until ? `до ${until} (осталось ${daysLeft} дн.)` : "бессрочно"}`
-        : `<span class="badge">Бесплатный тариф</span>`;
+      : u.tier === "free"
+        ? `<span class="badge">Старт — бесплатный тариф</span>`
+        : `<span class="badge pro">${escapeHtml(u.planTitle || "Подписка")}</span>` +
+          (until ? ` до ${until} (осталось ${daysLeft} дн.)` : " бессрочно");
 
-    const limits = PF.isPro()
-      ? "<li>Инструменты и калькуляторы — без ограничений</li><li>ИИ-консультант — без дневного лимита</li>"
-      : q
-        ? `<li>Пробных запусков инструментов: <b>${q.tool.left}</b> из ${q.tool.limit}</li>
-           <li>Обращений к ИИ сегодня: <b>${q.ai.left}</b> из ${q.ai.limit}</li>`
-        : "<li>Проверяем остатки…</li>";
+    const limits = !q ? "<li>Проверяем остатки…</li>" : [
+      q.ai.limit >= 300
+        ? "<li>ИИ-консультант — без дневного лимита</li>"
+        : `<li>Вопросов ИИ сегодня: <b>${q.ai.left}</b> из ${q.ai.limit}</li>`,
+      q.tool.limit === null
+        ? "<li>Инструменты — без ограничений</li>"
+        : `<li>Пробных запусков инструментов: <b>${q.tool.left}</b> из ${q.tool.limit}</li>`,
+      q.analyze && q.analyze.limit === null
+        ? "<li>Разбор документов — без ограничений</li>"
+        : q.analyze ? `<li>Разборов документов в этом месяце: <b>${q.analyze.left}</b> из ${q.analyze.limit}</li>` : "",
+    ].join("");
 
     const history = (PF.payments || []).length
       ? `<hr><h4>История операций</h4>
@@ -646,11 +768,21 @@ const SETTINGS = {
          </div>` : "";
 
     return `
-      <p style="margin-bottom:10px">Текущий статус: ${status}</p>
+      <p style="margin-bottom:10px">Текущий тариф: ${status}</p>
       <ul class="limits-list">${limits}</ul>
-      ${PF.isPro()
-        ? '<button class="btn gold wide" onclick="SETTINGS.close();PAY.open()">Продлить Pro</button>'
-        : '<button class="btn gold wide" onclick="SETTINGS.close();PAY.open()">Оформить Pro</button>'}
+
+      <div class="points-banner" style="margin-bottom:16px">
+        <div>
+          <span class="points-num">${u.points || 0}</span>
+          <span class="points-cap">баллов</span>
+        </div>
+        <p class="hint">1 балл = 1 ₽ скидки, спишем автоматически при оплате —
+        до половины стоимости. Заработать можно, приглашая друзей.</p>
+      </div>
+
+      <button class="btn gold wide" onclick="SETTINGS.close();PAY.open()">
+        ${u.tier === "free" ? "Выбрать тариф" : "Сменить или продлить"}
+      </button>
       <p class="hint" style="margin-top:8px">Автосписаний нет: подписка разовая и просто заканчивается в указанную дату.</p>
       ${history}`;
   },
@@ -783,6 +915,7 @@ SETTINGS.render = function () {
   _settingsRender();
   if (this._tab === "security") this.loadSessions();
   if (this._tab === "notify") { this.loadTelegram(); NOTIFY.render(); }
+  if (this._tab === "look") this.loadThemes();
   if (this._tab === "subscription" && !PF.quota) {
     /* Остатки могли ещё не приехать — тянем и перерисовываем вкладку,
        иначе человек видит «проверяем…» и не понимает, что у него есть. */

@@ -5,7 +5,8 @@ import { extendUntil } from "./quota.js";
 import { adminEmails, ownerEmails, logAction } from "./auth.js";
 import { runReminders } from "./telegram.js";
 
-const PLAN_DAYS = { month: 30, year: 365 };
+import { PLANS, PERIOD_DAYS } from "./plans.js";
+const PLAN_DAYS = PERIOD_DAYS;
 
 /* GET /api/admin/users?q=&limit=&offset= */
 export async function listUsers(request, env, origin) {
@@ -47,7 +48,7 @@ export async function stats(request, env, origin) {
 
   const users = await g("SELECT COUNT(*) AS n FROM users");
   const pro = await g(
-    "SELECT COUNT(*) AS n FROM users WHERE role IN ('admin','owner') OR (plan = 'pro' AND (pro_until IS NULL OR pro_until > ?))",
+    "SELECT COUNT(*) AS n FROM users WHERE role IN ('admin','owner') OR (plan IN ('basic','pro') AND (pro_until IS NULL OR pro_until > ?))",
     now()
   );
   const revenue = await g("SELECT COALESCE(SUM(amount), 0) AS n FROM payments WHERE status = 'succeeded'");
@@ -85,12 +86,14 @@ export async function grant(request, env, origin, admin) {
   const plan = b.plan === "year" ? "year" : b.plan === "days" ? "days" : "month";
   const days = plan === "days" ? Math.min(3650, Math.max(1, Number(b.days) || 0)) : PLAN_DAYS[plan];
   if (!days) return fail(env, origin, "Укажите срок в днях");
+  /* Какой именно тариф дарим: по умолчанию старший. */
+  const tier = PLANS[b.tier] && b.tier !== "free" ? b.tier : "pro";
 
   const target = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
   if (!target) return fail(env, origin, "Пользователь не найден", 404);
 
   const until = extendUntil(target.pro_until, days);
-  await env.DB.prepare("UPDATE users SET plan = 'pro', pro_until = ? WHERE email = ?").bind(until, email).run();
+  await env.DB.prepare("UPDATE users SET plan = ?, pro_until = ? WHERE email = ?").bind(tier, until, email).run();
   await env.DB.prepare(
     `INSERT INTO payments (id, email, amount, plan, source, status, granted_by, created_at, completed_at)
      VALUES (?, ?, 0, ?, 'manual', 'succeeded', ?, ?, ?)`

@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=19">
+<link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body>
 <main>
@@ -192,27 +192,12 @@
       <div class="section-title">
         <h2>Тарифы</h2>
         <div class="line"></div>
-        <p class="subtitle">Freemium: бесплатно — базовые инструменты, платно — AI и B2B</p>
+        <p class="subtitle">Калькуляторы и база знаний бесплатны всегда. Платите только за ИИ и разбор документов.</p>
       </div>
-      <div class="grid cols-3">
-        <div class="card">
-          <h3>Бесплатно</h3>
-          <p class="stat-value">0 ₽</p>
-          <p>Офлайн-шаблоны документов, все игры, база знаний, тесты, чат-виджет.</p>
-          <br><a href="auth.html" class="btn secondary">Регистрация</a>
-        </div>
-        <div class="card" style="border-color: var(--gold)">
-          <h3>Pro <span class="badge pro">Популярный</span></h3>
-          <p class="stat-value">490 ₽<span class="stat-label">/мес</span></p>
-          <p>AI-генерация документов, глубокий анализ договоров, персональные чек-листы, приоритетная поддержка.</p>
-          <br><a href="auth.html" class="btn gold">Подключить</a>
-        </div>
-        <div class="card">
-          <h3>B2B</h3>
-          <p class="stat-value">Индивидуально</p>
-          <p>Корпоративные аккаунты, обучение команд, API-доступ и белая маркировка для юрфирм.</p>
-          <br><a href="#" class="btn secondary">Связаться</a>
-        </div>
+      <!-- Цены не зашиты в разметку: приходят с сервера, поэтому не могут
+           разойтись с тем, что реально спишется при оплате. -->
+      <div id="homePlans" class="grid cols-3">
+        <div class="card"><p class="hint">Загружаем тарифы…</p></div>
       </div>
     </div>
   </section>
@@ -229,11 +214,44 @@
   </section>
 </main>
 
-<script src="js/api.js?v=19"></script>
-<script src="js/app.js?v=19"></script>
-<script src="js/ai.js?v=19"></script>
+<script src="js/api.js?v=21"></script>
+<script src="js/app.js?v=21"></script>
+<script src="js/ai.js?v=21"></script>
 <script>
 initPage("index.html");
+
+/* Тарифы на главной. Рисуем из ответа сервера — так цена на витрине
+   и цена в кассе всегда одна и та же. */
+(async () => {
+  const box = document.getElementById("homePlans");
+  if (!box) return;
+  try {
+    const d = await API.billing.plans();
+    const money = n => n.toLocaleString("ru-RU");
+    box.innerHTML = d.plans.map(p => {
+      const free = p.price.month === 0;
+      const best = p.id === "basic";
+      return `
+        <div class="card tier-home ${best ? "best" : ""}">
+          ${best ? '<span class="tier-flag">Чаще всего выбирают</span>' : ""}
+          <h3>${escapeHtml(p.title)}</h3>
+          <p class="stat-value">${free ? "0 ₽" : money(p.price.month) + " ₽"}${free ? "" : '<span class="stat-label">/мес</span>'}</p>
+          ${free ? "" : `<p class="tier-year">или ${money(p.price.year)} ₽ за год — дешевле на ${p.yearDiscount}%</p>`}
+          <ul class="tier-perks">${p.perks.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
+          <a href="auth.html" class="btn ${best ? "gold" : "secondary"}">${free ? "Начать бесплатно" : "Выбрать"}</a>
+        </div>`;
+    }).join("") + (d.enterprise ? `
+      <div class="card tier-home">
+        <h3>${escapeHtml(d.enterprise.title)}</h3>
+        <p class="stat-value" style="font-size:1.5rem">${escapeHtml(d.enterprise.price)}</p>
+        <ul class="tier-perks">${d.enterprise.perks.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
+        <a href="about.html#contact" class="btn secondary">Обсудить</a>
+      </div>` : "");
+  } catch {
+    box.innerHTML = `<div class="card"><p class="hint">Тарифы временно недоступны.
+      <a href="auth.html">Зарегистрируйтесь</a> — начать можно бесплатно.</p></div>`;
+  }
+})();
 
 /* Вопрос из героя. Отвечает тот же консультант, что и в чате, — просто
    человек попадает в него сразу, не разбираясь в устройстве сайта.

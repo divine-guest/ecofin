@@ -128,6 +128,51 @@ export async function logout(request, env, origin) {
   return json(env, origin, { ok: true });
 }
 
+/* Набор оформлений. Зелёный и морская волна остаются основой сервиса,
+   остальные — вариации в той же логике: один акцент, два оттенка градиента.
+   Свободный выбор цвета намеренно не даём: половина подобранных вручную
+   пар оказывается нечитаемой в одной из тем. */
+export const THEME_PRESETS = {
+  "": { title: "Как у сервиса", accent: "#0e8f86", accent2: "#17a673", dark: "#2dd4bf", dark2: "#34d399" },
+  ocean: { title: "Глубокая вода", accent: "#0b7285", accent2: "#1098ad", dark: "#3bc9db", dark2: "#66d9e8" },
+  forest: { title: "Хвойный", accent: "#2b8a3e", accent2: "#409c56", dark: "#51cf66", dark2: "#8ce99a" },
+  graphite: { title: "Графит", accent: "#495057", accent2: "#6c757d", dark: "#adb5bd", dark2: "#ced4da" },
+  amber: { title: "Янтарь", accent: "#a8791b", accent2: "#c9992e", dark: "#e0b352", dark2: "#f0d08a" },
+  indigo: { title: "Индиго", accent: "#3b5bdb", accent2: "#5c7cfa", dark: "#748ffc", dark2: "#91a7ff" },
+  plum: { title: "Слива", accent: "#862e9c", accent2: "#a54bbb", dark: "#cc5de8", dark2: "#e599f7" },
+  clay: { title: "Терракота", accent: "#a63d2f", accent2: "#c1553f", dark: "#ff8787", dark2: "#ffa8a8" },
+};
+
+/* GET /api/themes — список доступных оформлений и признак доступа. */
+export async function listThemes(request, env, origin, user) {
+  const { hasFeature } = await import("./plans.js");
+  return json(env, origin, {
+    allowed: hasFeature(user, "theming"),
+    current: user.theme_accent || "",
+    themes: Object.entries(THEME_PRESETS).map(([id, t]) => ({ id, title: t.title, accent: t.accent, dark: t.dark })),
+  });
+}
+
+/* POST /api/themes {id} — возможность тарифа «Про». */
+export async function setTheme(request, env, origin, user) {
+  const { hasFeature } = await import("./plans.js");
+  const b = await request.json().catch(() => ({}));
+  const id = String(b.id || "");
+
+  if (!(id in THEME_PRESETS)) return fail(env, origin, "Такого оформления нет", 404);
+  /* Вернуться к оформлению сервиса можно всегда — иначе человек,
+     у которого закончилась подписка, застрял бы с чужим цветом. */
+  if (id !== "" && !hasFeature(user, "theming")) {
+    return json(env, origin, {
+      error: "Своё оформление входит в тариф «Про»",
+      paywall: true, kind: "theming",
+    }, 402);
+  }
+
+  await env.DB.prepare("UPDATE users SET theme_accent = ? WHERE email = ?").bind(id, user.email).run();
+  return json(env, origin, { current: id, preset: THEME_PRESETS[id] });
+}
+
 export async function updateProfile(request, env, origin, user) {
   const b = await request.json().catch(() => ({}));
   const name = String(b.name ?? user.name).trim().slice(0, 80);

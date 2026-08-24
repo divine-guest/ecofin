@@ -2,13 +2,13 @@
    Pro включается ТОЛЬКО после того, как статус платежа подтверждён запросом
    к API ЮKassa. Ответ браузера и тело вебхука сами по себе ничего не активируют. */
 import { CFG, json, fail, now, normEmail, publicUser } from "./lib.js";
+import { PLANS, PERIOD_DAYS, publicPlans, yearlyDiscount } from "./plans.js";
 import { extendUntil } from "./quota.js";
 import { logAction } from "./auth.js";
 import { balanceOf, applyToPrice, grant, POINTS, RULES_TEXT } from "./points.js";
 import { rewardOnPayment } from "./referral.js";
 
 const YK = "https://api.yookassa.ru/v3";
-const PLAN_DAYS = { month: 30, year: 365 };
 
 const configured = env => Boolean(env.YOOKASSA_SHOP_ID && env.YOOKASSA_SECRET_KEY);
 
@@ -37,10 +37,7 @@ async function ykFetch(env, path, { method = "GET", body, idempotenceKey } = {})
 export function plans(env, origin) {
   return json(env, origin, {
     enabled: configured(env),
-    plans: [
-      { id: "month", title: "Pro на месяц", price: CFG.PRICES.month.rub, days: 30 },
-      { id: "year", title: "Pro на год", price: CFG.PRICES.year.rub, days: 365, note: "2 месяца в подарок" },
-    ],
+    ...publicPlans(),
     points: { maxShare: POINTS.maxShareOfPrice, rules: RULES_TEXT },
   });
 }
@@ -51,8 +48,12 @@ export async function createPayment(request, env, origin, user) {
     return fail(env, origin, "Приём оплаты пока не подключён. Обратитесь к администратору за доступом", 503);
 
   const b = await request.json().catch(() => ({}));
-  const plan = b.plan === "year" ? "year" : "month";
-  const price = CFG.PRICES[plan];
+  /* Теперь два измерения: какой тариф и на какой срок. */
+  const planId = PLANS[b.plan] && b.plan !== "free" ? b.plan : "basic";
+  const period = b.period === "year" ? "year" : "month";
+  const plan = `${planId}:${period}`;
+  const price = { rub: PLANS[planId].price[period] };
+  if (!price.rub) return fail(env, origin, "Этот тариф нельзя оплатить");
   const returnUrl = String(env.SITE_URL || "https://divine-guest.github.io/ecofin/") + "dashboard.html";
 
   /* Баллы уменьшают сумму к оплате, но не больше половины: подписка
@@ -69,13 +70,13 @@ export async function createPayment(request, env, origin, user) {
         amount: { value: toPay.toFixed(2), currency: "RUB" },
         capture: true,
         confirmation: { type: "redirect", return_url: returnUrl },
-        description: `ПравоФин — ${plan === "year" ? "Pro на год" : "Pro на месяц"} (${user.email})`,
+        description: `ПравоФин — ${PLANS[planId].title}, ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`,
         /* Сумму и план берём ТОЛЬКО отсюда при подтверждении: клиент их не диктует. */
-        metadata: { email: user.email, plan, pointsUsed: String(used) },
+        metadata: { email: user.email, plan: planId, period, pointsUsed: String(used) },
         receipt: {
           customer: { email: user.email },
           items: [{
-            description: plan === "year" ? "Подписка ПравоФин Pro, 12 мес." : "Подписка ПравоФин Pro, 1 мес.",
+            description: `Подписка ПравоФин «${PLANS[planId].title}», ${period === "year" ? "12 мес." : "1 мес."}`,
             quantity: "1.00",
             amount: { value: toPay.toFixed(2), currency: "RUB" },
             vat_code: 1,
@@ -118,11 +119,13 @@ async function applySucceeded(env, paymentId) {
   const user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(row.email).first();
   if (!user) return { ok: false, reason: "unknown-user" };
 
-  const days = PLAN_DAYS[row.plan] || 30;
+  const [planId, period] = String(row.plan).split(":");
+  const days = PERIOD_DAYS[period] || 30;
+  const tier = PLANS[planId] ? planId : "basic";
   const until = extendUntil(user.pro_until, days);
 
   await env.DB.batch([
-    env.DB.prepare("UPDATE users SET plan = 'pro', pro_until = ? WHERE email = ?").bind(until, row.email),
+    env.DB.prepare("UPDATE users SET plan = ?, pro_until = ? WHERE email = ?").bind(tier, until, row.email),
     env.DB.prepare("UPDATE payments SET status = 'succeeded', completed_at = ? WHERE id = ?").bind(now(), paymentId),
   ]);
   await logAction(env, row.email, `Оплачена подписка Pro (${row.plan}), ${row.amount} ₽`);

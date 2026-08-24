@@ -1,5 +1,6 @@
 /* ПравоФин — серверный учёт лимитов. Клиент ни на что здесь не влияет. */
 import { CFG, mskDay, isPro, now } from "./lib.js";
+import { limitOf, tierOf } from "./plans.js";
 
 async function bump(env, email, kind, day) {
   await env.DB.prepare(
@@ -17,17 +18,38 @@ async function used(env, email, kind, day) {
 /* Сколько сообщений ИИ-консультанту осталось сегодня. */
 export async function aiQuota(env, user) {
   const day = mskDay();
-  const limit = isPro(user) ? CFG.PRO_AI_PER_DAY : CFG.FREE_AI_PER_DAY;
+  const limit = limitOf(user, "aiPerDay");
   const spent = await used(env, user.email, "ai", day);
-  return { limit, spent, left: Math.max(0, limit - spent), pro: isPro(user) };
+  return { limit, spent, left: Math.max(0, limit - spent), pro: isPro(user), tier: tierOf(user) };
+}
+
+/* Разборы документов на Базовом считаются за календарный месяц:
+   «20 в месяц» понятнее и щедрее, чем дробление по дням. */
+export async function analyzeQuota(env, user) {
+  const limit = limitOf(user, "analyzePerMonth");
+  if (limit === null) return { limit: null, left: null, unlimited: true };
+  const month = mskDay().slice(0, 7);
+  const r = await env.DB.prepare(
+    "SELECT COALESCE(SUM(n), 0) AS n FROM usage WHERE email = ? AND kind = 'analyze' AND day LIKE ?"
+  ).bind(user.email, month + "%").first();
+  const spent = r ? r.n : 0;
+  return { limit, spent, left: Math.max(0, limit - spent), unlimited: false };
+}
+
+export async function spendAnalyze(env, user) {
+  const q = await analyzeQuota(env, user);
+  if (!q.unlimited && q.left <= 0) return null;
+  await bump(env, user.email, "analyze", mskDay());
+  return q;
 }
 
 /* Пробные запуски ИИ-инструментов и калькуляторов: счётчик на весь срок жизни
    аккаунта, а не на день — иначе «пробная функция» превращается в безлимит. */
 export function toolQuota(user) {
-  if (isPro(user)) return { limit: Infinity, spent: user.tool_uses || 0, left: Infinity, pro: true };
+  const limit = limitOf(user, "toolUses");
+  if (limit === null) return { limit: Infinity, spent: user.tool_uses || 0, left: Infinity, pro: true };
   const spent = user.tool_uses || 0;
-  return { limit: CFG.FREE_TOOL_USES, spent, left: Math.max(0, CFG.FREE_TOOL_USES - spent), pro: false };
+  return { limit, spent, left: Math.max(0, limit - spent), pro: false };
 }
 
 /* Списывает одно обращение к ИИ. Возвращает null, если лимит исчерпан. */

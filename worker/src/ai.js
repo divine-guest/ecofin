@@ -1,7 +1,7 @@
 /* ПравоФин — прокси к ИИ. Ключ живёт только в секретах воркера,
    лимиты проверяются здесь, до обращения к провайдеру. */
 import { json, fail, isPro } from "./lib.js";
-import { aiQuota, toolQuota, spendAI, spendTool } from "./quota.js";
+import { aiQuota, toolQuota, spendAI, spendTool, analyzeQuota, spendAnalyze } from "./quota.js";
 import { logAction } from "./auth.js";
 import { rewardIfEarned } from "./referral.js";
 
@@ -117,8 +117,21 @@ export async function handleAnalyze(request, env, origin, user) {
   }
   if (!text && !images.length) return fail(env, origin, "Не из чего делать разбор: пустой файл");
 
-  const spent = await spendTool(env, user);
-  if (!spent) return paywall(env, origin, "Пробный запуск израсходован. Анализ документов доступен по подписке Pro", "tool");
+  /* На бесплатном тарифе разбор идёт за счёт пробного запуска, на платных —
+     за счёт месячной квоты разборов. */
+  if (isPro(user)) {
+    const spent = await spendAnalyze(env, user);
+    if (!spent) {
+      const q = await analyzeQuota(env, user);
+      return paywall(env, origin,
+        `Разборов документов в этом месяце израсходовано ${q.spent} из ${q.limit}. На тарифе «Про» их без ограничений`,
+        "analyze");
+    }
+  } else {
+    const spent = await spendTool(env, user);
+    if (!spent) return paywall(env, origin,
+      "Пробный запуск израсходован. Разбор документов входит в платные тарифы", "tool");
+  }
 
   /* Со сканами работает только зрячая модель; чистый текст отдаём дешёвой текстовой. */
   const vision = images.length > 0;
@@ -149,8 +162,11 @@ export async function quotaSnapshot(env, user) {
   const fresh = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(user.email).first();
   const ai = await aiQuota(env, fresh);
   const tool = toolQuota(fresh);
+  const analyze = await analyzeQuota(env, fresh);
   return {
     pro: isPro(fresh),
+    tier: ai.tier,
+    analyze: { left: analyze.left, limit: analyze.limit },
     ai: { left: ai.left, limit: ai.limit },
     tool: {
       left: tool.left === Infinity ? null : tool.left,

@@ -16,13 +16,14 @@ export function normalizeAvatar(value, fallback = "") {
   return v.slice(0, 8);   // emoji или буква
 }
 
+import { tierOf, planOf, isPaid, hasFeature } from "./plans.js";
+export { tierOf, planOf, isPaid, hasFeature };
+
 export const CFG = {
-  FREE_TOOL_USES: 1,      // пробных запусков ИИ-инструментов/калькуляторов на аккаунт, всего
-  FREE_AI_PER_DAY: 3,     // сообщений ИИ-консультанту в сутки без подписки
-  PRO_AI_PER_DAY: 300,    // предохранитель от злоупотреблений на Pro
+  /* Числа лимитов переехали в plans.js — там они привязаны к тарифу.
+     Здесь остались только общие настройки. */
   SESSION_DAYS: 30,
   PBKDF2_ITER: 100000,
-  PRICES: { month: { rub: 490, days: 30 }, year: { rub: 4900, days: 365 } },
 };
 
 /* Домены, которым разрешено обращаться к API. Задаётся переменной ALLOWED_ORIGINS
@@ -125,16 +126,20 @@ export function publicUser(row) {
     role: row.role,
     isAdmin: row.role === "admin" || row.role === "owner",
     isOwner: row.role === "owner",
-    plan: pro ? "pro" : "free",
+    tier: tierOf(row),
+    planTitle: planOf(row).title,
+    features: planOf(row).features,
+    themeAccent: row.theme_accent || "",
+    points: row.points || 0,
+    plan: tierOf(row),
     proUntil: row.pro_until || null,
     toolUses: row.tool_uses || 0,
     createdAt: row.created_at,
   };
 }
 
+/* Оставлено под прежним смыслом «есть платная подписка», чтобы не
+   переписывать разом все проверки. Уровень тарифа смотрят через tierOf. */
 export function isPro(row) {
-  if (!row) return false;
-  if (row.role === "admin" || row.role === "owner") return true;
-  if (row.plan !== "pro") return false;
-  return !row.pro_until || row.pro_until > Date.now();
+  return isPaid(row);
 }

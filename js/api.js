@@ -94,6 +94,10 @@ const API = {
   sessions() { return this.request("/api/auth/sessions"); },
   referral() { return this.request("/api/referral"); },
   points() { return this.request("/api/points"); },
+  themes: {
+    list() { return API.request("/api/themes"); },
+    set(id) { return API.request("/api/themes", { method: "POST", body: { id } }); },
+  },
 
   /* --- Напоминания и уведомления --- */
   reminders: {
@@ -129,7 +133,7 @@ const API = {
   /* --- Оплата --- */
   billing: {
     plans() { return API.request("/api/billing/plans"); },
-    create(plan) { return API.request("/api/billing/create", { method: "POST", body: { plan } }); },
+    create(plan, period) { return API.request("/api/billing/create", { method: "POST", body: { plan, period } }); },
     check() { return API.request("/api/billing/check", { method: "POST" }); },
     async promo(code) {
       const d = await API.request("/api/billing/promo", { method: "POST", body: { code } });

@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=19">
+<link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body>
 <main class="section">
@@ -33,11 +33,11 @@
   </div>
 </main>
 
-<script src="js/api.js?v=19"></script>
-<script src="js/app.js?v=19"></script>
-<script src="js/ai.js?v=19"></script>
-<script src="js/competencies.js?v=19"></script>
-<script src="js/courses.js?v=19"></script>
+<script src="js/api.js?v=21"></script>
+<script src="js/app.js?v=21"></script>
+<script src="js/ai.js?v=21"></script>
+<script src="js/competencies.js?v=21"></script>
+<script src="js/courses.js?v=21"></script>
 <script>
 initPage("dashboard.html");
 
@@ -207,8 +207,9 @@ function renderCabinet() {
         </p>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${u.isAdmin ? '<a href="admin.html" class="btn gold">Админ-панель</a>' : ""}
         <a href="tools.html" class="btn">ИИ-инструменты</a>
-        <button class="btn secondary" onclick="SETTINGS.open()">Настройки профиля</button>
+        <button class="btn secondary" onclick="SETTINGS.open()">Настройки</button>
         <button class="btn danger" onclick="PF.logout()">Выйти</button>
       </div>
     </div>

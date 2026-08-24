@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at INTEGER,
   referred_by   TEXT,                  -- email пригласившего, ставится один раз
   referral_paid INTEGER NOT NULL DEFAULT 0,  -- награда за это приглашение уже выдана
-  points        INTEGER NOT NULL DEFAULT 0   -- бонусные баллы, 1 балл = 1 ₽ скидки
+  points        INTEGER NOT NULL DEFAULT 0,  -- бонусные баллы, 1 балл = 1 ₽ скидки
+  theme_accent  TEXT DEFAULT ''            -- персональное оформление (тариф «Про»)
 );
 CREATE INDEX IF NOT EXISTS idx_users_referred ON users(referred_by);
 

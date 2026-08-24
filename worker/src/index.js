@@ -30,6 +30,8 @@ const ROUTES = [
   ["GET", "/api/quota", ai.handleQuota, "user"],
   ["GET", "/api/referral", referral.status, "user"],
   ["GET", "/api/points", points.status, "user"],
+  ["GET", "/api/themes", auth.listThemes, "user"],
+  ["POST", "/api/themes", auth.setTheme, "user"],
 
   ["GET", "/api/reminders", reminders.list, "user"],
   ["POST", "/api/reminders", reminders.create, "user"],
