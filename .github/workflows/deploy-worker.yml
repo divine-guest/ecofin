@@ -1,0 +1,64 @@
+name: Деплой API
+
+# Выкатываем из Actions, а не с рабочей машины: API Cloudflare отвергает
+# запросы с адресов дата-центров, а раннеры GitHub выходят со своих.
+# Заодно это правильный способ — выкатка из репозитория, а не «у меня локально».
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: Зачем выкатываем
+        required: false
+        default: ручной запуск
+  push:
+    branches: [main]
+    paths:
+      - 'worker/src/**'
+      - 'worker/schema.sql'
+      - 'worker/deploy.mjs'
+      - '.github/workflows/deploy-worker.yml'
+
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Собрать worker/.env из секрета
+        working-directory: worker
+        env:
+          WORKER_ENV: ${{ secrets.WORKER_ENV }}
+        run: |
+          printf '%s' "$WORKER_ENV" > .env
+          # В лог выводим только имена переменных, никогда значения
+          echo "переменные:"; grep -o '^[A-Z_]*' .env | sed 's/^/  /'
+
+      - name: Выкатить воркер
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          D1_API_TOKEN: ${{ secrets.D1_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node deploy.mjs
+
+      - name: Проверить, что API отвечает
+        run: |
+          sleep 5
+          echo "ответ /api/health:"
+          curl -sS --fail --max-time 30 https://pravofin-api.pravofin.workers.dev/api/health | tee /tmp/h.json
+          echo
+          grep -q '"db":true'    /tmp/h.json || { echo "::error::база не подключена"; exit 1; }
+          grep -q '"aiKey":true' /tmp/h.json || { echo "::error::ключ ИИ не задан"; exit 1; }
+
+      - name: Удалить .env
+        if: always()
+        working-directory: worker
+        run: rm -f .env
