@@ -147,7 +147,7 @@ def make_cover():
 
     d.text((x, 448), "ИИ-консультант · разбор договоров ·",
            font=font(29, False), fill=(160, 196, 187))
-    d.text((x, 488), "19 калькуляторов · напоминания о сроках",
+    d.text((x, 488), "19 калькуляторов · 42 статьи по делу",
            font=font(29, False), fill=(160, 196, 187))
 
     img.save(os.path.join(HERE, "og-cover.png"), optimize=True)

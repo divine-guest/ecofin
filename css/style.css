@@ -706,7 +706,10 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
 .eh-part { cursor: pointer; border-bottom: 2px dotted transparent; transition: background .2s; }
 .eh-part:hover { background: color-mix(in srgb, var(--violet) 12%, transparent); }
 .eh-part.found { background: color-mix(in srgb, var(--primary) 22%, transparent); border-bottom-color: var(--primary); }
-.eh-part.ok { background: color-mix(in srgb, var(--gold) 18%, transparent); }
+/* Ложное срабатывание: пункт отмечен, но золотым, а не зелёным —
+   это не находка, а промах. Правило написали давно, но сработать
+   оно не могло: раньше в договорах не было нормальных пунктов. */
+.eh-part.ok { background: color-mix(in srgb, var(--gold) 18%, transparent); cursor: default; }
 
 /* Уважение к reduce-motion */
 @media (prefers-reduced-motion: reduce) {
@@ -1527,6 +1530,13 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 
 /* Сумма прописью — её копируют в договор, поэтому текст выделяемый
    и крупнее обычного. */
+/* Подпись с нормой под разбором в «Сколько стоит ошибка»: цифра без
+   ссылки на норму — это слух, а не знание. */
+.pt-law {
+  display: block; margin-top: 8px; font-size: var(--t-xs);
+  color: var(--muted); letter-spacing: .02em;
+}
+
 /* ===== Сертификат за курс =====
    Его показывают работодателю и выкладывают в соцсети, поэтому он
    обязан выглядеть документом, а не всплывающим окном. */

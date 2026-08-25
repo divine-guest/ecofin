@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=79">
+<link rel="stylesheet" href="css/style.css?v=80">
 </head>
 <body>
 <main class="section tint-gold">
@@ -53,6 +53,7 @@
       <button class="tab" onclick="switchGame(2,this)">Кейс-клуб</button>
       <button class="tab" onclick="switchGame(3,this)">Найди ошибку в договоре</button>
       <button class="tab" onclick="switchGame(4,this)">Верно / неверно</button>
+      <button class="tab" onclick="switchGame(5,this)">Сколько стоит ошибка</button>
     </div>
 
     <!-- Разбор кейсов -->
@@ -100,12 +101,16 @@
     <div class="tab-panel game-stage" id="game3">
       <p class="badge" id="ehStatus"></p>
       <h3 id="ehTitle" style="margin:14px 0 8px"></h3>
-      <p style="color:var(--muted);font-size:var(--t-sm);margin-bottom:14px">Кликайте по фрагментам, которые кажутся опасными. Найдите все 5 ловушек.</p>
+      <p style="color:var(--muted);font-size:var(--t-sm);margin-bottom:14px">
+        Нажимайте на пункты, которые кажутся опасными. Но осторожно: здесь есть
+        и нормальные условия, и ложные срабатывания тоже считаются.
+      </p>
       <div id="ehText" style="background:var(--surface-2);border-radius:12px;padding:18px;line-height:2"></div>
       <div class="ai-result" id="ehResult"></div>
       <br>
-      <button class="btn small secondary" onclick="ERRHUNT.start(0)">Договор услуг</button>
-      <button class="btn small secondary" onclick="ERRHUNT.start(1)">Договор поставки</button>
+      <!-- Кнопки договоров рисует сам ERRHUNT: добавили договор в данные —
+           кнопка появилась, а не забылась в разметке. -->
+      <div id="ehDocs" style="display:flex;gap:8px;flex-wrap:wrap"></div>
     </div>
 
     <!-- Верно / неверно -->
@@ -122,18 +127,38 @@
         <button class="btn secondary" style="min-width:130px" onclick="TRUEFALSE.answer(false)">Это миф</button>
       </div>
     </div>
+
+    <!-- Сколько стоит ошибка -->
+    <div class="tab-panel game-stage" id="game5">
+      <div id="ptStart" style="text-align:center">
+        <h3>Сколько стоит ошибка</h3>
+        <p style="color:var(--muted);max-width:52ch;margin:10px auto 0">
+          Восемь ситуаций из практики. Ваше дело — угадать, во сколько обошлась
+          каждая. Обычно оказывается дороже, чем кажется: цену нарушения почти
+          все узнают уже из требования.
+        </p><br>
+        <button class="btn gold" onclick="PRICETAG.start()">Начать</button>
+      </div>
+      <div id="ptGame" style="display:none">
+        <p class="badge" id="ptNum"></p>
+        <h3 id="ptText" style="margin:14px 0 18px;line-height:1.4"></h3>
+        <div id="ptOptions"></div>
+        <div class="ai-result" id="ptWhy"></div>
+        <br><button class="btn" id="ptNext" style="display:none" onclick="PRICETAG.next()">Дальше →</button>
+      </div>
+    </div>
   </div>
 </main>
 
-<script src="js/themes.js?v=79"></script>
-<script src="js/rates.js?v=79"></script>
-<script src="js/api.js?v=79"></script>
-<script src="js/app.js?v=79"></script>
-<script src="js/progress.js?v=79"></script>
-<script src="js/palette.js?v=79"></script>
-<script src="js/ai.js?v=79"></script>
-<script src="js/competencies.js?v=79"></script>
-<script src="js/games.js?v=79"></script>
+<script src="js/themes.js?v=80"></script>
+<script src="js/rates.js?v=80"></script>
+<script src="js/api.js?v=80"></script>
+<script src="js/app.js?v=80"></script>
+<script src="js/progress.js?v=80"></script>
+<script src="js/palette.js?v=80"></script>
+<script src="js/ai.js?v=80"></script>
+<script src="js/competencies.js?v=80"></script>
+<script src="js/games.js?v=80"></script>
 <script>
 initPage("games.html");
 
@@ -228,10 +253,14 @@ WEEKLY.render();
   }
 }
 
+/* Переключение по имени панели, а не по порядковому номеру: вставленная
+   не в то место панель иначе молча сдвигает всё, что идёт после неё.
+   На тех же граблях уже стояли калькуляторы. */
 function switchGame(i, btn) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   btn.classList.add("active");
-  document.querySelectorAll(".tab-panel").forEach((p, j) => p.classList.toggle("active", i === j));
+  const target = "game" + i;
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === target));
 }
 
 DETECTIVE.render();
