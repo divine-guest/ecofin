@@ -52,6 +52,8 @@ const ROUTES = [
   ["POST", "/api/saved", saved.save, "user"],
   ["POST", "/api/saved/delete", saved.remove, "user"],
   ["GET", "/api/ai/history", saved.aiHistory, "user"],
+  ["GET", "/api/competencies", saved.comp, "user"],
+  ["POST", "/api/competencies", saved.saveComp, "user"],
 
   ["GET", "/api/qa", qa.list, "public"],
   ["GET", "/api/qa/one", qa.one, "public"],

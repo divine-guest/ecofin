@@ -80,6 +80,44 @@ export async function remove(request, env, origin, user) {
   return json(env, origin, { ok: true });
 }
 
+/* ---------- Профиль компетенций ---------- */
+
+const COMP_AREAS = ["tax", "contracts", "finance", "accounting", "labor"];
+
+/* GET /api/competencies */
+export async function comp(request, env, origin, user) {
+  let data = {};
+  try { data = JSON.parse(user.competencies || "{}"); } catch {}
+  const out = {};
+  for (const a of COMP_AREAS) out[a] = Math.min(100, Math.max(0, Number(data[a]) || 0));
+  return json(env, origin, { areas: out });
+}
+
+/* POST /api/competencies {areas} — синхронизация.
+
+   Берём максимум из присланного и сохранённого: значения только
+   растут. Это решает две задачи сразу — работа с двух устройств
+   ничего не теряет, и обнулить чужой прогресс подделкой запроса
+   нельзя. */
+export async function saveComp(request, env, origin, user) {
+  const b = await request.json().catch(() => ({}));
+  const incoming = b.areas && typeof b.areas === "object" ? b.areas : {};
+
+  let current = {};
+  try { current = JSON.parse(user.competencies || "{}"); } catch {}
+
+  const merged = {};
+  for (const a of COMP_AREAS) {
+    const was = Math.min(100, Math.max(0, Number(current[a]) || 0));
+    const now = Math.min(100, Math.max(0, Number(incoming[a]) || 0));
+    merged[a] = Math.max(was, now);
+  }
+
+  await env.DB.prepare("UPDATE users SET competencies = ? WHERE email = ?")
+    .bind(JSON.stringify(merged), user.email).run();
+  return json(env, origin, { areas: merged });
+}
+
 /* GET /api/ai/history — вопросы к консультанту с ответами.
 
    Переписка живёт в браузере, поэтому теряется при смене устройства и

@@ -173,6 +173,11 @@ const API = {
     },
     remove(id) { return API.request("/api/saved/delete", { method: "POST", body: { id } }); },
   },
+  competencies: {
+    get() { return API.request("/api/competencies"); },
+    /* Синхронизация, а не перезапись: сервер берёт максимум. */
+    sync(areas) { return API.request("/api/competencies", { method: "POST", body: { areas } }); },
+  },
   aiHistory(q) {
     return API.request("/api/ai/history" + (q ? "?q=" + encodeURIComponent(q) : ""));
   },

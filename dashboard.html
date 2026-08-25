@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=68">
+<link rel="stylesheet" href="css/style.css?v=69">
 </head>
 <body>
 <main class="section">
@@ -33,12 +33,13 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=68"></script>
-<script src="js/api.js?v=68"></script>
-<script src="js/app.js?v=68"></script>
-<script src="js/ai.js?v=68"></script>
-<script src="js/competencies.js?v=68"></script>
-<script src="js/courses.js?v=68"></script>
+<script src="js/themes.js?v=69"></script>
+<script src="js/api.js?v=69"></script>
+<script src="js/app.js?v=69"></script>
+<script src="js/ai.js?v=69"></script>
+<script src="js/knowledge.js?v=69"></script>
+<script src="js/competencies.js?v=69"></script>
+<script src="js/courses.js?v=69"></script>
 <script>
 initPage("dashboard.html");
 
@@ -325,7 +326,10 @@ function renderCabinet() {
     <!-- Индивидуальный план развития -->
     <div class="card" style="margin-bottom:28px" data-tab="learn">
       <h3>Индивидуальный план развития</h3>
-      <p style="color:var(--muted);font-size:var(--t-sm)">Подобран по вашему профилю. Проходите материалы — компетенции растут автоматически.</p>
+      <p style="color:var(--muted);font-size:var(--t-sm)">Подобран по вашему профилю: сначала то, где показатель ниже.</p>
+      <!-- Конкретный следующий шаг важнее списка возможностей: человек
+           заходит в кабинет не выбирать, а делать. -->
+      <div id="planNext"></div>
       <div class="grid cols-3" style="margin-top:14px">
         ${COURSES.map(c => {
           const done = (JSON.parse(localStorage.getItem("pf_course_" + u.email) || "{}")[c.id] || []).length;
@@ -340,7 +344,7 @@ function renderCabinet() {
         }).join("")}
         <a class="card" href="knowledge.html" style="padding:18px">
           <h3 style="font-size:var(--t-md)">Аттестационные тесты</h3>
-          <p style="font-size:var(--t-xs);color:var(--muted)">4 теста: налоги, право, финансы, бухучёт</p>
+          <p style="font-size:var(--t-xs);color:var(--muted)">5 тестов, 60 вопросов с разбором каждого ответа</p>
           <p style="font-size:var(--t-xs);margin-top:8px"><span class="badge">Проверка знаний</span></p>
         </a>
       </div>
@@ -880,6 +884,10 @@ async function fillCabinet() {
   if (slot) slot.innerHTML = TRIAL.banner();
   SAVED.load();
   HISTORY.load();
+  /* Подтягиваем компетенции с сервера, потом строим план. */
+  await COMP.pull();
+  renderCabinet();
+  PLAN.render();
 }
 
 /* ============ Сохранённые расчёты ============
@@ -966,6 +974,74 @@ const HISTORY = {
   },
 };
 
+
+/* ============ Следующий шаг в обучении ============
+   Смотрим, где показатель ниже всего, и предлагаем ровно одно дело:
+   непрочитанную статью по этой теме и тест, который её поднимет.
+   Список возможностей человек и так видит — ему нужен следующий шаг. */
+const PLAN = {
+  /* Что читали — помним локально: для подсказки этого достаточно,
+     а серверу лишний журнал ни к чему. */
+  readKey() { const x = PF.user(); return "pf_read_" + (x ? x.email : "guest"); },
+  read() {
+    try { return JSON.parse(localStorage.getItem(this.readKey()) || "[]"); }
+    catch { return []; }
+  },
+
+  weakest() {
+    const all = COMP.all();
+    const pairs = Object.keys(COMP.AREAS).map(a => [a, Number(all[a]) || 0]);
+    pairs.sort((x, y) => x[1] - y[1]);
+    return pairs[0];
+  },
+
+  /* Обратное отображение: направление компетенции → область статей. */
+  AREA_BY_COMP: {
+    tax: "Налоги", contracts: "Договоры", labor: "Работники",
+    finance: "Деньги", accounting: "Бизнес",
+  },
+  TEST_BY_COMP: {
+    tax: "taxes", contracts: "law", labor: "labour",
+    finance: "finance", accounting: "business",
+  },
+
+  render() {
+    const box = document.getElementById("planNext");
+    if (!box || typeof ARTICLES === "undefined") return;
+
+    const [area, value] = this.weakest();
+    const name = COMP.AREAS[area];
+    const kbArea = this.AREA_BY_COMP[area];
+    const wasRead = this.read();
+
+    const article = ARTICLES.find(a => a.area === kbArea && !wasRead.includes(a.title))
+      || ARTICLES.find(a => a.area === kbArea);
+    const testKey = this.TEST_BY_COMP[area];
+
+    box.innerHTML = `
+      <div class="plan-next">
+        <div class="plan-head">
+          <span>Слабее всего: <b>${escapeHtml(name)}</b> — ${value}%</span>
+          <span class="hint">${COMP.level(value)}</span>
+        </div>
+        ${article ? `
+          <div class="plan-item">
+            <div>
+              <b>${escapeHtml(article.title)}</b>
+              <span class="hint">${escapeHtml(article.summary || "")}</span>
+            </div>
+            <a class="btn small" href="knowledge.html#a=${encodeURIComponent(article.title)}">Читать</a>
+          </div>` : ""}
+        <div class="plan-item">
+          <div>
+            <b>Тест «${escapeHtml((TESTS[testKey] || {}).title || name)}»</b>
+            <span class="hint">12 вопросов с разбором каждого ответа</span>
+          </div>
+          <a class="btn small secondary" href="knowledge.html#test=${testKey}">Пройти</a>
+        </div>
+      </div>`;
+  },
+};
 </script>
 </body>
 </html>

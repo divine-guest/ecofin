@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=68">
+<link rel="stylesheet" href="css/style.css?v=69">
 </head>
 <body>
 <main class="section tint-navy">
@@ -54,13 +54,13 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=68"></script>
-<script src="js/rates.js?v=68"></script>
-<script src="js/api.js?v=68"></script>
-<script src="js/app.js?v=68"></script>
-<script src="js/ai.js?v=68"></script>
-<script src="js/competencies.js?v=68"></script>
-<script src="js/knowledge.js?v=68"></script>
+<script src="js/themes.js?v=69"></script>
+<script src="js/rates.js?v=69"></script>
+<script src="js/api.js?v=69"></script>
+<script src="js/app.js?v=69"></script>
+<script src="js/ai.js?v=69"></script>
+<script src="js/competencies.js?v=69"></script>
+<script src="js/knowledge.js?v=69"></script>
 <script>
 initPage("knowledge.html");
 
@@ -177,7 +177,7 @@ function openArticle(i) {
       <button class="btn small secondary" onclick="document.getElementById('articleFull').classList.remove('show')">Закрыть</button>
     </div>`;
   el.scrollIntoView({ behavior: "smooth" });
-  COMP.award(COMP.articleArea(a.code), 2);
+  COMP.award(COMP.articleArea(a.code, a.area), 2);
   PF.logAction("Чтение статьи: " + a.title);
 }
 /* Вопрос по статье уходит в чат-консультанта с уже подставленной темой:
@@ -280,6 +280,23 @@ function finishTest() {
       <a class="btn secondary" href="#kbTop" onclick="document.querySelectorAll('.tab')[0].click()">К статьям</a>
     </div>`;
 }
+
+/* Открытие по ссылке из кабинета: #a=Заголовок статьи или #test=ключ.
+   Без этого «личный план» вёл просто на страницу, и человеку всё равно
+   приходилось искать нужное глазами. */
+function openFromHash() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h.startsWith("a=")) {
+    const title = h.slice(2);
+    const i = ARTICLES.findIndex(a => a.title === title);
+    if (i >= 0) { document.querySelectorAll(".tabs .tab")[0]?.click(); openArticle(i); }
+  } else if (h.startsWith("test=")) {
+    const key = h.slice(5);
+    if (TESTS[key]) { document.querySelectorAll(".tabs .tab")[1]?.click(); startTest(key); }
+  }
+}
+openFromHash();
+window.addEventListener("hashchange", openFromHash);
 </script>
 </body>
 </html>
