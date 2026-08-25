@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 </head>
 <body>
 <main class="section tint-green">
@@ -40,14 +40,14 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=78"></script>
-<script src="js/api.js?v=78"></script>
-<script src="js/app.js?v=78"></script>
-<script src="js/progress.js?v=78"></script>
-<script src="js/palette.js?v=78"></script>
-<script src="js/ai.js?v=78"></script>
-<script src="js/competencies.js?v=78"></script>
-<script src="js/courses.js?v=78"></script>
+<script src="js/themes.js?v=79"></script>
+<script src="js/api.js?v=79"></script>
+<script src="js/app.js?v=79"></script>
+<script src="js/progress.js?v=79"></script>
+<script src="js/palette.js?v=79"></script>
+<script src="js/ai.js?v=79"></script>
+<script src="js/competencies.js?v=79"></script>
+<script src="js/courses.js?v=79"></script>
 <script>
 initPage("courses.html");
 
@@ -178,20 +178,48 @@ function checkCertificate(id) {
     document.body.appendChild(bd);
   }
   bd.classList.add("open");
+  /* Номер сертификата детерминированный: у одного человека за один курс
+     он всегда один и тот же. Иначе при повторном открытии выдавался бы
+     новый номер, и документ переставал быть документом. */
+  const seed = (u ? u.email : "guest") + "|" + c.id;
+  let h = 0;
+  for (const ch of seed) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
+  const number = "ПФ-" + String(h % 100000).padStart(5, "0");
+  const date = new Date().toLocaleDateString("ru-RU");
+
   bd.innerHTML = `
-    <div class="modal" style="text-align:center;border:6px double var(--gold)">
-      <p style="letter-spacing:2px;color:var(--gold);font-weight:800">СЕРТИФИКАТ</p>
-      <p style="color:var(--muted);font-size:var(--t-sm)">ПравоФин подтверждает, что</p>
-      <h3 style="font-family:'Onest', Georgia, serif;margin:8px 0">${escapeHtml(u ? u.name : "Пользователь")}</h3>
-      <p style="color:var(--muted);font-size:var(--t-sm)">успешно завершил(а) курс</p>
-      <h4 style="margin:8px 0">«${c.title}»</h4>
-      <p style="color:var(--muted);font-size:var(--t-sm)">${c.lessons.length} уроков · ${new Date().toLocaleDateString("ru-RU")}</p>
-      <br>
-      <button class="btn" onclick="window.print()">Скачать / печать</button>
-      <button class="btn secondary" onclick="document.getElementById('certBackdrop').classList.remove('open')">Закрыть</button>
+    <div class="modal cert-modal">
+      <div class="cert" id="certSheet">
+        <span class="cert-kicker">Сертификат</span>
+        <p class="cert-lead">ПравоФин подтверждает, что</p>
+        <h3 class="cert-name">${escapeHtml(u ? u.name : "Пользователь")}</h3>
+        <p class="cert-lead">прошёл полный курс</p>
+        <h4 class="cert-course">«${escapeHtml(c.title)}»</h4>
+        <div class="cert-meta">
+          <span><b>${c.lessons.length}</b> ${plural(c.lessons.length, "урок", "урока", "уроков")}</span>
+          <span><b>${date}</b></span>
+          <span><b>${number}</b></span>
+        </div>
+        <p class="cert-note">Документ подтверждает прохождение курса в сервисе ПравоФин.
+          Он не заменяет диплом или свидетельство государственного образца.</p>
+      </div>
+      <div class="cert-actions no-print">
+        <button class="btn" onclick="printCert()">Скачать / распечатать</button>
+        <button class="btn secondary" onclick="document.getElementById('certBackdrop').classList.remove('open')">Закрыть</button>
+      </div>
     </div>`;
-  PF.logAction("Сертификат за курс: " + c.title);
+  PF.logAction("Сертификат за курс: " + c.title + " (" + number + ")");
   PF.addScore("quiz", 100);
+  trackEvent("certificate", { course: c.id });
+}
+
+/* Печатаем только сам сертификат. Раньше здесь стоял window.print(),
+   который выводил на бумагу всю страницу целиком — со списком курсов,
+   шапкой и подвалом. Документом это не выглядело. */
+function printCert() {
+  document.body.classList.add("printing-cert");
+  window.print();
+  setTimeout(() => document.body.classList.remove("printing-cert"), 500);
 }
 
 renderCourses();

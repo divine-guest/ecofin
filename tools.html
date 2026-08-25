@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=78">
+<link rel="stylesheet" href="css/style.css?v=79">
 </head>
 <body>
 <main class="section tint-green">
@@ -248,15 +248,15 @@
   <div class="container"><div id="partnersTools"></div></div>
 </main>
 
-<script src="js/themes.js?v=78"></script>
-<script src="js/api.js?v=78"></script>
-<script src="js/app.js?v=78"></script>
-<script src="js/progress.js?v=78"></script>
-<script src="js/palette.js?v=78"></script>
-<script src="js/ai.js?v=78"></script>
-<script src="js/templates.js?v=78"></script>
-<script src="js/docscan.js?v=78"></script>
-<script src="js/partners.js?v=78"></script>
+<script src="js/themes.js?v=79"></script>
+<script src="js/api.js?v=79"></script>
+<script src="js/app.js?v=79"></script>
+<script src="js/progress.js?v=79"></script>
+<script src="js/palette.js?v=79"></script>
+<script src="js/ai.js?v=79"></script>
+<script src="js/templates.js?v=79"></script>
+<script src="js/docscan.js?v=79"></script>
+<script src="js/partners.js?v=79"></script>
 <script>
 initPage("tools.html");
 
@@ -677,28 +677,110 @@ ${how}
    Реестровые сведения не выдумываем: ИИ даёт порядок проверки и на что
    смотреть, а ссылки ведут в официальные источники, где всё видно
    бесплатно и достоверно. */
+/* Четвёртым элементом — имя параметра поиска, если сайт умеет принимать
+   ИНН прямо в адресе. Где не умеет, оставляем пусто: подставить наугад
+   значит увести человека на страницу ошибки. */
 const INN_SOURCES = [
-  ["Выписка из ЕГРЮЛ / ЕГРИП", "https://egrul.nalog.ru/", "кто директор, учредители, адрес, дата регистрации"],
-  ["Прозрачный бизнес (ФНС)", "https://pb.nalog.ru/", "долги по налогам, недостоверные сведения, дисквалификация"],
-  ["Картотека арбитражных дел", "https://kad.arbitr.ru/", "судится ли и с кем, кто чаще проигрывает"],
-  ["Банк данных ФССП", "https://fssp.gov.ru/iss/ip", "исполнительные производства — есть ли долги ко взысканию"],
-  ["Федресурс", "https://fedresurs.ru/", "банкротство, залоги, существенные факты"],
-  ["Реестр недобросовестных поставщиков", "https://zakupki.gov.ru/epz/dishonestsupplier/search/results.html", "срывал ли госконтракты"],
+  ["Выписка из ЕГРЮЛ / ЕГРИП", "https://egrul.nalog.ru/", "кто директор, учредители, адрес, дата регистрации", ""],
+  ["Прозрачный бизнес (ФНС)", "https://pb.nalog.ru/search.html", "долги по налогам, недостоверные сведения, дисквалификация", "query"],
+  ["Картотека арбитражных дел", "https://kad.arbitr.ru/", "судится ли и с кем, кто чаще проигрывает", ""],
+  ["Банк данных ФССП", "https://fssp.gov.ru/iss/ip", "исполнительные производства — есть ли долги ко взысканию", ""],
+  ["Федресурс", "https://fedresurs.ru/search/entity", "банкротство, залоги, существенные факты", "query"],
+  ["Реестр недобросовестных поставщиков", "https://zakupki.gov.ru/epz/dishonestsupplier/search/results.html", "срывал ли госконтракты", "searchString"],
 ];
+
+/* Регионы по первым двум цифрам ИНН. Не весь справочник, а те коды,
+   на которые приходится большинство контрагентов: этого достаточно,
+   чтобы заметить «поставщик из Москвы» с кодом Камчатки. */
+const INN_REGIONS = {
+  "01":"Адыгея","02":"Башкортостан","03":"Бурятия","04":"Алтай","05":"Дагестан",
+  "07":"Кабардино-Балкария","08":"Калмыкия","09":"Карачаево-Черкесия","10":"Карелия",
+  "11":"Коми","12":"Марий Эл","13":"Мордовия","14":"Якутия","15":"Северная Осетия",
+  "16":"Татарстан","17":"Тыва","18":"Удмуртия","19":"Хакасия","20":"Чечня","21":"Чувашия",
+  "22":"Алтайский край","23":"Краснодарский край","24":"Красноярский край","25":"Приморский край",
+  "26":"Ставропольский край","27":"Хабаровский край","28":"Амурская обл.","29":"Архангельская обл.",
+  "30":"Астраханская обл.","31":"Белгородская обл.","32":"Брянская обл.","33":"Владимирская обл.",
+  "34":"Волгоградская обл.","35":"Вологодская обл.","36":"Воронежская обл.","37":"Ивановская обл.",
+  "38":"Иркутская обл.","39":"Калининградская обл.","40":"Калужская обл.","41":"Камчатский край",
+  "42":"Кемеровская обл.","43":"Кировская обл.","44":"Костромская обл.","45":"Курганская обл.",
+  "46":"Курская обл.","47":"Ленинградская обл.","48":"Липецкая обл.","49":"Магаданская обл.",
+  "50":"Московская обл.","51":"Мурманская обл.","52":"Нижегородская обл.","53":"Новгородская обл.",
+  "54":"Новосибирская обл.","55":"Омская обл.","56":"Оренбургская обл.","57":"Орловская обл.",
+  "58":"Пензенская обл.","59":"Пермский край","60":"Псковская обл.","61":"Ростовская обл.",
+  "62":"Рязанская обл.","63":"Самарская обл.","64":"Саратовская обл.","65":"Сахалинская обл.",
+  "66":"Свердловская обл.","67":"Смоленская обл.","68":"Тамбовская обл.","69":"Тверская обл.",
+  "70":"Томская обл.","71":"Тульская обл.","72":"Тюменская обл.","73":"Ульяновская обл.",
+  "74":"Челябинская обл.","75":"Забайкальский край","76":"Ярославская обл.","77":"Москва",
+  "78":"Санкт-Петербург","79":"Еврейская АО","83":"Ненецкий АО","86":"Ханты-Мансийский АО",
+  "87":"Чукотский АО","89":"Ямало-Ненецкий АО","91":"Крым","92":"Севастополь",
+};
+
+/* Контрольная сумма ИНН. Считается по формуле ФНС и ловит опечатку
+   на месте — до того, как человек пойдёт искать по неверному номеру
+   и решит, что контрагента не существует. Проверка чисто арифметическая:
+   она подтверждает, что номер корректно составлен, но не подтверждает,
+   что такая компания есть. Об этом и пишем прямо. */
+function innValid(inn) {
+  const d = inn.split("").map(Number);
+  const sum = (weights) => weights.reduce((s, w, i) => s + w * d[i], 0) % 11 % 10;
+  if (inn.length === 10) return sum([2, 4, 10, 3, 5, 9, 4, 6, 8]) === d[9];
+  if (inn.length === 12) {
+    return sum([7, 2, 4, 10, 3, 5, 9, 4, 6, 8]) === d[10]
+        && sum([3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8]) === d[11];
+  }
+  return false;
+}
 
 function renderInnLinks() {
   const inn = (document.getElementById("cpInn").value || "").replace(/\D/g, "");
   const box = document.getElementById("innLinks");
   if (!box) return;
 
-  const bad = inn.length && inn.length !== 10 && inn.length !== 12;
+  const rightLength = inn.length === 10 || inn.length === 12;
+  const valid = rightLength && innValid(inn);
+  const region = INN_REGIONS[inn.slice(0, 2)];
+
+  let verdict = "";
+  if (inn.length && !rightLength) {
+    verdict = `<p class="inn-verdict bad">ИНН — это 10 цифр у организации или 12 у ИП.
+      Сейчас ${inn.length}.</p>`;
+  } else if (rightLength && !valid) {
+    verdict = `<p class="inn-verdict bad">Контрольная сумма не сходится — в номере опечатка.
+      Проверьте цифры: искать по неверному ИНН бесполезно.</p>`;
+  } else if (valid) {
+    verdict = `<p class="inn-verdict ok">Номер составлен верно:
+      ${inn.length === 10 ? "организация" : "ИП или физлицо"}${region ? `, регистрация — ${region}` : ""}.
+      Это проверка арифметики, а не существования: убедитесь по выписке ниже.</p>`;
+  }
+
+  /* Ссылки с подставленным номером: человек нажимает одну кнопку вместо
+     того, чтобы копировать ИНН в шесть разных сайтов подряд. */
+  const withInn = (url, param) => (valid && param)
+    ? url + (url.includes("?") ? "&" : "?") + param + "=" + inn : url;
+
   box.innerHTML = `
-    ${bad ? `<p class="hint" style="color:var(--danger)">ИНН — это 10 цифр у организации или 12 у ИП. Сейчас ${inn.length}.</p>` : ""}
-    <p class="hint" style="margin-bottom:8px">Официальные источники — проверка бесплатна:</p>
-    ${INN_SOURCES.map(([name, url, what]) => `
-      <a class="check-link" href="${url}" target="_blank" rel="noopener">
+    ${verdict}
+    <p class="hint" style="margin-bottom:8px">Официальные источники — проверка бесплатна${
+      valid ? ", номер уже подставлен" : ""}:</p>
+    ${INN_SOURCES.map(([name, url, what, param]) => `
+      <a class="check-link" href="${withInn(url, param)}" target="_blank" rel="noopener">
         <b>${name}</b><span>${what}</span>
-      </a>`).join("")}`;
+      </a>`).join("")}
+    ${valid ? `<button class="btn small secondary" style="margin-top:10px"
+        onclick="openAllSources()">Открыть все шесть источников сразу</button>` : ""}`;
+}
+
+/* Открыть весь список разом. Браузер может заблокировать всплывающие
+   окна — тогда честно говорим, что делать, а не молчим. */
+function openAllSources() {
+  const inn = (document.getElementById("cpInn").value || "").replace(/\D/g, "");
+  let blocked = 0;
+  for (const [, url, , param] of INN_SOURCES) {
+    const href = param ? url + (url.includes("?") ? "&" : "?") + param + "=" + inn : url;
+    if (!window.open(href, "_blank", "noopener")) blocked++;
+  }
+  if (blocked) toast("Браузер заблокировал часть вкладок — разрешите всплывающие окна для сайта", "error");
+  else trackEvent("inn_open_all");
 }
 renderInnLinks();
 

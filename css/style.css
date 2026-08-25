@@ -1527,6 +1527,63 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 
 /* Сумма прописью — её копируют в договор, поэтому текст выделяемый
    и крупнее обычного. */
+/* ===== Сертификат за курс =====
+   Его показывают работодателю и выкладывают в соцсети, поэтому он
+   обязан выглядеть документом, а не всплывающим окном. */
+.cert-modal { max-width: 620px; padding: 20px; }
+.cert {
+  border: 3px double var(--gold);
+  padding: 34px 30px; text-align: center;
+  background: var(--surface);
+}
+.cert-kicker {
+  display: block; letter-spacing: .32em; text-transform: uppercase;
+  color: var(--gold); font-weight: 800; font-size: var(--t-sm);
+  margin-bottom: 18px;
+}
+.cert-lead { color: var(--muted); font-size: var(--t-sm); margin: 0; }
+.cert-name {
+  font-family: "Onest", Georgia, serif; font-size: 1.7rem;
+  margin: 8px 0 14px; line-height: 1.2; text-wrap: balance;
+}
+.cert-course {
+  font-family: "Onest", Georgia, serif; font-size: 1.2rem;
+  margin: 8px 0 20px; line-height: 1.3; text-wrap: balance;
+}
+.cert-meta {
+  display: flex; justify-content: center; gap: 26px; flex-wrap: wrap;
+  padding-top: 16px; border-top: 1px solid var(--border);
+  font-size: var(--t-xs); color: var(--muted);
+}
+.cert-meta b { display: block; color: var(--text); font-size: var(--t-sm); }
+.cert-note {
+  margin-top: 16px; font-size: var(--t-xs); color: var(--muted); line-height: 1.5;
+}
+.cert-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+
+/* На печать уходит только сертификат: раньше window.print() выводил
+   всю страницу со списком курсов, шапкой и подвалом. */
+@media print {
+  body.printing-cert > *:not(#certBackdrop) { display: none !important; }
+  body.printing-cert #certBackdrop {
+    position: static !important; display: block !important;
+    background: none !important; backdrop-filter: none !important; padding: 0 !important;
+  }
+  body.printing-cert .modal { box-shadow: none; max-height: none; padding: 0; }
+  body.printing-cert .no-print { display: none !important; }
+  body.printing-cert .cert { border-color: #a8791b; }
+}
+
+/* Вердикт по ИНН: контрольная сумма ловит опечатку на месте, до того
+   как человек пойдёт искать по неверному номеру и решит, что
+   контрагента не существует. */
+.inn-verdict {
+  margin-bottom: 10px; padding: 9px 12px; border-radius: 10px;
+  font-size: var(--t-sm); line-height: 1.55;
+}
+.inn-verdict.ok { background: var(--surface-2); border-left: 3px solid var(--primary); color: var(--muted); }
+.inn-verdict.bad { background: var(--surface-2); border-left: 3px solid var(--danger); color: var(--danger); }
+
 .words-out {
   font-size: 1.05rem; line-height: 1.55; padding: 14px 16px;
   border: 1px dashed var(--border); border-radius: 12px;
