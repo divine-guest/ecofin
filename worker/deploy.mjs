@@ -103,6 +103,50 @@ async function applySchema(dbId) {
     body: JSON.stringify({ sql }),
   });
   console.log("  схема применена");
+  await applyMigrations(dbId);
+}
+
+/* Миграции применяются сами при каждой выкатке.
+
+   Раньше их гоняли руками, и это ломалось дважды: выкатывался код,
+   который обращается к новой колонке, а колонки в базе ещё нет —
+   и живой сервис отвечал ошибкой до тех пор, пока про миграцию
+   не вспомнят.
+
+   Правила, из-за которых на этом уже спотыкались:
+   1. Комментарии срезаем ДО разбиения по «;» — точка с запятой внутри
+      комментария рвёт выражение пополам.
+   2. Каждое выражение шлём отдельно: D1 не любит пачку в одном запросе.
+   3. «Колонка уже есть» и «таблица уже есть» — не ошибки, а норма:
+      миграции обязаны переживать повторный запуск.                 */
+const HARMLESS = /duplicate column|already exists|no such index/i;
+
+async function applyMigrations(dbId) {
+  const files = (await readdir(HERE)).filter(f => /^migrate.*\.sql$/.test(f)).sort();
+  let applied = 0, skipped = 0;
+
+  for (const f of files) {
+    const raw = await readFile(join(HERE, f), "utf8");
+    const clean = raw
+      .split("\n")
+      .map(line => line.replace(/--.*$/, ""))
+      .join("\n");
+
+    for (const stmt of clean.split(";").map(s => s.trim()).filter(Boolean)) {
+      try {
+        await cf(`/accounts/${ACCOUNT}/d1/database/${dbId}/query`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sql: stmt }),
+        });
+        applied++;
+      } catch (e) {
+        if (HARMLESS.test(e.message)) { skipped++; continue; }
+        console.warn(`  ${f}: ${e.message.slice(0, 120)}`);
+      }
+    }
+  }
+  console.log(`  миграций: файлов ${files.length}, выполнено ${applied}, уже было ${skipped}`);
 }
 
 async function uploadScript(bindings) {

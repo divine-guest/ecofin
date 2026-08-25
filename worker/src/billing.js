@@ -70,6 +70,12 @@ export async function createPayment(request, env, origin, user) {
         amount: { value: toPay.toFixed(2), currency: "RUB" },
         capture: true,
         confirmation: { type: "redirect", return_url: returnUrl },
+        /* Просим сохранить способ оплаты — без этого автопродление
+           невозможно в принципе, а именно оно отделяет разовую продажу
+           от дохода: разовые платежи повторяют около четверти людей,
+           автосписание — три четверти. Человек видит это на витрине
+           и может отключить в кабинете в один клик. */
+        save_payment_method: true,
         description: `ПравоФин — ${PLANS[planId].title}, ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`,
         /* Сумму и план берём ТОЛЬКО отсюда при подтверждении: клиент их не диктует. */
         metadata: { email: user.email, plan: planId, period, pointsUsed: String(used) },
@@ -110,8 +116,18 @@ export async function createPayment(request, env, origin, user) {
   }
 }
 
-/* Единая точка включения Pro. Идемпотентна: повторный вебхук ничего не удвоит. */
-async function applySucceeded(env, paymentId) {
+/* Способ оплаты, сохранённый ЮKassa, — только если он действительно
+   пригоден для повторных списаний. Флага saved достаточно: без него
+   попытка списать вернёт ошибку и человек увидит «не продлилось». */
+function savedMethodOf(payment) {
+  const m = payment && payment.payment_method;
+  return m && m.saved && m.id ? String(m.id) : "";
+}
+
+/* Единая точка включения Pro. Идемпотентна: повторный вебхук ничего не удвоит.
+   savedMethod — идентификатор сохранённого способа оплаты, если ЮKassa его
+   вернула: по нему потом идёт автопродление. */
+async function applySucceeded(env, paymentId, savedMethod) {
   const row = await env.DB.prepare("SELECT * FROM payments WHERE id = ?").bind(paymentId).first();
   if (!row) return { ok: false, reason: "unknown-payment" };
   if (row.status === "succeeded") return { ok: true, already: true };
@@ -128,7 +144,14 @@ async function applySucceeded(env, paymentId) {
     env.DB.prepare("UPDATE users SET plan = ?, pro_until = ? WHERE email = ?").bind(tier, until, row.email),
     env.DB.prepare("UPDATE payments SET status = 'succeeded', completed_at = ? WHERE id = ?").bind(now(), paymentId),
   ]);
-  await logAction(env, row.email, `Оплачена подписка Pro (${row.plan}), ${row.amount} ₽`);
+  /* Запоминаем, чем и что продлевать. Только при живом способе оплаты:
+     иначе в базе останется план без возможности списать. */
+  if (savedMethod) {
+    await env.DB.prepare(
+      "UPDATE users SET auto_method = ?, auto_plan = ? WHERE email = ?"
+    ).bind(savedMethod, String(row.plan), row.email).run().catch(() => {});
+  }
+  await logAction(env, row.email, `Оплачена подписка «${PLANS[tier]?.title || tier}» (${row.plan}), ${row.amount} ₽`);
   /* Основная часть реферальной награды — именно здесь: пригласивший
      получает баллы, когда приглашённый принёс деньги. */
   await rewardOnPayment(env, row.email).catch(() => {});
@@ -160,7 +183,7 @@ export async function webhook(request, env, origin) {
   try {
     const payment = await ykFetch(env, `/payments/${encodeURIComponent(paymentId)}`);
     if (payment.status === "succeeded" && payment.paid) {
-      await applySucceeded(env, paymentId);
+      await applySucceeded(env, paymentId, savedMethodOf(payment));
     } else if (payment.status === "canceled") {
       await cancelPayment(env, paymentId);
     }
@@ -186,7 +209,7 @@ export async function check(request, env, origin, user) {
     try {
       const payment = await ykFetch(env, `/payments/${encodeURIComponent(p.id)}`);
       if (payment.status === "succeeded" && payment.paid) {
-        const r = await applySucceeded(env, p.id);
+        const r = await applySucceeded(env, p.id, savedMethodOf(payment));
         if (r.ok && !r.already) applied++;
       } else if (payment.status === "canceled") {
         await cancelPayment(env, p.id);
@@ -286,4 +309,154 @@ export async function promo(request, env, origin, user) {
 
   const row = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(user.email).first();
   return json(env, origin, { user: publicUser(row), days });
+}
+
+/* ============ Автопродление ============
+
+   Почему это главное в файле. Разовый платёж требует, чтобы человек
+   вспомнил про сервис ровно в нужный день, зашёл и заплатил снова.
+   Так делает примерно четверть. При автосписании продлевается три
+   четверти — при том же продукте и той же цене.
+
+   Три правила, чтобы это оставалось честным, а не ловушкой:
+   1. Списываем только тем, кто сам платил картой и у кого сохранён
+      способ оплаты. Ручные выдачи, промокоды и пробный не продлеваются.
+   2. Отключить можно одной кнопкой в кабинете, без писем и звонков.
+   3. Предупреждаем заранее — уведомлением и в Telegram.            */
+
+/* POST /api/billing/autorenew {on:boolean} — включить или отключить. */
+export async function setAutoRenew(request, env, origin, user) {
+  const b = await request.json().catch(() => ({}));
+  const on = b.on === true || b.on === 1 || b.on === "1";
+  await env.DB.prepare("UPDATE users SET auto_renew = ? WHERE email = ?")
+    .bind(on ? 1 : 0, user.email).run();
+  await logAction(env, user.email, on ? "Включено автопродление подписки" : "Отключено автопродление подписки");
+  const row = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(user.email).first();
+  return json(env, origin, { user: publicUser(row), autoRenew: on });
+}
+
+/* GET /api/billing/subscription — что показать в карточке подписки. */
+export async function subscription(request, env, origin, user) {
+  const paid = isPaid(user);
+  const hasMethod = Boolean(user.auto_method);
+  return json(env, origin, {
+    tier: user.plan,
+    until: user.pro_until || null,
+    autoRenew: hasMethod && user.auto_renew !== 0,
+    canAutoRenew: hasMethod,
+    /* Пока эквайринг не подключён, автосписания невозможны физически —
+       говорим об этом прямо, а не намёками. */
+    billingEnabled: configured(env),
+    active: paid,
+    nextPlan: user.auto_plan || "",
+  });
+}
+
+/* Кому пора продлить. Берём тех, у кого срок истекает в ближайшие сутки:
+   крон ходит раз в час, поэтому окно с запасом, а от повторов защищает
+   отметка auto_last. */
+const RENEW_WINDOW = 24 * 3600 * 1000;
+const RENEW_COOLDOWN = 20 * 3600 * 1000;
+
+export async function runRenewals(env) {
+  if (!configured(env)) return { skipped: "billing-off" };
+  const t = now();
+  const rows = await env.DB.prepare(
+    `SELECT * FROM users
+      WHERE auto_renew = 1 AND auto_method <> '' AND auto_plan <> ''
+        AND pro_until IS NOT NULL
+        AND pro_until > ? AND pro_until < ?
+        AND (auto_last IS NULL OR auto_last < ?)`
+  ).bind(t - RENEW_WINDOW, t + RENEW_WINDOW, t - RENEW_COOLDOWN).all();
+
+  let done = 0, failed = 0;
+  for (const user of rows.results || []) {
+    /* Отметку ставим ДО попытки: если списание упадёт на полпути,
+       следующий час не начнёт вторую попытку поверх первой. */
+    await env.DB.prepare("UPDATE users SET auto_last = ? WHERE email = ?").bind(t, user.email).run();
+    const ok = await chargeSaved(env, user).catch(e => {
+      console.error("renew", user.email, e.message);
+      return false;
+    });
+    ok ? done++ : failed++;
+  }
+  return { done, failed, looked: (rows.results || []).length };
+}
+
+/* Одно повторное списание по сохранённому способу оплаты. */
+async function chargeSaved(env, user) {
+  const [planId, period] = String(user.auto_plan).split(":");
+  const plan = PLANS[planId];
+  if (!plan || !plan.price[period]) return false;
+
+  const priceRub = plan.price[period];
+  /* Баллы работают и здесь: человек копил их не для того, чтобы они
+     сгорели именно при автопродлении. */
+  const balance = await balanceOf(env, user.email);
+  const { used, toPay } = applyToPrice(balance, priceRub);
+  const idem = `renew-${user.email}-${Math.floor(now() / 3600000)}`;
+
+  let payment;
+  try {
+    payment = await ykFetch(env, "/payments", {
+      method: "POST",
+      idempotenceKey: idem,
+      body: {
+        amount: { value: toPay.toFixed(2), currency: "RUB" },
+        capture: true,
+        payment_method_id: user.auto_method,
+        description: `ПравоФин — продление «${plan.title}», ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`,
+        metadata: { email: user.email, plan: planId, period, renewal: "1", pointsUsed: String(used) },
+        receipt: {
+          customer: { email: user.email },
+          items: [{
+            description: `Подписка ПравоФин «${plan.title}», ${period === "year" ? "12 мес." : "1 мес."}`,
+            quantity: "1.00",
+            amount: { value: toPay.toFixed(2), currency: "RUB" },
+            vat_code: 1,
+            payment_mode: "full_payment",
+            payment_subject: "service",
+          }],
+        },
+      },
+    });
+  } catch (e) {
+    await notifyRenewFailed(env, user, plan);
+    return false;
+  }
+
+  await env.DB.prepare(
+    `INSERT INTO payments (id, email, amount, plan, source, status, created_at)
+     VALUES (?, ?, ?, ?, 'yookassa', 'pending', ?)`
+  ).bind(payment.id, user.email, toPay, user.auto_plan, now()).run();
+  if (used > 0) {
+    await grant(env, user.email, -used, `Автопродление (${user.auto_plan})`, `pay-${payment.id}`);
+  }
+
+  if (payment.status === "succeeded" && payment.paid) {
+    await applySucceeded(env, payment.id, savedMethodOf(payment) || user.auto_method);
+    await env.DB.prepare(
+      `INSERT INTO notifications (email, title, body, kind, link, created_at)
+       VALUES (?, ?, ?, 'info', 'dashboard.html', ?)`
+    ).bind(user.email, "Подписка продлена",
+           `Тариф «${plan.title}» продлён на ${period === "year" ? "год" : "месяц"}, списано ${toPay} ₽. ` +
+           `Отключить автопродление можно в кабинете в один клик.`, now()).run();
+    return true;
+  }
+  /* Платёж ушёл в ожидание (например, банк просит подтверждение) —
+     подберёт вебхук или /api/billing/check. */
+  return true;
+}
+
+/* Не списалось — человек должен узнать об этом от нас, а не по пропавшему
+   доступу. Молчание здесь — самый быстрый способ потерять клиента. */
+async function notifyRenewFailed(env, user, plan) {
+  await env.DB.prepare(
+    `INSERT INTO notifications (email, title, body, kind, link, created_at)
+     VALUES (?, ?, ?, 'warn', 'dashboard.html?pay=1', ?)`
+  ).bind(user.email, "Не удалось продлить подписку",
+         `Банк отклонил списание за тариф «${plan.title}». Доступ сохраняется до конца ` +
+         `оплаченного срока. Оплатите вручную в кабинете или смените карту.`, now()).run()
+    .catch(() => {});
+  await logAction(env, user.email, "Автопродление не прошло: банк отклонил списание").catch(() => {});
 }

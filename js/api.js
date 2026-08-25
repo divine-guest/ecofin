@@ -158,6 +158,13 @@ const API = {
       return d;
     },
     trialStatus() { return API.request("/api/billing/trial"); },
+    /* Состояние подписки и автопродления. */
+    subscription() { return API.request("/api/billing/subscription"); },
+    async autoRenew(on) {
+      const d = await API.request("/api/billing/autorenew", { method: "POST", body: { on } });
+      API.setSession(null, d.user);
+      return d;
+    },
     async promo(code) {
       const d = await API.request("/api/billing/promo", { method: "POST", body: { code } });
       API.setSession(null, d.user);

@@ -21,14 +21,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=71">
+<link rel="stylesheet" href="css/style.css?v=72">
 </head>
 <body>
 <main class="section">
   <div class="container" style="max-width: 460px">
     <div class="card">
-      <h1 style="font-size:var(--t-xl);margin-bottom:6px">Вход в ПравоФин</h1>
-      <p style="color:var(--muted);margin-bottom:16px">Один аккаунт — все устройства</p>
+      <h1 style="font-size:var(--t-xl);margin-bottom:6px" id="authTitle">Вход в ПравоФин</h1>
+      <p style="color:var(--muted);margin-bottom:16px" id="authSub">Один аккаунт — все устройства</p>
       <div class="auth-note" id="refBanner" style="display:none"></div>
       <div class="auth-note">
         Аккаунт хранится на сервере: войдите теми же почтой и паролем с телефона,
@@ -47,9 +47,22 @@
         </div>
         <div class="form-group">
           <label for="loginPass">Пароль</label>
-          <input type="password" id="loginPass" required autocomplete="current-password" placeholder="••••••••">
+          <!-- Показать пароль — не украшение. Половина неудачных входов
+               это опечатка, которую не видно, а человек уверен, что пароль
+               помнит, и уходит с мыслью «сайт сломан». -->
+          <div class="pass-wrap">
+            <input type="password" id="loginPass" required autocomplete="current-password" placeholder="••••••••">
+            <button type="button" class="pass-eye" onclick="togglePass('loginPass', this)"
+                    aria-label="Показать пароль">Показать</button>
+          </div>
         </div>
         <button class="btn" style="width:100%">Войти</button>
+        <p class="hint" style="text-align:center;margin-top:10px">
+          Забыли пароль? <a href="about.html#contact">Напишите в поддержку</a> — восстановим доступ.
+        </p>
+        <p class="hint" style="text-align:center;margin-top:4px">
+          Ещё нет аккаунта? <a href="#" onclick="switchAuth('reg');return false">Зарегистрироваться за 30 секунд</a>
+        </p>
       </form>
 
       <form id="regForm" style="display:none" onsubmit="doRegister(event)">
@@ -63,7 +76,13 @@
         </div>
         <div class="form-group">
           <label for="regPass">Пароль</label>
-          <input type="password" id="regPass" required minlength="8" autocomplete="new-password" placeholder="минимум 8 символов">
+          <div class="pass-wrap">
+            <input type="password" id="regPass" required minlength="8" autocomplete="new-password"
+                   placeholder="минимум 8 символов" oninput="passHint(this.value)">
+            <button type="button" class="pass-eye" onclick="togglePass('regPass', this)"
+                    aria-label="Показать пароль">Показать</button>
+          </div>
+          <p class="hint pass-meter" id="passHint">Минимум 8 символов. Надёжнее — с цифрой и заглавной буквой.</p>
         </div>
         <label class="consent">
           <input type="checkbox" id="regConsent" required>
@@ -74,18 +93,18 @@
         </label>
         <button class="btn" style="width:100%">Создать аккаунт</button>
         <p class="hint" style="text-align:center;margin-top:10px">
-          Забыли пароль? <a href="about.html#contact">Напишите в поддержку</a> — восстановим доступ.
+          Уже есть аккаунт? <a href="#" onclick="switchAuth('login');return false">Войти</a>
         </p>
       </form>
     </div>
   </div>
 </main>
 
-<script src="js/themes.js?v=71"></script>
-<script src="js/api.js?v=71"></script>
-<script src="js/app.js?v=71"></script>
-<script src="js/palette.js?v=71"></script>
-<script src="js/ai.js?v=71"></script>
+<script src="js/themes.js?v=72"></script>
+<script src="js/api.js?v=72"></script>
+<script src="js/app.js?v=72"></script>
+<script src="js/palette.js?v=72"></script>
+<script src="js/ai.js?v=72"></script>
 <script>
 initPage("auth.html");
 
@@ -94,6 +113,35 @@ function switchAuth(mode) {
   document.getElementById("tabReg").classList.toggle("active", mode === "reg");
   document.getElementById("loginForm").style.display = mode === "login" ? "block" : "none";
   document.getElementById("regForm").style.display = mode === "reg" ? "block" : "none";
+  /* Заголовок должен совпадать с тем, что человек видит под ним:
+     «Вход в ПравоФин» над формой регистрации сбивает с толку. */
+  const reg = mode === "reg";
+  document.getElementById("authTitle").textContent = reg ? "Регистрация в ПравоФине" : "Вход в ПравоФин";
+  document.getElementById("authSub").textContent = reg
+    ? "30 секунд, карта не нужна. Три вопроса консультанту каждый день — бесплатно"
+    : "Один аккаунт — все устройства";
+}
+
+/* Показать/скрыть пароль. */
+function togglePass(id, btn) {
+  const inp = document.getElementById(id);
+  const show = inp.type === "password";
+  inp.type = show ? "text" : "password";
+  btn.textContent = show ? "Скрыть" : "Показать";
+  btn.setAttribute("aria-label", show ? "Скрыть пароль" : "Показать пароль");
+  inp.focus();
+}
+
+/* Подсказка о надёжности: не запрет, а понятная обратная связь. */
+function passHint(v) {
+  const el = document.getElementById("passHint");
+  if (!el) return;
+  if (!v) return void (el.textContent = "Минимум 8 символов. Надёжнее — с цифрой и заглавной буквой.",
+                       el.className = "hint pass-meter");
+  const score = (v.length >= 8) + (v.length >= 12) + /\d/.test(v) + /[A-ZА-ЯЁ]/.test(v) + /[^\wА-Яа-яЁё]/.test(v);
+  const words = ["слишком короткий", "слабый", "сойдёт", "хороший", "надёжный", "надёжный"];
+  el.textContent = "Пароль: " + words[score];
+  el.className = "hint pass-meter s" + score;
 }
 
 /* Ключевое отличие от прежней версии: аккаунт создаётся на сервере.
@@ -114,6 +162,7 @@ async function doLogin(e) {
       document.getElementById("loginEmail").value.trim(),
       document.getElementById("loginPass").value
     );
+    localStorage.setItem(SEEN_KEY, "1");
     trackEvent("login");
     toast("Добро пожаловать!");
     location.href = "dashboard.html";
@@ -138,6 +187,7 @@ async function doRegister(e) {
       pass,
       REF.code
     );
+    localStorage.setItem(SEEN_KEY, "1");
     trackEvent("register", { referred: REF.code ? 1 : 0 });
     toast("Аккаунт создан!");
     location.href = "onboarding.html";
@@ -147,11 +197,30 @@ async function doRegister(e) {
   }
 }
 
-/* Пришли по ссылке-приглашению: показываем, кто позвал, и сразу открываем
-   вкладку регистрации — иначе человек упирается в форму входа и уходит. */
-const REF = { code: new URLSearchParams(location.search).get("ref") || "" };
+/* Какую вкладку открыть первой.
+
+   Раньше всегда открывался «Вход». Человек, нажавший на главной
+   «Начать бесплатно» или задавший вопрос в поле героя, попадал на форму,
+   куда ему нечего вписать: аккаунта у него ещё нет. Это самая дорогая
+   точка сайта — сюда доходят только те, кто уже заинтересовался.
+
+   Теперь: пришёл с главной, по приглашению или впервые — открываем
+   «Регистрацию». Заходил раньше (помним отметку) — «Вход». */
+const PARAMS = new URLSearchParams(location.search);
+const SEEN_KEY = "pf_was_here";
+const REF = { code: PARAMS.get("ref") || "" };
+
+(function pickTab() {
+  const asked = PARAMS.get("tab");
+  if (asked === "login" || asked === "reg") return switchAuth(asked);
+  if (REF.code || PARAMS.get("from")) return switchAuth("reg");
+  switchAuth(localStorage.getItem(SEEN_KEY) ? "login" : "reg");
+})();
+
+/* Отметка «этот браузер здесь уже был» ставится после успешного входа
+   или регистрации — см. doLogin/doRegister. */
+
 if (REF.code) {
-  switchAuth("reg");
   API.referralCheck(REF.code)
     .then(d => {
       const el = document.getElementById("refBanner");

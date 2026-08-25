@@ -1398,42 +1398,118 @@ const NOTIFY = {
   },
 };
 
-/* ============ Пейволл (окно подписки) ============ */
-function showPaywall(message) {
+/* ============ Пейволл (окно подписки) ============
+
+   Это самый дорогой экран сервиса: сюда человек попадает в момент, когда
+   ему по-настоящему что-то нужно. Прежняя версия работала против нас:
+
+   — говорила «Нужна подписка Pro», хотя тарифов три, а почти все упоры
+     снимает «Базовый» за 290 ₽ — и вела к самому дорогому;
+   — не называла цену вообще (человек не знает, 200 это или 2000);
+   — не предлагала три бесплатных дня, хотя принять их здесь проще всего.
+
+   Теперь окно называет цену, показывает нужный тариф и первым делом
+   предлагает попробовать бесплатно.                                    */
+
+/* Какой тариф реально снимает конкретное ограничение. */
+const PAYWALL_NEED = {
+  ai: "basic", tool: "basic", analyze: "basic", reminders: "basic", telegram: "basic",
+  courses: "pro", theming: "pro", priority: "pro",
+};
+
+function showPaywall(message, need) {
   let bd = document.getElementById("paywallBackdrop");
   if (!bd) {
     bd = document.createElement("div");
     bd.id = "paywallBackdrop";
     bd.className = "modal-backdrop";
     document.body.appendChild(bd);
+    bd.addEventListener("click", e => { if (e.target === bd) closePaywall(); });
   }
   const q = PF.quota;
   const reason = message
     || (q && q.tool && q.tool.left === 0 ? "Пробный запуск инструментов израсходован."
-    : q && q.ai && q.ai.left === 0 ? "Дневной лимит обращений к ИИ исчерпан."
-    : "Эта возможность доступна по подписке Pro.");
+    : q && q.ai && q.ai.left === 0 ? "Дневной лимит обращений к консультанту исчерпан."
+    : "Эта возможность входит в платную подписку.");
 
-  bd.innerHTML = `
-    <div class="modal" style="text-align:center">
-      <h3 style="font-family:"Onest", Georgia, serif;margin:6px 0 10px">Нужна подписка Pro</h3>
-      <p style="color:var(--muted);margin-bottom:16px">${escapeHtml(reason)}</p>
-      <ul style="text-align:left;color:var(--muted);font-size:var(--t-sm);margin:0 20px 18px;line-height:2">
-        <li>Безлимитные ИИ-инструменты и калькуляторы</li>
-        <li>Анализ договоров: файлом и фотографией</li>
-        <li>ИИ-консультант без дневного лимита</li>
-        <li>Платные курсы и сертификаты</li>
-      </ul>
-      <button class="btn gold" onclick="closePaywall();PAY.open()">Оформить Pro</button>
-      <p style="color:var(--muted);font-size:var(--t-xs);margin-top:14px;margin-bottom:6px">или введите промокод</p>
-      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <input type="text" id="promoInput" placeholder="Промокод" style="max-width:170px">
-        <button class="btn secondary" onclick="applyPromo('promoInput')">Активировать</button>
-      </div>
-      <br><button class="btn secondary small" onclick="closePaywall()">Позже</button>
-    </div>`;
+  bd.dataset.need = need || "";
   bd.classList.add("open");
-  trackEvent("paywall", { reason });
+  bd.innerHTML = `
+    <div class="modal paywall">
+      <p class="paywall-reason">${escapeHtml(reason)}</p>
+      <h3 class="paywall-title">Снимается подпиской</h3>
+      <div class="paywall-body"><p class="hint">Смотрим тарифы…</p></div>
+    </div>`;
+  trackEvent("paywall", { reason, need: need || "" });
+  paywallFill(reason, need);
 }
+
+/* Цены и пробный приходят с сервера — значит, на витрине всегда то,
+   что реально спишется, и «три дня» показываются только тому,
+   кто их ещё не брал. */
+async function paywallFill(reason, need) {
+  const bd = document.getElementById("paywallBackdrop");
+  if (!bd) return;
+  const box = bd.querySelector(".paywall-body");
+  if (!box) return;
+
+  let data = null;
+  try { data = await API.billing.plans(); }
+  catch {
+    box.innerHTML = `
+      <button class="btn gold wide" onclick="closePaywall();PAY.open()">Посмотреть тарифы</button>
+      <button class="btn secondary small wide" onclick="closePaywall()">Позже</button>`;
+    return;
+  }
+  await TRIAL.check();
+
+  const paid = data.plans.filter(p => p.price.month > 0);
+  const wanted = need && paid.find(p => p.id === need);
+  /* По умолчанию показываем самый дешёвый платный: разговор должен
+     начинаться с 290 ₽, а не с 690 — иначе человек не берёт ни то, ни то. */
+  const plan = wanted || paid.slice().sort((a, b) => a.price.month - b.price.month)[0];
+  if (!plan) { box.innerHTML = ""; return; }
+
+  const money = n => n.toLocaleString("ru-RU");
+  const perYearMonth = Math.round(plan.price.year / 12);
+  const trial = TRIAL.state && TRIAL.state.available;
+
+  box.innerHTML = `
+    ${trial ? `
+      <div class="paywall-trial">
+        <b>Сначала попробуйте бесплатно</b>
+        <span>${TRIAL.state.days} дня полного «Про». Карта не нужна, по окончании
+          тариф сам вернётся на «Старт» — ничего не спишется.</span>
+        <button class="btn gold wide" onclick="TRIAL.start(this)">Включить на ${TRIAL.state.days} дня</button>
+      </div>
+      <p class="paywall-or"><span>или подписка</span></p>` : ""}
+
+    <div class="paywall-plan">
+      <div class="paywall-plan-head">
+        <b>${escapeHtml(plan.title)}</b>
+        <span class="paywall-price">${money(plan.price.month)} ₽<i>в месяц</i></span>
+      </div>
+      <p class="paywall-year">За год — ${money(plan.price.year)} ₽, это ${money(perYearMonth)} ₽ в месяц.
+        ${plan.freeMonths} ${plural(plan.freeMonths, "месяц", "месяца", "месяцев")} в подарок.</p>
+      <ul class="paywall-perks">${plan.perks.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
+      ${plan.worth ? `<p class="paywall-worth">${escapeHtml(plan.worth)}</p>` : ""}
+      <button class="btn ${trial ? "secondary" : "gold"} wide"
+              onclick="closePaywall();PAY.open('${plan.id}')">Оформить «${escapeHtml(plan.title)}»</button>
+    </div>
+
+    <div class="paywall-foot">
+      <button class="btn secondary small" onclick="closePaywall();PAY.open()">Сравнить все тарифы</button>
+      <details class="paywall-promo">
+        <summary>У меня есть промокод</summary>
+        <div class="promo-row">
+          <input type="text" id="promoInput" placeholder="Промокод">
+          <button class="btn secondary" onclick="applyPromo('promoInput')">Активировать</button>
+        </div>
+      </details>
+      <button type="button" class="paywall-later" onclick="closePaywall()">Не сейчас</button>
+    </div>`;
+}
+
 function closePaywall() {
   const bd = document.getElementById("paywallBackdrop");
   if (bd) bd.classList.remove("open");
@@ -1449,7 +1525,7 @@ async function applyPromo(inputId) {
     closePaywall();
     PAY.close();
     trackEvent("promo_success", { days: res.days });
-    toast(`Pro активирован на ${res.days} дн.`);
+    toast(`«Про» активирован на ${res.days} дн.`);
     setTimeout(() => location.reload(), 900);
   } catch (e) {
     toast(e.message, "error");
@@ -1458,16 +1534,19 @@ async function applyPromo(inputId) {
 
 /* Единая проверка перед запуском платной возможности.
    Возвращает true, если можно продолжать. Сервер всё равно перепроверит. */
-function requirePro(feature) {
+function requirePro(feature, need) {
   if (!PF.user()) {
     toast("Сначала войдите — это бесплатно");
-    setTimeout(() => (location.href = "auth.html"), 1200);
+    setTimeout(() => (location.href = "auth.html?from=feature"), 1200);
     return false;
   }
   if (PF.isPro()) return true;
   const q = PF.quota;
   if (q && q.tool && q.tool.left > 0) return true;
-  showPaywall(feature ? `«${feature}» доступно по подписке Pro — пробный запуск уже израсходован.` : undefined);
+  showPaywall(
+    feature ? `«${feature}»: бесплатный пробный запуск уже израсходован.` : undefined,
+    need || PAYWALL_NEED.tool
+  );
   return false;
 }
 

@@ -874,6 +874,26 @@ textarea:focus-visible,
 }
 .consent a { color: var(--accent); }
 
+/* Поле пароля с кнопкой «Показать».
+   Кнопка лежит поверх поля справа, поэтому полю нужен отступ под неё —
+   иначе длинный пароль уезжает под текст кнопки. */
+.pass-wrap { position: relative; display: block; }
+.pass-wrap input { padding-right: 92px; width: 100%; }
+.pass-eye {
+  position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
+  border: 0; background: transparent; cursor: pointer;
+  color: var(--muted); font: inherit; font-size: max(.8rem, 12px);
+  padding: 6px 8px; border-radius: 8px; line-height: 1;
+}
+.pass-eye:hover { color: var(--accent); background: var(--surface-2); }
+.pass-eye:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Подсказка о надёжности пароля: цвет — часть сообщения, а не украшение. */
+.pass-meter { margin-top: 6px; transition: color .2s; }
+.pass-meter.s0, .pass-meter.s1 { color: var(--danger); }
+.pass-meter.s2, .pass-meter.s3 { color: var(--gold); }
+.pass-meter.s4, .pass-meter.s5 { color: var(--primary); }
+
 
 /* ===== Реферальный блок ===== */
 .ref-code-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -1571,6 +1591,89 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 .trial-banner b { font-size: 1.05rem; }
 .trial-banner span { color: var(--muted); font-size: var(--t-sm); line-height: 1.55; }
 .trial-banner .btn { flex: none; }
+
+
+/* ===== Пейволл =====
+   Раньше окно собиралось на встроенных стилях прямо в разметке: свои
+   отступы, свой размер шрифта, латинское «Pro». Здесь всё то же, что и
+   на остальном сайте, и сначала — бесплатный пробный, потом цена. */
+.paywall { max-width: 480px; }
+.paywall-reason {
+  color: var(--muted); font-size: var(--t-sm); line-height: 1.55;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 14px;
+}
+.paywall-title {
+  font-family: "Onest", Georgia, serif; font-size: var(--t-lg);
+  margin: 0 0 16px;
+}
+.paywall-trial {
+  display: flex; flex-direction: column; gap: 8px;
+  border: 1.5px solid var(--primary); border-radius: 14px;
+  padding: 16px 18px; background: var(--surface-2);
+}
+.paywall-trial b { font-size: 1.02rem; }
+.paywall-trial span { color: var(--muted); font-size: var(--t-sm); line-height: 1.55; }
+.paywall-trial .btn { margin-top: 4px; }
+
+/* Разделитель «или»: линия с подписью посередине. */
+.paywall-or {
+  display: flex; align-items: center; gap: 12px;
+  color: var(--muted); font-size: var(--t-xs); margin: 18px 0 14px;
+}
+.paywall-or::before, .paywall-or::after {
+  content: ""; flex: 1; height: 1px; background: var(--border);
+}
+
+.paywall-plan { border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+.paywall-plan-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.paywall-plan-head b { font-family: "Onest", system-ui, sans-serif; font-size: var(--t-lg); }
+.paywall-price {
+  font-family: "Onest", system-ui, sans-serif; font-weight: 800;
+  font-size: 1.7rem; color: var(--primary); white-space: nowrap;
+}
+.paywall-price i {
+  font-style: normal; font-size: var(--t-xs); font-weight: 500;
+  color: var(--muted); margin-left: 6px;
+}
+.paywall-year { color: var(--muted); font-size: var(--t-sm); margin-bottom: 12px; }
+.paywall-perks { list-style: none; margin: 0 0 12px; padding: 0; }
+.paywall-perks li {
+  position: relative; padding-left: 22px; margin-bottom: 7px;
+  font-size: var(--t-sm); line-height: 1.5;
+}
+.paywall-perks li::before {
+  content: "✓"; position: absolute; left: 0; top: 0;
+  color: var(--primary); font-weight: 700;
+}
+.paywall-worth {
+  color: var(--muted); font-size: var(--t-xs); line-height: 1.55;
+  border-left: 3px solid var(--gold); padding-left: 12px; margin-bottom: 14px;
+}
+.paywall-foot {
+  display: flex; flex-direction: column; gap: 10px; align-items: stretch;
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+.paywall-promo summary {
+  cursor: pointer; color: var(--muted); font-size: var(--t-xs);
+  text-align: center; list-style: none; padding: 4px;
+}
+.paywall-promo summary::-webkit-details-marker { display: none; }
+.paywall-promo summary:hover { color: var(--primary); }
+.paywall-promo .promo-row { margin-top: 10px; }
+.paywall-later {
+  border: 0; background: transparent; cursor: pointer;
+  color: var(--muted); font: inherit; font-size: var(--t-xs);
+  padding: 6px; border-radius: 8px;
+}
+.paywall-later:hover { color: var(--text); }
+.paywall-later:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* Управление продлением в карточке подписки. */
+.renew-box { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.renew-box p { margin: 0; }
 
 
 /* ===== Обещания под ценами =====

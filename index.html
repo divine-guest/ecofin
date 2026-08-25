@@ -20,14 +20,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=71">
+<link rel="stylesheet" href="css/style.css?v=72">
 </head>
 <body>
 <main>
   <!-- ===== Герой с весами правосудия ===== -->
   <section class="hero">
-    <!-- Видео-фон: положите файл video/hero-bg.mp4 — он подхватится автоматически -->
+    <!-- Видео-фон отключён намеренно. Тег с несуществующим файлом давал
+         404 у каждого посетителя и лишний круг к серверу до первого экрана.
+         Появится файл video/hero-bg.mp4 — раскомментируйте строку ниже.
     <video class="hero-video" src="video/hero-bg.mp4" autoplay muted loop playsinline onerror="this.remove()"></video>
+    -->
 
     <!-- Анимированные весы правосудия (детализированные) -->
     <svg class="hero-scales" viewBox="0 0 500 540" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -110,13 +113,17 @@
         <button type="button" onclick="heroFill(this)">Как уменьшить неустойку?</button>
       </div>
       <div class="hero-actions">
-        <a href="auth.html" class="btn auth-cta">Начать бесплатно</a>
+        <a href="auth.html?from=hero" class="btn auth-cta">Начать бесплатно</a>
         <a href="calc.html" class="btn ghost">Калькуляторы без регистрации</a>
       </div>
+      <!-- Числа здесь сверяются автоматически: tests/content.mjs считает
+           калькуляторы, шаблоны и статьи в самом коде и валит проверку,
+           если витрина разошлась с содержанием. Раньше главная обещала
+           7 калькуляторов и 13 статей, когда их было 12 и 28. -->
       <div class="hero-stats">
-        <div class="hs"><b>7</b><span>калькуляторов налогов и выплат</span></div>
+        <div class="hs"><b>12</b><span>калькуляторов налогов и выплат</span></div>
         <div class="hs"><b>12</b><span>шаблонов документов</span></div>
-        <div class="hs"><b>13</b><span>статей в базе знаний</span></div>
+        <div class="hs"><b>28</b><span>статей в базе знаний</span></div>
         <div class="hs"><b>0 ₽</b><span>чтобы попробовать</span></div>
       </div>
     </div>
@@ -211,19 +218,19 @@
   <section class="section">
     <div class="container">
       <div class="card" style="text-align:center; background: var(--grad-hero); border: none; padding: 48px 28px;">
-        <h3 style="color:#fff; font-family:"Onest", Georgia, serif; font-size:var(--t-xl); margin-bottom:10px">Готовы навести порядок в праве и финансах?</h3>
+        <h3 style="color:#fff; font-family:'Onest', Georgia, serif; font-size:var(--t-xl); margin-bottom:10px">Готовы навести порядок в праве и финансах?</h3>
         <p style="color:rgba(240,247,243,.8); margin-bottom:22px">Регистрация занимает 30 секунд. Начните с бесплатных инструментов уже сегодня.</p>
-        <a href="auth.html" class="btn gold bottom-cta">Создать аккаунт</a>
+        <a href="auth.html?from=cta" class="btn gold bottom-cta">Создать аккаунт</a>
       </div>
     </div>
   </section>
 </main>
 
-<script src="js/themes.js?v=71"></script>
-<script src="js/api.js?v=71"></script>
-<script src="js/app.js?v=71"></script>
-<script src="js/palette.js?v=71"></script>
-<script src="js/ai.js?v=71"></script>
+<script src="js/themes.js?v=72"></script>
+<script src="js/api.js?v=72"></script>
+<script src="js/app.js?v=72"></script>
+<script src="js/palette.js?v=72"></script>
+<script src="js/ai.js?v=72"></script>
 <script>
 initPage("index.html");
 
@@ -247,7 +254,7 @@ initPage("index.html");
             <b>${p.freeMonths} ${plural(p.freeMonths, "месяц", "месяца", "месяцев")} в подарок</b></p>`}
           <ul class="tier-perks">${p.perks.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
           ${p.worth ? `<p class="tier-worth">${escapeHtml(p.worth)}</p>` : ""}
-          <a href="auth.html" class="btn ${best ? "gold" : "secondary"}">${free ? "Начать бесплатно" : "Выбрать"}</a>
+          <a href="auth.html?from=plan" class="btn ${best ? "gold" : "secondary"}">${free ? "Начать бесплатно" : "Выбрать"}</a>
         </div>`;
     }).join("") + (d.enterprise ? `
       <div class="card tier-home">
@@ -266,7 +273,7 @@ initPage("index.html");
     }
   } catch {
     box.innerHTML = `<div class="card"><p class="hint">Тарифы временно недоступны.
-      <a href="auth.html">Зарегистрируйтесь</a> — начать можно бесплатно.</p></div>`;
+      <a href="auth.html?from=plan">Зарегистрируйтесь</a> — начать можно бесплатно.</p></div>`;
   }
 })();
 
@@ -300,13 +307,20 @@ function heroAsk(e) {
 }
 spawnHeroParticles();
 
-// Авторизованным — «Перейти в кабинет» вместо «Создать аккаунт»
-if (PF.user()) {
+/* Авторизованным — «Перейти в кабинет» вместо «Создать аккаунт».
+   Рисуем по кэшу, но кэш может оказаться протухшим: сервер ответит 401,
+   сессия очистится, а кнопка так и останется звать в кабинет, куда
+   человека не пустят. Поэтому слушаем и обратное событие. */
+function heroCta(signedIn) {
   document.querySelectorAll(".auth-cta, .bottom-cta").forEach(btn => {
-    btn.textContent = "Перейти в кабинет";
-    btn.href = "dashboard.html";
+    btn.textContent = signedIn ? "Перейти в кабинет"
+      : (btn.classList.contains("bottom-cta") ? "Создать аккаунт" : "Начать бесплатно");
+    btn.href = signedIn ? "dashboard.html" : "auth.html?from=hero";
   });
 }
+heroCta(Boolean(PF.user()));
+window.addEventListener("pf:signedout", () => heroCta(false));
+document.addEventListener("pf:ready", ({ detail }) => heroCta(Boolean(detail.user)));
 </script>
 </body>
 </html>

@@ -85,6 +85,8 @@ const ROUTES = [
   /* Пробный «Про»: три дня без карты, один раз на аккаунт. */
   ["POST", "/api/billing/trial", billing.trial, "user"],
   ["GET", "/api/billing/trial", billing.trialStatus, "user"],
+  ["GET", "/api/billing/subscription", billing.subscription, "user"],
+  ["POST", "/api/billing/autorenew", billing.setAutoRenew, "user"],
   ["POST", "/api/billing/webhook", billing.webhook, "webhook"],
 
   ["GET", "/api/admin/users", admin.listUsers, "admin"],
@@ -159,6 +161,9 @@ export default {
     ctx.waitUntil(telegram.runReminders(env).catch(e => console.error("cron", e.message)));
     /* Сводка недели: сама решает, у кого сейчас утро понедельника. */
     ctx.waitUntil(runDigest(env, telegram.send).catch(e => console.error("digest", e.message)));
+    /* Автопродление подписок. Сама себя выключает, пока эквайринг
+       не подключён, — на пустых ключах не делает ни одного запроса. */
+    ctx.waitUntil(billing.runRenewals(env).catch(e => console.error("renew", e.message)));
   },
 
   async fetch(request, env, ctx) {

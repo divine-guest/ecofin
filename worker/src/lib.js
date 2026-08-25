@@ -136,6 +136,11 @@ export function publicUser(row) {
     proUntil: row.pro_until || null,
     toolUses: row.tool_uses || 0,
     createdAt: row.created_at,
+    /* Автопродление. canAutoRenew — есть ли вообще чем списывать:
+       у тех, кому подписку выдали вручную или по промокоду, способа
+       оплаты нет, и обещать им «отмену» было бы обманом. */
+    autoRenew: Boolean(row.auto_method) && row.auto_renew !== 0,
+    canAutoRenew: Boolean(row.auto_method),
   };
 }
 

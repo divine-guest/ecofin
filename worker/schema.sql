@@ -14,7 +14,13 @@ CREATE TABLE IF NOT EXISTS users (
   referred_by   TEXT,                  -- email пригласившего, ставится один раз
   referral_paid INTEGER NOT NULL DEFAULT 0,  -- награда за это приглашение уже выдана
   points        INTEGER NOT NULL DEFAULT 0,  -- бонусные баллы, 1 балл = 1 ₽ скидки
-  theme_accent  TEXT DEFAULT ''            -- персональное оформление (тариф «Про»)
+  theme_accent  TEXT DEFAULT '',           -- персональное оформление (тариф «Про»)
+  -- Автопродление: списываем только когда есть сохранённый способ оплаты,
+  -- поэтому ручные выдачи и промокоды никогда не продлеваются автоматически.
+  auto_renew    INTEGER NOT NULL DEFAULT 1,
+  auto_method   TEXT DEFAULT '',           -- payment_method_id у ЮKassa
+  auto_plan     TEXT DEFAULT '',           -- что продлевать, вида 'basic:year'
+  auto_last     INTEGER                    -- когда последний раз пытались списать
 );
 CREATE INDEX IF NOT EXISTS idx_users_referred ON users(referred_by);
 

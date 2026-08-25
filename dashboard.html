@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=71">
+<link rel="stylesheet" href="css/style.css?v=72">
 </head>
 <body>
 <main class="section">
@@ -33,14 +33,14 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=71"></script>
-<script src="js/api.js?v=71"></script>
-<script src="js/app.js?v=71"></script>
-<script src="js/palette.js?v=71"></script>
-<script src="js/ai.js?v=71"></script>
-<script src="js/knowledge.js?v=71"></script>
-<script src="js/competencies.js?v=71"></script>
-<script src="js/courses.js?v=71"></script>
+<script src="js/themes.js?v=72"></script>
+<script src="js/api.js?v=72"></script>
+<script src="js/app.js?v=72"></script>
+<script src="js/palette.js?v=72"></script>
+<script src="js/ai.js?v=72"></script>
+<script src="js/knowledge.js?v=72"></script>
+<script src="js/competencies.js?v=72"></script>
+<script src="js/courses.js?v=72"></script>
 <script>
 initPage("dashboard.html");
 
@@ -290,9 +290,10 @@ function renderCabinet() {
             PF.isPro() ? "Сменить или продлить" : "Выбрать тариф"}</button>
           <button class="btn secondary" onclick="SETTINGS.open('subscription')">Подробнее</button>
         </div>
-        <p style="color:var(--muted);font-size:var(--t-xs);margin-top:8px">
-          Автосписаний нет: подписка разовая и просто заканчивается в указанную дату.
-        </p>
+        <!-- Управление продлением. Оферта (п. 4.5) и раздел «Частые вопросы»
+             обещают кнопку отмены в кабинете — значит, она обязана здесь быть,
+             а не появиться когда-нибудь потом. -->
+        <div id="renewBox" class="renew-box"></div>
 
         ${(PF.payments || []).length ? `
           <br><h4 style="margin-bottom:8px">История операций</h4>
@@ -900,20 +901,94 @@ document.addEventListener("pf:ready", ({ detail }) => {
   fillCabinet();
 });
 
-/* Всё, что подгружается с сервера уже после отрисовки кабинета. */
+/* Всё, что подгружается с сервера уже после отрисовки кабинета.
+
+   Порядок здесь важнее содержания. Сначала — только то, что меняет саму
+   разметку (компетенции влияют на проценты и на план развития), потом
+   ОДНА перерисовка, и лишь после неё дозаполнение блоков.
+
+   Раньше было наоборот: плашку пробного вставляли первой, а renderCabinet()
+   звали в конце — и он стирал всё, что мы только что вставили. Пропадала
+   плашка «три дня Про бесплатно», а «Мои расчёты» и «История вопросов»
+   навсегда оставались в состоянии «Загружаем…». */
 async function fillCabinet() {
-  await TRIAL.check();
+  await Promise.all([
+    TRIAL.check().catch(() => {}),
+    COMP.pull().catch(() => {}),
+  ]);
+  renderCabinet();
+
   const slot = document.getElementById("trialSlot");
   if (slot) slot.innerHTML = TRIAL.banner();
+  PLAN.render();
+  RENEW.load();
   SAVED.load();
   HISTORY.load();
-  /* Подтягиваем компетенции с сервера, потом строим план. */
   NOTES.load();
   SUMMARY.load();
-  await COMP.pull();
-  renderCabinet();
-  PLAN.render();
 }
+
+/* ============ Продление подписки ============
+
+   Обещание «отмена в один клик» стоит на витрине и записано в оферте.
+   Обещание без кнопки — введение потребителя в заблуждение, поэтому
+   кнопка живёт здесь, а не «появится вместе с оплатой».
+
+   Три состояния, и каждое говорит правду:
+   — эквайринг не подключён: списаний нет физически, так и пишем;
+   — платил картой: показываем дату следующего списания и выключатель;
+   — подписка выдана вручную или промокодом: списывать нечем,
+     говорим, что просто закончится в срок.                          */
+const RENEW = {
+  data: null,
+
+  async load() {
+    const box = document.getElementById("renewBox");
+    if (!box) return;
+    try { this.data = await API.billing.subscription(); }
+    catch { box.innerHTML = ""; return; }
+    this.render();
+  },
+
+  render() {
+    const box = document.getElementById("renewBox");
+    if (!box || !this.data) return;
+    const d = this.data;
+    const until = d.until ? new Date(d.until).toLocaleDateString("ru-RU") : "";
+
+    if (!d.active) {
+      box.innerHTML = `<p class="hint">Платной подписки нет. Оплата картой
+        ${d.billingEnabled ? "доступна" : "пока не подключена"}.</p>`;
+      return;
+    }
+    if (!d.canAutoRenew) {
+      box.innerHTML = `<p class="hint">Подписка действует до <b>${until}</b> и просто
+        закончится в этот день. Автосписаний нет — оплаты картой по этому доступу не было.</p>`;
+      return;
+    }
+    box.innerHTML = d.autoRenew
+      ? `<p class="hint">Продлится автоматически <b>${until}</b>. Спишется столько же,
+           сколько при оформлении.</p>
+         <button class="btn secondary small" onclick="RENEW.set(false, this)">Отменить подписку</button>`
+      : `<p class="hint">Автопродление отключено. Доступ сохранится до <b>${until}</b>,
+           дальше ничего не спишется.</p>
+         <button class="btn secondary small" onclick="RENEW.set(true, this)">Включить продление</button>`;
+  },
+
+  async set(on, btn) {
+    if (!on && !confirm("Отключить автопродление? Доступ сохранится до конца оплаченного срока.")) return;
+    if (btn) { btn.disabled = true; btn.textContent = "Сохраняем…"; }
+    try {
+      await API.billing.autoRenew(on);
+      this.data.autoRenew = on;
+      this.render();
+      toast(on ? "Автопродление включено" : "Автопродление отключено. Доступ сохраняется до конца срока");
+    } catch (e) {
+      toast(e.message, "error");
+      this.render();
+    }
+  },
+};
 
 /* ============ Сохранённые расчёты ============
    Посчитал — сохранил — вернулся. Раньше расчёт жил до закрытия
