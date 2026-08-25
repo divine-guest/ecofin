@@ -33,6 +33,7 @@ const SUITES = [
   ["courses", "платные уроки закрыты, первый открыт"],
   ["points", "баллы: начисление, потолок, запрет минуса"],
   ["preview", "что видно до оплаты"],
+  ["cabinet", "сохранённые расчёты и история вопросов"],
   ["trial", "пробный «Про»: один раз, не поверх подписки"],
   ["qa", "публичная лента: согласие, проверка, публикация"],
   ["bot", "команды Telegram: подписка, профиль, промокод"],
@@ -100,7 +101,7 @@ for (const [file, what] of SUITES) {
 /* Убираем за собой всё, что могли оставить упавшие сюиты. */
 for (const t of ["reminders", "reminder_sent", "point_ops", "payments",
                  "notifications", "sessions", "usage", "actions",
-                 "tg_link_codes", "ai_jobs", "public_qa", "qa_useful"]) {
+                 "tg_link_codes", "ai_jobs", "public_qa", "qa_useful", "saved_calcs"]) {
   try { await sql(`DELETE FROM ${t} WHERE email LIKE '%@test.ru'`); } catch {}
 }
 try { await sql("DELETE FROM users WHERE email LIKE '%@test.ru'"); } catch {}

@@ -11,6 +11,7 @@ import * as referral from "./referral.js";
 import * as reminders from "./reminders.js";
 import * as aijobs from "./aijobs.js";
 import * as qa from "./qa.js";
+import * as saved from "./saved.js";
 import * as points from "./points.js";
 import * as courses from "./courses.js";
 import * as telegram from "./telegram.js";
@@ -44,6 +45,12 @@ const ROUTES = [
   ["POST", "/api/reminders/preset", reminders.addPreset, "user"],
   /* Фоновые задачи ИИ: вопрос переживает переход на другую страницу. */
   /* Публичная лента: читают все, предлагают вошедшие, решает владелец. */
+  /* Кабинет: сохранённые расчёты и история вопросов. */
+  ["GET", "/api/saved", saved.list, "user"],
+  ["POST", "/api/saved", saved.save, "user"],
+  ["POST", "/api/saved/delete", saved.remove, "user"],
+  ["GET", "/api/ai/history", saved.aiHistory, "user"],
+
   ["GET", "/api/qa", qa.list, "public"],
   ["GET", "/api/qa/one", qa.one, "public"],
   ["POST", "/api/qa/offer", qa.offer, "user"],

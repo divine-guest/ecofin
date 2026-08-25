@@ -1613,3 +1613,29 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
   color: var(--text);
 }
 .cost-item span { font-size: var(--t-sm); color: var(--muted); line-height: 1.55; }
+
+
+/* ===== Сохранённые расчёты и история вопросов ===== */
+.saved-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 14px;
+  flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.saved-row:last-child { border-bottom: none; }
+.saved-row > div:first-child { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 200px; }
+.saved-summary { font-size: var(--t-sm); color: var(--text); }
+.saved-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.hist-item {
+  border-bottom: 1px solid var(--border); padding: 12px 0;
+}
+.hist-item:last-child { border-bottom: none; }
+.hist-item summary {
+  cursor: pointer; display: flex; flex-direction: column; gap: 3px;
+}
+.hist-item summary::-webkit-details-marker { display: none; }
+.hist-item summary > span:first-child { font-weight: 600; }
+.hist-answer {
+  margin-top: 12px; padding: 14px; border-radius: 12px;
+  background: var(--surface-2); line-height: 1.65; font-size: var(--t-sm);
+  max-height: 320px; overflow-y: auto;
+}

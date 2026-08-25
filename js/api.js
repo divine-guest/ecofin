@@ -165,6 +165,18 @@ const API = {
     },
   },
 
+  /* --- Кабинет: сохранённые расчёты и история вопросов --- */
+  saved: {
+    list() { return API.request("/api/saved"); },
+    save(kind, title, inputs, summary) {
+      return API.request("/api/saved", { method: "POST", body: { kind, title, inputs, summary } });
+    },
+    remove(id) { return API.request("/api/saved/delete", { method: "POST", body: { id } }); },
+  },
+  aiHistory(q) {
+    return API.request("/api/ai/history" + (q ? "?q=" + encodeURIComponent(q) : ""));
+  },
+
   /* --- Админка --- */
   admin: {
     stats() { return API.request("/api/admin/stats"); },

@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=63">
+<link rel="stylesheet" href="css/style.css?v=64">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -115,6 +115,7 @@
         </div>
         <div class="calc-result" id="txOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налоговые режимы')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('regimes')">Сохранить в кабинет</button>
       </div>
     </div>
     <div class="tab-panel game-stage" id="calcSalary">
@@ -139,6 +140,7 @@
         </div>
         <div class="calc-result" id="slOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Зарплата на руки')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('salary')">Сохранить в кабинет</button>
       </div>
     </div>
     <div class="tab-panel game-stage" id="calcIpFee">
@@ -165,6 +167,7 @@
         </div>
         <div class="calc-result" id="ipOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Взносы ИП за себя')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('ipfee')">Сохранить в кабинет</button>
       </div>
     </div>
     <div class="tab-panel game-stage" id="calcVat">
@@ -188,6 +191,7 @@
         </div>
         <div class="calc-result" id="vtOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'НДС')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('vat')">Сохранить в кабинет</button>
       </div>
     </div>
     <div class="tab-panel game-stage" id="calc1">
@@ -199,6 +203,7 @@
         </div>
         <div class="calc-result" id="pnOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Пеня и неустойка')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('penalty')">Сохранить в кабинет</button>
       </div>
     </div>
     <div class="tab-panel game-stage" id="calcFee">
@@ -220,6 +225,7 @@
         </div>
         <div class="calc-result" id="gpOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Госпошлина в суд')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('fee')">Сохранить в кабинет</button>
       </div>
     </div>
     <div class="tab-panel game-stage" id="calc2">
@@ -317,12 +323,12 @@
   </div>
 </main>
 
-<script src="js/partners.js?v=63"></script>
-<script src="js/rates.js?v=63"></script>
-<script src="js/themes.js?v=63"></script>
-<script src="js/api.js?v=63"></script>
-<script src="js/app.js?v=63"></script>
-<script src="js/ai.js?v=63"></script>
+<script src="js/partners.js?v=64"></script>
+<script src="js/rates.js?v=64"></script>
+<script src="js/themes.js?v=64"></script>
+<script src="js/api.js?v=64"></script>
+<script src="js/app.js?v=64"></script>
+<script src="js/ai.js?v=64"></script>
 <script>
 initPage("calc.html");
 
@@ -776,6 +782,88 @@ calcSalary();
 calcIpFee();
 calcVat();
 calcCourtFee();
+
+/* ============ Сохранение расчёта в кабинет ============
+   Храним что вводили, а не что получилось: ставки меняются, и сумма,
+   сохранённая год назад, ввела бы человека в заблуждение. При открытии
+   расчёт восстанавливается по действующим ставкам. */
+const CALC_FIELDS = {
+  regimes: { out: "txOut", title: "Налоговые режимы",
+             fields: ["txWho","txWorkers","txIn","txExp","txPsn","txAgro"], run: "calcTax" },
+  salary:  { out: "slOut", title: "Зарплата на руки",
+             fields: ["slGross","slKids","slSmall"], run: "calcSalary" },
+  ipfee:   { out: "ipOut", title: "Взносы ИП за себя",
+             fields: ["ipIncome","ipDays","ipMode"], run: "calcIpFee" },
+  vat:     { out: "vtOut", title: "НДС",
+             fields: ["vtSum","vtRate","vtMode"], run: "calcVat" },
+  fee:     { out: "gpOut", title: "Госпошлина",
+             fields: ["gpKind","gpClaim"], run: "calcCourtFee" },
+  penalty: { out: "pnOut", title: "Пеня и неустойка",
+             fields: ["pnSum","pnRate","pnDays"], run: "calcPenalty" },
+};
+
+function readFields(kind) {
+  const cfg = CALC_FIELDS[kind];
+  const data = {};
+  for (const id of cfg.fields) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    data[id] = el.type === "checkbox" ? el.checked : el.value;
+  }
+  return data;
+}
+
+async function saveCalc(kind) {
+  if (!PF.user()) {
+    toast("Войдите, чтобы сохранять расчёты");
+    return setTimeout(() => (location.href = "auth.html"), 1200);
+  }
+  const cfg = CALC_FIELDS[kind];
+  const out = document.getElementById(cfg.out);
+  /* Итог берём первой строкой результата — это и есть главное число. */
+  const summary = (out?.querySelector(".big")?.textContent || out?.textContent || "")
+    .trim().replace(/\s+/g, " ").slice(0, 200);
+
+  const title = prompt("Как назвать расчёт?", cfg.title + " — " +
+    new Date().toLocaleDateString("ru-RU"));
+  if (title === null) return;
+
+  try {
+    await API.saved.save(kind, title.trim() || cfg.title, readFields(kind), summary);
+    trackEvent("calc_save");
+    toast("Сохранено — расчёт в кабинете, вкладка «Дела»");
+  } catch (e) { toast(e.message, "error"); }
+}
+
+/* Открытие сохранённого расчёта из кабинета: подставляем те же данные
+   и пересчитываем по действующим ставкам. */
+(async () => {
+  const params = new URLSearchParams(location.search);
+  const kind = params.get("open");
+  const savedId = Number(params.get("saved")) || 0;
+  if (!kind || !CALC_FIELDS[kind] || !savedId || !PF.user()) return;
+
+  try {
+    const d = await API.saved.list();
+    const it = d.items.find(x => x.id === savedId);
+    if (!it) return;
+
+    const tabIndex = Object.keys(CALC_FIELDS).indexOf(kind);
+    const order = ["regimes","salary","ipfee","vat","penalty","fee"];
+    const idx = order.indexOf(kind);
+    if (idx >= 0) document.querySelectorAll(".tabs .tab")[idx]?.click();
+
+    for (const [id, val] of Object.entries(it.inputs || {})) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      if (el.type === "checkbox") el.checked = Boolean(val);
+      else el.value = val;
+    }
+    if (typeof window[CALC_FIELDS[kind].run] === "function") window[CALC_FIELDS[kind].run]();
+    toast("Расчёт открыт и пересчитан по текущим ставкам");
+    history.replaceState(null, "", location.pathname);
+  } catch {}
+})();
 </script>
 </body>
 </html>

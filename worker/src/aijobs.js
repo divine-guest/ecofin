@@ -25,8 +25,12 @@ import { rewardIfEarned } from "./referral.js";
 const MAX_PROMPT = 12000;
 const MAX_SYSTEM = 4000;
 
-/* Задачи старше суток не нужны: ответ давно прочитан или уже неактуален. */
+/* Незавершённые и сорвавшиеся задачи старше суток не нужны — они уже
+   ничего не ждут. А готовые ответы теперь история вопросов в кабинете:
+   держим их три месяца, иначе «я спрашивал про это месяц назад»
+   упирается в пустоту. */
 const KEEP_MS = 24 * 3600 * 1000;
+const KEEP_DONE_MS = 90 * 24 * 3600 * 1000;
 
 /* Сколько ждём молчащую попытку, прежде чем начать заново. Чуть больше
    таймаута обращения к провайдеру (60 с), чтобы не перезапускать то,
@@ -153,8 +157,12 @@ export async function ask(request, env, origin, user, ctx) {
   ctx.waitUntil(work(env, row));
   ctx.waitUntil(rewardIfEarned(env, user.email).catch(() => {}));
   ctx.waitUntil(
-    env.DB.prepare("DELETE FROM ai_jobs WHERE created_at < ?")
+    env.DB.prepare("DELETE FROM ai_jobs WHERE created_at < ? AND status != 'done'")
       .bind(now() - KEEP_MS).run().catch(() => {})
+  );
+  ctx.waitUntil(
+    env.DB.prepare("DELETE FROM ai_jobs WHERE created_at < ? AND status = 'done'")
+      .bind(now() - KEEP_DONE_MS).run().catch(() => {})
   );
 
   return json(env, origin, { id, status: "pending" }, 202);

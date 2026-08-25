@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=63">
+<link rel="stylesheet" href="css/style.css?v=64">
 </head>
 <body>
 <main class="section">
@@ -33,12 +33,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=63"></script>
-<script src="js/api.js?v=63"></script>
-<script src="js/app.js?v=63"></script>
-<script src="js/ai.js?v=63"></script>
-<script src="js/competencies.js?v=63"></script>
-<script src="js/courses.js?v=63"></script>
+<script src="js/themes.js?v=64"></script>
+<script src="js/api.js?v=64"></script>
+<script src="js/app.js?v=64"></script>
+<script src="js/ai.js?v=64"></script>
+<script src="js/competencies.js?v=64"></script>
+<script src="js/courses.js?v=64"></script>
 <script>
 initPage("dashboard.html");
 
@@ -348,6 +348,26 @@ function renderCabinet() {
 
     <!-- Документы и сроки -->
     <div class="grid cols-2" style="margin-bottom:28px">
+      <div class="card" data-tab="tasks">
+        <h3>Мои расчёты</h3>
+        <p class="hint" style="margin-bottom:12px">
+          Сохранённые расчёты из калькуляторов. Открываются с теми же цифрами —
+          и пересчитываются по действующим ставкам, если они изменились.
+        </p>
+        <div id="savedList"><p class="hint">Загружаем…</p></div>
+      </div>
+
+      <div class="card" data-tab="assistant">
+        <h3>История вопросов</h3>
+        <p class="hint" style="margin-bottom:12px">
+          Всё, что вы спрашивали у консультанта, — с любого устройства.
+          Хранится три месяца.
+        </p>
+        <input type="search" id="histSearch" placeholder="Найти по слову"
+               oninput="HISTORY.debounced()" style="margin-bottom:12px">
+        <div id="histList"><p class="hint">Загружаем…</p></div>
+      </div>
+
       <div class="card" data-tab="tasks">
         <h3>Мои документы</h3>
         <p style="color:var(--muted);font-size:var(--t-sm)">Сохранённые шаблоны и генерации. Скачиваются в один клик.</p><br>
@@ -853,6 +873,93 @@ TRIAL.check().then(() => {
   const slot = document.getElementById("trialSlot");
   if (slot) slot.innerHTML = TRIAL.banner();
 });
+
+/* ============ Сохранённые расчёты ============
+   Посчитал — сохранил — вернулся. Раньше расчёт жил до закрытия
+   вкладки, и через месяц человек считал то же самое заново. */
+const SAVED = {
+  KINDS: {
+    regimes: "Налоговые режимы", salary: "Зарплата на руки",
+    ipfee: "Взносы ИП", vat: "НДС", fee: "Госпошлина",
+    penalty: "Пеня", vacation: "Отпускные", sick: "Больничные",
+    dividends: "Дивиденды", deduction: "Вычеты",
+  },
+
+  async load() {
+    const box = document.getElementById("savedList");
+    if (!box) return;
+    let d;
+    try { d = await API.saved.list(); }
+    catch { box.innerHTML = `<p class="hint">Не удалось загрузить.</p>`; return; }
+
+    if (!d.items.length) {
+      box.innerHTML = `<p class="hint">Пока пусто.
+        Посчитайте что-нибудь в <a href="calc.html">калькуляторах</a> и нажмите «Сохранить в кабинет».</p>`;
+      return;
+    }
+
+    box.innerHTML = d.items.map(it => `
+      <div class="saved-row">
+        <div>
+          <b>${escapeHtml(it.title)}</b>
+          <span class="hint">${escapeHtml(this.KINDS[it.kind] || it.kind)} ·
+            ${new Date(it.createdAt).toLocaleDateString("ru-RU")}</span>
+          <span class="saved-summary">${escapeHtml(it.summary)}</span>
+        </div>
+        <div class="saved-actions">
+          <a class="btn small secondary" href="calc.html?open=${encodeURIComponent(it.kind)}&saved=${it.id}">Открыть</a>
+          <button class="btn small danger" onclick="SAVED.remove(${it.id})">Удалить</button>
+        </div>
+      </div>`).join("");
+  },
+
+  async remove(id) {
+    if (!confirm("Удалить расчёт?")) return;
+    try { await API.saved.remove(id); this.load(); }
+    catch (e) { toast(e.message, "error"); }
+  },
+};
+
+/* ============ История вопросов ============
+   Переписка жила в браузере и терялась при смене устройства.
+   Теперь она приходит с сервера — с поиском по словам. */
+const HISTORY = {
+  timer: null,
+
+  debounced() {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.load(), 350);
+  },
+
+  async load() {
+    const box = document.getElementById("histList");
+    if (!box) return;
+    const q = document.getElementById("histSearch")?.value.trim() || "";
+    let d;
+    try { d = await API.aiHistory(q); }
+    catch { box.innerHTML = `<p class="hint">Не удалось загрузить.</p>`; return; }
+
+    if (!d.items.length) {
+      box.innerHTML = q
+        ? `<p class="hint">По этому слову ничего не нашлось.</p>`
+        : `<p class="hint">Вопросов пока не было. Спросите консультанта — история появится здесь.</p>`;
+      return;
+    }
+
+    box.innerHTML = d.items.map(it => `
+      <details class="hist-item">
+        <summary>
+          <span>${escapeHtml(it.question)}</span>
+          <span class="hint">${new Date(it.createdAt).toLocaleDateString("ru-RU")}${
+            it.kind === "tool" ? " · инструмент" : ""}</span>
+        </summary>
+        <div class="hist-answer">${escapeHtml(it.answer).replace(/\n/g, "<br>")}</div>
+      </details>`).join("");
+  },
+};
+
+SAVED.load();
+HISTORY.load();
 </script>
 </body>
 </html>
