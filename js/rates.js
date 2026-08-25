@@ -322,6 +322,88 @@ const RATES = {
     return s.bases.reduce((a, b) => a + b, 0) / s.days;
   },
 
+  /* --- Ключевая ставка Банка России ---
+
+     Особый случай среди всех чисел этого файла: она меняется несколько
+     раз в год, а от неё зависят пени по налогам (ст. 75 НК), проценты
+     за пользование чужими деньгами (ст. 395 ГК) и компенсация за
+     задержку зарплаты (ст. 236 ТК) — то есть суммы в исках и в спорах
+     с налоговой.
+
+     Поэтому она НЕ зашита намертво: значение ниже — только подстановка
+     по умолчанию, а в каждом калькуляторе поле со ставкой человек может
+     поправить, и рядом стоит ссылка на cbr.ru. Выдуманная ставка в
+     правовом расчёте хуже, чем спрошенная. */
+  keyRate: {
+    percent: 16,               // % годовых на дату сверки
+    source: "https://cbr.ru/hd_base/KeyRate/",
+  },
+
+  /* Пени по налогам, ст. 75 НК РФ.
+     Физлица и ИП — всегда 1/300 ставки. Организации: первые 30 дней
+     1/300, дальше 1/150 — вдвое дороже, и об этом обычно не знают. */
+  taxPenalty({ sum = 0, days = 0, rate = null, org = false } = {}) {
+    const r = (rate ?? this.keyRate.percent) / 100;
+    if (!org || days <= 30) return sum * r / 300 * days;
+    return sum * r / 300 * 30 + sum * r / 150 * (days - 30);
+  },
+
+  /* Проценты за пользование чужими деньгами, ст. 395 ГК РФ:
+     ключевая ставка за каждый день просрочки. */
+  gkInterest({ sum = 0, days = 0, rate = null, daysInYear = 365 } = {}) {
+    const r = (rate ?? this.keyRate.percent) / 100;
+    return sum * r * days / daysInYear;
+  },
+
+  /* Компенсация за задержку зарплаты, ст. 236 ТК РФ: не ниже 1/150
+     ставки за каждый день, включая день выплаты. Работодатель обязан
+     заплатить её сам, без заявления работника. */
+  wageDelay({ sum = 0, days = 0, rate = null } = {}) {
+    const r = (rate ?? this.keyRate.percent) / 100;
+    return sum * r / 150 * days;
+  },
+
+  /* Компенсация за неиспользованный отпуск, ст. 127 ТК РФ.
+     Средний дневной заработок — по ст. 139: выплаты за 12 месяцев
+     делятся на 12 и на среднемесячное число дней. */
+  vacationComp({ yearPay = 0, days = 0 } = {}) {
+    const daily = yearPay / 12 / this.avgMonthDays;
+    return { daily, total: daily * days };
+  },
+
+  /* Сколько дней отпуска накопилось: 2,33 дня за отработанный месяц
+     при стандартных 28 днях в году, минус уже отгулянные. */
+  vacationDaysEarned({ months = 0, perYear = 28, used = 0 } = {}) {
+    return Math.max(0, Math.round((perYear / 12) * months * 100) / 100 - used);
+  },
+
+  /* НДС на упрощёнке с 2025 года. Выбор между пониженной ставкой без
+     вычетов и обычной с вычетами — не очевиден: пониженная выгодна,
+     когда входного НДС мало. */
+  usnVat({ income = 0, inputVat = 0 } = {}) {
+    if (income <= this.usn.vatThreshold) {
+      return { exempt: true, threshold: this.usn.vatThreshold };
+    }
+    const reduced = income > 250000000 ? 0.07 : 0.05;
+    return {
+      exempt: false,
+      reducedRate: reduced,
+      reduced: income * reduced,             // без права на вычеты
+      general: Math.max(0, income * this.vatRate - inputVat),
+      generalRate: this.vatRate,
+    };
+  },
+
+  /* Аннуитетный платёж по кредиту: одинаковая сумма каждый месяц. */
+  annuity({ sum = 0, ratePercent = 0, months = 0 } = {}) {
+    if (!sum || !months) return { payment: 0, total: 0, overpay: 0 };
+    const m = ratePercent / 100 / 12;
+    const payment = m === 0 ? sum / months
+      : sum * m * Math.pow(1 + m, months) / (Math.pow(1 + m, months) - 1);
+    const total = payment * months;
+    return { payment, total, overpay: total - sum };
+  },
+
   /* Подпись «данные актуальны на …» для вывода под расчётами. */
   disclaimer() {
     const d = new Date(this.checkedOn).toLocaleDateString("ru-RU");

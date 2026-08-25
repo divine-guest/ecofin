@@ -55,6 +55,13 @@ const PALETTE = {
       { kind: "Калькулятор", title: "Налоговые вычеты", href: "calc.html", tab: 9 },
       { kind: "Калькулятор", title: "Счёт на оплату", href: "calc.html", tab: 10 },
       { kind: "Календарь", title: "Календарь отчётности", href: "calc.html", tab: 11 },
+      { kind: "Калькулятор", title: "Пени по налогам (ст. 75 НК)", href: "calc.html", tab: 12 },
+      { kind: "Калькулятор", title: "Проценты за просрочку (ст. 395 ГК)", href: "calc.html", tab: 13 },
+      { kind: "Калькулятор", title: "Компенсация за задержку зарплаты (ст. 236 ТК)", href: "calc.html", tab: 14 },
+      { kind: "Калькулятор", title: "Расчёт при увольнении и компенсация за отпуск", href: "calc.html", tab: 15 },
+      { kind: "Калькулятор", title: "НДС на УСН: 5%, 7% или 20%", href: "calc.html", tab: 16 },
+      { kind: "Калькулятор", title: "Кредит: платёж и переплата", href: "calc.html", tab: 17 },
+      { kind: "Калькулятор", title: "Сумма прописью для договора", href: "calc.html", tab: 18 },
 
       { kind: "Инструмент", title: "Составить документ", href: "tools.html", tab: 0 },
       { kind: "Инструмент", title: "Разобрать договор по файлу или фото", href: "tools.html", tab: 1 },

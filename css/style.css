@@ -1507,6 +1507,31 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 .calc-table td { padding: 7px 0; border-bottom: 1px solid var(--border); }
 .calc-table td:last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .calc-table tr:last-child td { border-bottom: none; }
+/* Строка с выигрышным вариантом: в сравнении важно, чтобы ответ был
+   виден раньше, чем человек прочитает всю таблицу. */
+.calc-table tr.best td { background: var(--surface-2); font-weight: 600; }
+.calc-table tr.best td:first-child { box-shadow: inset 3px 0 0 var(--primary); padding-left: 10px; }
+
+/* Предупреждение внутри расчёта: не ошибка, а то, на чём попадаются.
+   Например, что у организаций пени с 31-го дня считаются вдвое дороже. */
+.calc-warn {
+  margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+  background: var(--surface-2); border-left: 3px solid var(--gold);
+  font-size: var(--t-sm); color: var(--muted); line-height: 1.55;
+}
+
+/* Поле ключевой ставки: она меняется несколько раз в год, поэтому
+   рядом всегда стоит ссылка на первоисточник. */
+.rate-hint { margin-top: 5px; line-height: 1.5; }
+.rate-hint a { color: var(--primary); text-decoration: underline; }
+
+/* Сумма прописью — её копируют в договор, поэтому текст выделяемый
+   и крупнее обычного. */
+.words-out {
+  font-size: 1.05rem; line-height: 1.55; padding: 14px 16px;
+  border: 1px dashed var(--border); border-radius: 12px;
+  background: var(--surface-2); user-select: all; word-break: break-word;
+}
 
 
 /* ===== Ссылки на официальные реестры =====

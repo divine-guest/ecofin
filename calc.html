@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=75">
+<link rel="stylesheet" href="css/style.css?v=77">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -69,18 +69,25 @@
     </div>
 
     <div class="tabs">
-      <button class="tab active" onclick="switchCalc(0,this)">Налоговые режимы</button>
-      <button class="tab" onclick="switchCalc(1,this)">Зарплата на руки</button>
-      <button class="tab" onclick="switchCalc(2,this)">Взносы ИП за себя</button>
-      <button class="tab" onclick="switchCalc(3,this)">НДС</button>
-      <button class="tab" onclick="switchCalc(4,this)">Пеня и неустойка</button>
-      <button class="tab" onclick="switchCalc(5,this)">Госпошлина в суд</button>
-      <button class="tab" onclick="switchCalc(6,this)">Отпускные</button>
-      <button class="tab" onclick="switchCalc(7,this)">Больничные</button>
-      <button class="tab" onclick="switchCalc(8,this)">Дивиденды</button>
-      <button class="tab" onclick="switchCalc(9,this)">Налоговые вычеты</button>
-      <button class="tab" onclick="switchCalc(10,this)">Счёт на оплату</button>
-      <button class="tab" onclick="switchCalc(11,this)">Календарь отчётности</button>
+      <button class="tab active" data-panel="calc0" onclick="switchCalc(0,this)">Налоговые режимы</button>
+      <button class="tab" data-panel="calcSalary" onclick="switchCalc(1,this)">Зарплата на руки</button>
+      <button class="tab" data-panel="calcIpFee" onclick="switchCalc(2,this)">Взносы ИП за себя</button>
+      <button class="tab" data-panel="calcVat" onclick="switchCalc(3,this)">НДС</button>
+      <button class="tab" data-panel="calc1" onclick="switchCalc(4,this)">Пеня и неустойка</button>
+      <button class="tab" data-panel="calcFee" onclick="switchCalc(5,this)">Госпошлина в суд</button>
+      <button class="tab" data-panel="calc2" onclick="switchCalc(6,this)">Отпускные</button>
+      <button class="tab" data-panel="calc3" onclick="switchCalc(7,this)">Больничные</button>
+      <button class="tab" data-panel="calc4" onclick="switchCalc(8,this)">Дивиденды</button>
+      <button class="tab" data-panel="calc5" onclick="switchCalc(9,this)">Налоговые вычеты</button>
+      <button class="tab" data-panel="calc6" onclick="switchCalc(10,this)">Счёт на оплату</button>
+      <button class="tab" data-panel="calc7" onclick="switchCalc(11,this)">Календарь отчётности</button>
+      <button class="tab" data-panel="calcTaxPen" onclick="switchCalc(12,this)">Пени по налогам</button>
+      <button class="tab" data-panel="calcGk" onclick="switchCalc(13,this)">Проценты по ст. 395 ГК</button>
+      <button class="tab" data-panel="calcWage" onclick="switchCalc(14,this)">Задержка зарплаты</button>
+      <button class="tab" data-panel="calcFire" onclick="switchCalc(15,this)">Расчёт при увольнении</button>
+      <button class="tab" data-panel="calcUsnVat" onclick="switchCalc(16,this)">НДС на УСН</button>
+      <button class="tab" data-panel="calcLoan" onclick="switchCalc(17,this)">Кредит и переплата</button>
+      <button class="tab" data-panel="calcWords" onclick="switchCalc(18,this)">Сумма прописью</button>
     </div>
 
     <!-- 1. Налоговые режимы -->
@@ -241,6 +248,7 @@
         </div>
         <div class="calc-result" id="vpOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Отпускные')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('vacation')">Сохранить в кабинет</button>
       </div>
     </div>
     <div class="tab-panel game-stage" id="calc3">
@@ -258,6 +266,7 @@
         </div>
         <div class="calc-result" id="blOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Больничные')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('sick')">Сохранить в кабинет</button>
       </div>
     </div>
     <div class="tab-panel game-stage" id="calc4">
@@ -267,6 +276,7 @@
         </div>
         <div class="calc-result" id="dvOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Дивиденды')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('dividends')">Сохранить в кабинет</button>
       </div>
     </div>
     <div class="tab-panel game-stage" id="calc5">
@@ -277,6 +287,7 @@
         </div>
         <div class="calc-result" id="vdOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налоговые вычеты')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('deduction')">Сохранить в кабинет</button>
       </div>
     </div>
     <div class="tab-panel game-stage" id="calc6">
@@ -325,17 +336,175 @@
       </p>
       <div id="taxCal"></div>
     </div>
+
+    <!-- ===== Пени по налогам, ст. 75 НК РФ =====
+         Не то же самое, что договорная неустойка, хотя путают постоянно:
+         здесь ставка задана законом и привязана к ключевой ставке ЦБ.
+         Для организаций после 30 дней просрочки она удваивается — об этом
+         обычно узнают уже из требования. -->
+    <div class="tab-panel game-stage" id="calcTaxPen">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label>Неуплаченный налог, ₽</label>
+            <input type="number" id="tpSum" value="50000" oninput="calcTaxPen()"></div>
+          <div class="form-group"><label>Дней просрочки</label>
+            <input type="number" id="tpDays" value="45" oninput="calcTaxPen()"></div>
+          <div class="form-group"><label>Кто должник</label>
+            <select id="tpWho" onchange="calcTaxPen()">
+              <option value="ip">ИП или физлицо — всегда 1/300 ставки</option>
+              <option value="org">Организация — после 30 дней 1/150</option>
+            </select></div>
+          <div class="form-group"><label>Ключевая ставка ЦБ, % годовых</label>
+            <input type="number" step="0.25" id="tpRate" oninput="calcTaxPen()">
+            <p class="hint rate-hint">Ставка меняется несколько раз в год —
+              <a href="https://cbr.ru/hd_base/KeyRate/" target="_blank" rel="noopener">проверьте на cbr.ru</a>
+              и поправьте, если она уже другая.</p></div>
+        </div>
+        <div class="calc-result" id="tpOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Пени по налогам')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('taxpen')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <!-- ===== Проценты по ст. 395 ГК РФ =====
+         Самый частый расчёт в исковых заявлениях: их можно требовать даже
+         тогда, когда неустойка в договоре не прописана вовсе. -->
+    <div class="tab-panel game-stage" id="calcGk">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label>Сумма долга, ₽</label>
+            <input type="number" id="gkSum" value="200000" oninput="calcGk()"></div>
+          <div class="form-group"><label>Дней просрочки</label>
+            <input type="number" id="gkDays" value="90" oninput="calcGk()"></div>
+          <div class="form-group"><label>Ключевая ставка ЦБ, % годовых</label>
+            <input type="number" step="0.25" id="gkRate" oninput="calcGk()">
+            <p class="hint rate-hint">Если ставка за период менялась, считайте по частям —
+              <a href="https://cbr.ru/hd_base/KeyRate/" target="_blank" rel="noopener">история ставок на cbr.ru</a>.</p></div>
+        </div>
+        <div class="calc-result" id="gkOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Проценты по ст. 395 ГК РФ')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('gk395')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <!-- ===== Компенсация за задержку зарплаты, ст. 236 ТК РФ =====
+         Работодатель обязан заплатить её сам, без заявления работника, —
+         и об этом не знает почти никто по обе стороны. -->
+    <div class="tab-panel game-stage" id="calcWage">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label>Сумма задержанной выплаты, ₽</label>
+            <input type="number" id="wgSum" value="60000" oninput="calcWage()"></div>
+          <div class="form-group"><label>Дней задержки</label>
+            <input type="number" id="wgDays" value="14" oninput="calcWage()"></div>
+          <div class="form-group"><label>Ключевая ставка ЦБ, % годовых</label>
+            <input type="number" step="0.25" id="wgRate" oninput="calcWage()">
+            <p class="hint rate-hint">1/150 ставки за каждый день —
+              <a href="https://cbr.ru/hd_base/KeyRate/" target="_blank" rel="noopener">ставка на cbr.ru</a>.</p></div>
+        </div>
+        <div class="calc-result" id="wgOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Компенсация за задержку зарплаты')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('wagedelay')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <!-- ===== Расчёт при увольнении =====
+         Компенсация за неиспользованный отпуск — то, из-за чего чаще
+         всего спорят при уходе: работник не знает, сколько ему должны. -->
+    <div class="tab-panel game-stage" id="calcFire">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label>Выплаты за 12 месяцев, ₽</label>
+            <input type="number" id="frPay" value="840000" oninput="calcFire()"></div>
+          <div class="form-group"><label>Отработано полных месяцев</label>
+            <input type="number" id="frMonths" value="10" oninput="calcFire()"></div>
+          <div class="form-group"><label>Дней отпуска в год по договору</label>
+            <select id="frPerYear" onchange="calcFire()">
+              <option value="28">28 — обычный отпуск</option>
+              <option value="31">31 — ненормированный день</option>
+              <option value="35">35 — вредные условия</option>
+              <option value="56">56 — педагоги</option>
+            </select></div>
+          <div class="form-group"><label>Уже отгуляно дней</label>
+            <input type="number" id="frUsed" value="0" oninput="calcFire()"></div>
+        </div>
+        <div class="calc-result" id="frOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Расчёт при увольнении')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('dismissal')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <!-- ===== НДС на упрощёнке =====
+         С 2025 года головная боль всех, кто перевалил за 60 млн: выбор
+         между пониженной ставкой без вычетов и обычной с вычетами
+         зависит от того, много ли входного НДС. -->
+    <div class="tab-panel game-stage" id="calcUsnVat">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label>Доход за год, ₽</label>
+            <input type="number" id="uvIncome" value="90000000" oninput="calcUsnVat()"></div>
+          <div class="form-group"><label>Входной НДС от поставщиков за год, ₽</label>
+            <input type="number" id="uvInput" value="3000000" oninput="calcUsnVat()">
+            <p class="hint">Сколько НДС вам предъявили поставщики. При пониженной
+              ставке принять его к вычету нельзя — в этом вся разница.</p></div>
+        </div>
+        <div class="calc-result" id="uvOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'НДС на УСН')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('usnvat')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <!-- ===== Кредит: платёж и переплата =====
+         Финансовая часть сервиса: человек видит не «ставку», а сколько
+         денег он отдаст сверх взятого. -->
+    <div class="tab-panel game-stage" id="calcLoan">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label>Сумма кредита, ₽</label>
+            <input type="number" id="lnSum" value="1000000" oninput="calcLoan()"></div>
+          <div class="form-group"><label>Ставка, % годовых</label>
+            <input type="number" step="0.1" id="lnRate" value="22" oninput="calcLoan()"></div>
+          <div class="form-group"><label>Срок, месяцев</label>
+            <input type="number" id="lnMonths" value="36" oninput="calcLoan()"></div>
+          <div class="form-group"><label>Досрочно вносить в месяц, ₽</label>
+            <input type="number" id="lnExtra" value="0" oninput="calcLoan()">
+            <p class="hint">Сокращает срок: видно, сколько сэкономит каждая
+              лишняя тысяча.</p></div>
+        </div>
+        <div class="calc-result" id="lnOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Кредит: платёж и переплата')">Скачать / печать</button>
+      </div>
+    </div>
+
+    <!-- ===== Сумма прописью =====
+         Мелочь, за которой ходят в поиск каждый день: без неё
+         не оформить ни договор, ни расписку, ни платёжку. -->
+    <div class="tab-panel game-stage" id="calcWords">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label>Сумма, ₽</label>
+            <input type="number" step="0.01" id="wdSum" value="125450.5" oninput="calcWords()"></div>
+          <div class="form-group"><label>Как записать</label>
+            <select id="wdCase" onchange="calcWords()">
+              <option value="cap">С заглавной буквы — для договора</option>
+              <option value="low">Со строчной — внутри предложения</option>
+            </select></div>
+          <button class="btn small secondary" onclick="copyWords()">Скопировать</button>
+        </div>
+        <div class="calc-result" id="wdOut"></div>
+      </div>
+    </div>
   </div>
 </main>
 
-<script src="js/partners.js?v=75"></script>
-<script src="js/rates.js?v=75"></script>
-<script src="js/themes.js?v=75"></script>
-<script src="js/api.js?v=75"></script>
-<script src="js/app.js?v=75"></script>
-<script src="js/progress.js?v=75"></script>
-<script src="js/palette.js?v=75"></script>
-<script src="js/ai.js?v=75"></script>
+<script src="js/partners.js?v=77"></script>
+<script src="js/rates.js?v=77"></script>
+<script src="js/themes.js?v=77"></script>
+<script src="js/api.js?v=77"></script>
+<script src="js/app.js?v=77"></script>
+<script src="js/progress.js?v=77"></script>
+<script src="js/palette.js?v=77"></script>
+<script src="js/ai.js?v=77"></script>
 <script>
 initPage("calc.html");
 
@@ -353,10 +522,33 @@ document.addEventListener("pf:ready", () => PARTNERS.render("partnersTax", "tax"
     `НДС при доходе свыше ${RATES.usn.vatThreshold / 1e6} млн \u20bd не учтён. ${RATES.disclaimer()}`;
 }
 
+/* Переключение по имени панели, а не по порядковому номеру.
+
+   Раньше кнопка с номером 6 показывала шестую по счёту панель в разметке.
+   Достаточно было вставить новую панель не в то место — и все вкладки
+   после неё молча показывали чужое содержимое. Теперь каждая кнопка
+   называет свою панель прямо в data-panel, и порядок ни на что не влияет. */
 function switchCalc(i, btn) {
+  const target = btn.dataset.panel;
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   btn.classList.add("active");
-  document.querySelectorAll(".tab-panel").forEach((p, j) => p.classList.toggle("active", i === j));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === target));
+  /* Панель могла ни разу не считаться — например, открыли сразу её. */
+  const kind = Object.keys(CALC_FIELDS).find(k => document.getElementById(CALC_FIELDS[k].out)?.closest(".tab-panel")?.id === target);
+  if (kind && typeof window[CALC_FIELDS[kind].run] === "function") window[CALC_FIELDS[kind].run]();
+}
+
+/* Открыть вкладку по виду расчёта: нужно и для ссылок из кабинета,
+   и для быстрого поиска. */
+function openCalcKind(kind) {
+  const cfg = CALC_FIELDS[kind];
+  if (!cfg) return false;
+  const panel = document.getElementById(cfg.out)?.closest(".tab-panel");
+  if (!panel) return false;
+  const btn = document.querySelector(`.tabs .tab[data-panel="${panel.id}"]`);
+  if (!btn) return false;
+  btn.click();
+  return true;
 }
 const fmt = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
 
@@ -623,7 +815,9 @@ async function addTaxDeadline(day, title) {
     else toast(e.message, "error");
   }
 }
+KEYRATE.init();
 calcTax(); calcPenalty(); calcVacation(); calcSick(); calcDiv(); calcDeduction();
+calcTaxPen(); calcGk(); calcWage(); calcFire(); calcUsnVat(); calcLoan(); calcWords();
 renderPosInputs(); renderInvoice();
 document.getElementById("ivDate").valueAsDate = new Date();
 renderInvoice();
@@ -794,6 +988,318 @@ calcCourtFee();
    Храним что вводили, а не что получилось: ставки меняются, и сумма,
    сохранённая год назад, ввела бы человека в заблуждение. При открытии
    расчёт восстанавливается по действующим ставкам. */
+
+/* ============ Ключевая ставка ЦБ ============
+
+   Она нужна трём калькуляторам сразу и меняется несколько раз в год.
+   Подставляем значение из rates.js, но поле оставляем редактируемым и
+   ставим рядом ссылку на cbr.ru: выдуманная ставка в правовом расчёте
+   хуже, чем спрошенная. Правку человек делает один раз — она
+   запоминается и подставляется во все три калькулятора. */
+const KEYRATE = {
+  store: "pf_keyrate",
+  fields: ["tpRate", "gkRate", "wgRate"],
+
+  value() {
+    const saved = Number(localStorage.getItem(this.store));
+    return saved > 0 ? saved : RATES.keyRate.percent;
+  },
+
+  init() {
+    const v = this.value();
+    for (const id of this.fields) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      el.value = v;
+      el.addEventListener("change", () => {
+        const n = Number(el.value);
+        if (n > 0 && n < 100) {
+          localStorage.setItem(this.store, String(n));
+          for (const other of this.fields) {
+            const o = document.getElementById(other);
+            if (o && o !== el) o.value = n;
+          }
+        }
+      });
+    }
+  },
+};
+
+/* --- Пени по налогам, ст. 75 НК РФ --- */
+function calcTaxPen() {
+  const sum = +document.getElementById("tpSum").value || 0;
+  const days = Math.max(0, +document.getElementById("tpDays").value || 0);
+  const rate = +document.getElementById("tpRate").value || RATES.keyRate.percent;
+  const org = document.getElementById("tpWho").value === "org";
+
+  const pen = RATES.taxPenalty({ sum, days, rate, org });
+  const asIp = RATES.taxPenalty({ sum, days, rate, org: false });
+  const over30 = org && days > 30;
+  const first30 = RATES.taxPenalty({ sum, days: Math.min(days, 30), rate, org: false });
+
+  document.getElementById("tpOut").innerHTML = `
+    <p>Пени за ${days} дн. просрочки:</p>
+    <div class="big">${fmt(pen)}</div>
+    <table class="calc-table">
+      <tr><td>Ставка расчёта</td><td>1/300 от ${rate}% годовых${over30 ? ", после 30 дней 1/150" : ""}</td></tr>
+      <tr><td>Первые 30 дней</td><td>${fmt(first30)}</td></tr>
+      ${days > 30 ? `<tr><td>Дальше${over30 ? ", по двойной ставке" : ""}</td><td>${fmt(pen - first30)}</td></tr>` : ""}
+      <tr><td><b>Всего к доплате</b></td><td><b>${fmt(sum + pen)}</b></td></tr>
+    </table>
+    ${over30 ? `<p class="calc-warn">У организаций с 31-го дня пени считаются вдвое дороже —
+      1/150 ставки. Здесь это уже учтено: разница с расчётом «как у ИП» —
+      ${fmt(pen - asIp)}.</p>` : ""}
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+      Пени начисляются со дня, следующего за сроком уплаты, по день погашения включительно.
+      Это не штраф: штраф по ст. 122 НК — отдельные 20–40% от неуплаченной суммы.</p>
+    <p style="font-size:var(--t-xs);color:var(--muted);margin-top:8px">${RATES.disclaimer()}</p>`;
+}
+
+/* --- Проценты за пользование чужими деньгами, ст. 395 ГК РФ --- */
+function calcGk() {
+  const sum = +document.getElementById("gkSum").value || 0;
+  const days = Math.max(0, +document.getElementById("gkDays").value || 0);
+  const rate = +document.getElementById("gkRate").value || RATES.keyRate.percent;
+  const val = RATES.gkInterest({ sum, days, rate });
+
+  document.getElementById("gkOut").innerHTML = `
+    <p>Проценты за ${days} дн.:</p>
+    <div class="big">${fmt(val)}</div>
+    <table class="calc-table">
+      <tr><td>Формула</td><td>${fmt(sum)} × ${rate}% × ${days} / 365</td></tr>
+      <tr><td>В день</td><td>${fmt(days ? val / days : 0)}</td></tr>
+      <tr><td><b>Долг с процентами</b></td><td><b>${fmt(sum + val)}</b></td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+      Требовать их можно, даже если неустойка в договоре не прописана. Если в договоре
+      неустойка есть — взыскивают что-то одно, обычно то, что больше.</p>
+    <p style="font-size:var(--t-xs);color:var(--muted);margin-top:8px">${RATES.disclaimer()}</p>`;
+}
+
+/* --- Компенсация за задержку зарплаты, ст. 236 ТК РФ --- */
+function calcWage() {
+  const sum = +document.getElementById("wgSum").value || 0;
+  const days = Math.max(0, +document.getElementById("wgDays").value || 0);
+  const rate = +document.getElementById("wgRate").value || RATES.keyRate.percent;
+  const val = RATES.wageDelay({ sum, days, rate });
+
+  document.getElementById("wgOut").innerHTML = `
+    <p>Компенсация за ${days} дн. задержки:</p>
+    <div class="big">${fmt(val)}</div>
+    <table class="calc-table">
+      <tr><td>Ставка расчёта</td><td>1/150 от ${rate}% годовых за день</td></tr>
+      <tr><td>В день</td><td>${fmt(days ? val / days : 0)}</td></tr>
+      <tr><td><b>К выплате всего</b></td><td><b>${fmt(sum + val)}</b></td></tr>
+    </table>
+    <p class="calc-warn">Работодатель обязан начислить это сам, без заявления работника.
+      За задержку свыше 15 дней работник вправе приостановить работу, письменно предупредив,
+      и это время оплачивается.</p>
+    <p style="font-size:var(--t-xs);color:var(--muted);margin-top:8px">${RATES.disclaimer()}</p>`;
+}
+
+/* --- Расчёт при увольнении --- */
+function calcFire() {
+  const yearPay = +document.getElementById("frPay").value || 0;
+  const months = Math.max(0, +document.getElementById("frMonths").value || 0);
+  const perYear = +document.getElementById("frPerYear").value || 28;
+  const used = Math.max(0, +document.getElementById("frUsed").value || 0);
+
+  const days = RATES.vacationDaysEarned({ months, perYear, used });
+  const { daily, total } = RATES.vacationComp({ yearPay, days });
+  const ndfl = RATES.ndfl(total);
+
+  document.getElementById("frOut").innerHTML = `
+    <p>Компенсация за неиспользованный отпуск:</p>
+    <div class="big">${fmt(total)}</div>
+    <table class="calc-table">
+      <tr><td>Средний дневной заработок</td><td>${fmt(daily)}</td></tr>
+      <tr><td>Накоплено дней отпуска</td><td>${days.toFixed(2)}</td></tr>
+      <tr><td>НДФЛ с компенсации</td><td>−${fmt(ndfl)}</td></tr>
+      <tr><td><b>На руки</b></td><td><b>${fmt(total - ndfl)}</b></td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+      Отпуск копится по ${(perYear / 12).toFixed(2)} дня за отработанный месяц. Месяц,
+      отработанный больше чем наполовину, считается полным.
+      Весь расчёт выдают в последний рабочий день — иначе включается ст. 236 ТК.</p>
+    <p style="font-size:var(--t-xs);color:var(--muted);margin-top:8px">${RATES.disclaimer()}</p>`;
+}
+
+/* --- НДС на упрощёнке --- */
+function calcUsnVat() {
+  const income = +document.getElementById("uvIncome").value || 0;
+  const inputVat = +document.getElementById("uvInput").value || 0;
+  const r = RATES.usnVat({ income, inputVat });
+  const box = document.getElementById("uvOut");
+
+  if (r.exempt) {
+    box.innerHTML = `
+      <p>НДС платить не нужно:</p>
+      <div class="big">0 ₽</div>
+      <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+        Освобождение действует, пока доход за год не превысил
+        ${(r.threshold / 1e6).toLocaleString("ru-RU")} млн ₽.
+        Осталось запаса: <b>${fmt(r.threshold - income)}</b>.</p>
+      <p style="font-size:var(--t-xs);color:var(--muted);margin-top:8px">${RATES.disclaimer()}</p>`;
+    return;
+  }
+
+  const cheaper = r.reduced <= r.general ? "reduced" : "general";
+  document.getElementById("uvOut").innerHTML = `
+    <p>Выгоднее: ${cheaper === "reduced" ? `пониженная ставка ${r.reducedRate * 100}%` : "обычные 20% с вычетами"}</p>
+    <div class="big">${fmt(Math.min(r.reduced, r.general))}</div>
+    <table class="calc-table">
+      <tr class="${cheaper === "reduced" ? "best" : ""}">
+        <td>Ставка ${r.reducedRate * 100}% без вычетов</td><td>${fmt(r.reduced)}</td></tr>
+      <tr class="${cheaper === "general" ? "best" : ""}">
+        <td>Ставка 20% минус входной НДС</td><td>${fmt(r.general)}</td></tr>
+      <tr><td><b>Разница</b></td><td><b>${fmt(Math.abs(r.reduced - r.general))}</b> в год</td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+      Пониженную ставку выбирают на три года и отказаться раньше нельзя. Она выгодна,
+      когда входного НДС мало: у услуг, аренды, консалтинга. Обычные 20% выгоднее
+      торговле и производству, где закупки идут с НДС.</p>
+    <p class="calc-warn">Ваши покупатели на общей системе принимают к вычету только тот НДС,
+      что вы им предъявили. Пониженная ставка делает вас менее удобным поставщиком —
+      это стоит посчитать до выбора.</p>
+    <p style="font-size:var(--t-xs);color:var(--muted);margin-top:8px">${RATES.disclaimer()}</p>`;
+}
+
+/* --- Кредит: платёж и переплата --- */
+function calcLoan() {
+  const sum = +document.getElementById("lnSum").value || 0;
+  const rate = +document.getElementById("lnRate").value || 0;
+  const months = Math.max(1, +document.getElementById("lnMonths").value || 1);
+  const extra = Math.max(0, +document.getElementById("lnExtra").value || 0);
+
+  const base = RATES.annuity({ sum, ratePercent: rate, months });
+
+  /* Досрочное погашение считаем по месяцам: это единственный способ
+     показать честно, сколько экономит лишняя тысяча в месяц. */
+  let saved = null;
+  if (extra > 0 && base.payment > 0) {
+    let debt = sum, paid = 0, n = 0;
+    const m = rate / 100 / 12;
+    while (debt > 0 && n < months * 3) {
+      const interest = debt * m;
+      const body = base.payment + extra - interest;
+      if (body <= 0) break;
+      debt -= body;
+      paid += debt < 0 ? base.payment + extra + debt : base.payment + extra;
+      n++;
+    }
+    if (debt <= 0) saved = { months: n, total: paid, overpay: paid - sum };
+  }
+
+  document.getElementById("lnOut").innerHTML = `
+    <p>Платёж в месяц:</p>
+    <div class="big">${fmt(base.payment)}</div>
+    <table class="calc-table">
+      <tr><td>Всего выплатите</td><td>${fmt(base.total)}</td></tr>
+      <tr><td>Переплата</td><td><b>${fmt(base.overpay)}</b> — это ${
+        sum ? Math.round(base.overpay / sum * 100) : 0}% от взятого</td></tr>
+      ${saved ? `
+      <tr class="best"><td>С досрочными ${fmt(extra)} в месяц</td><td>${saved.months} мес. вместо ${months}</td></tr>
+      <tr class="best"><td><b>Сэкономите</b></td><td><b>${fmt(base.overpay - saved.overpay)}</b></td></tr>` : ""}
+    </table>
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+      Расчёт аннуитетный: платёж одинаковый весь срок, но в первые месяцы почти всё
+      уходит на проценты. Поэтому досрочное погашение в начале срока экономит
+      в разы больше, чем в конце.</p>`;
+}
+
+/* --- Сумма прописью ---
+   Нужна каждый день и в договоре, и в расписке, и в платёжке. */
+const WORDS = {
+  ones: ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять",
+         "десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать", "пятнадцать",
+         "шестнадцать", "семнадцать", "восемнадцать", "девятнадцать"],
+  onesF: { 1: "одна", 2: "две" },
+  tens: ["", "", "двадцать", "тридцать", "сорок", "пятьдесят", "шестьдесят", "семьдесят", "восемьдесят", "девяносто"],
+  hundreds: ["", "сто", "двести", "триста", "четыреста", "пятьсот", "шестьсот", "семьсот", "восемьсот", "девятьсот"],
+
+  /* Разряды: [единственное, 2-4, много, женский ли род]. */
+  ranks: [
+    ["", "", "", false],
+    ["тысяча", "тысячи", "тысяч", true],
+    ["миллион", "миллиона", "миллионов", false],
+    ["миллиард", "миллиарда", "миллиардов", false],
+    ["триллион", "триллиона", "триллионов", false],
+  ],
+
+  trio(n, female) {
+    const out = [];
+    if (n >= 100) out.push(this.hundreds[Math.floor(n / 100)]);
+    const rest = n % 100;
+    if (rest >= 20) {
+      out.push(this.tens[Math.floor(rest / 10)]);
+      const one = rest % 10;
+      if (one) out.push(female && this.onesF[one] ? this.onesF[one] : this.ones[one]);
+    } else if (rest) {
+      out.push(female && this.onesF[rest] ? this.onesF[rest] : this.ones[rest]);
+    }
+    return out.filter(Boolean).join(" ");
+  },
+
+  plural(n, forms) {
+    const t = n % 100;
+    if (t > 10 && t < 20) return forms[2];
+    const o = n % 10;
+    return o === 1 ? forms[0] : o >= 2 && o <= 4 ? forms[1] : forms[2];
+  },
+
+  /* Целое число словами. */
+  int(num) {
+    num = Math.floor(Math.abs(num));
+    if (num === 0) return "ноль";
+    const parts = [];
+    let rank = 0;
+    while (num > 0 && rank < this.ranks.length) {
+      const trio = num % 1000;
+      if (trio) {
+        const [one, few, many, female] = this.ranks[rank];
+        const words = this.trio(trio, female);
+        parts.unshift(rank === 0 ? words : `${words} ${this.plural(trio, [one, few, many])}`);
+      }
+      num = Math.floor(num / 1000);
+      rank++;
+    }
+    return parts.join(" ");
+  },
+
+  /* Рубли и копейки — так, как пишут в документах. */
+  money(value) {
+    const rub = Math.floor(Math.abs(value));
+    const kop = Math.round((Math.abs(value) - rub) * 100);
+    const rubWord = this.plural(rub, ["рубль", "рубля", "рублей"]);
+    const kopWord = this.plural(kop, ["копейка", "копейки", "копеек"]);
+    const sign = value < 0 ? "минус " : "";
+    return `${sign}${this.int(rub)} ${rubWord} ${String(kop).padStart(2, "0")} ${kopWord}`;
+  },
+};
+
+function calcWords() {
+  const value = +document.getElementById("wdSum").value || 0;
+  let text = WORDS.money(value);
+  if (document.getElementById("wdCase").value === "cap") {
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+  }
+  const digits = value.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById("wdOut").innerHTML = `
+    <p>Как писать в документе:</p>
+    <div class="words-out" id="wdText">${escapeHtml(digits)} (${escapeHtml(text)})</div>
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:10px">
+      В договорах и расписках сумму пишут и цифрами, и словами: при расхождении
+      суд читает то, что написано словами.</p>`;
+}
+
+function copyWords() {
+  const el = document.getElementById("wdText");
+  if (!el) return;
+  navigator.clipboard?.writeText(el.textContent.trim())
+    .then(() => toast("Скопировано"))
+    .catch(() => toast("Не удалось скопировать", "error"));
+}
+
 const CALC_FIELDS = {
   regimes: { out: "txOut", title: "Налоговые режимы",
              fields: ["txWho","txWorkers","txIn","txExp","txPsn","txAgro"], run: "calcTax" },
@@ -807,6 +1313,28 @@ const CALC_FIELDS = {
              fields: ["gpKind","gpClaim"], run: "calcCourtFee" },
   penalty: { out: "pnOut", title: "Пеня и неустойка",
              fields: ["pnSum","pnRate","pnDays"], run: "calcPenalty" },
+  /* Эти четыре умел сохранять сервер, а кнопки на странице не было:
+     человек сохранял расчёт зарплаты, не находил того же у отпускных
+     и решал, что функция сломалась. */
+  vacation:  { out: "vpOut", title: "Отпускные",
+               fields: ["vpSum","vpDays"], run: "calcVacation" },
+  sick:      { out: "blOut", title: "Больничные",
+               fields: ["blSum","blExp","blDays"], run: "calcSick" },
+  dividends: { out: "dvOut", title: "Дивиденды",
+               fields: ["dvSum"], run: "calcDiv" },
+  deduction: { out: "vdOut", title: "Налоговые вычеты",
+               fields: ["vdExp","vdTax"], run: "calcDeduction" },
+  /* Новые расчёты. */
+  taxpen:    { out: "tpOut", title: "Пени по налогам",
+               fields: ["tpSum","tpDays","tpWho","tpRate"], run: "calcTaxPen" },
+  gk395:     { out: "gkOut", title: "Проценты по ст. 395 ГК",
+               fields: ["gkSum","gkDays","gkRate"], run: "calcGk" },
+  wagedelay: { out: "wgOut", title: "Задержка зарплаты",
+               fields: ["wgSum","wgDays","wgRate"], run: "calcWage" },
+  dismissal: { out: "frOut", title: "Расчёт при увольнении",
+               fields: ["frPay","frMonths","frPerYear","frUsed"], run: "calcFire" },
+  usnvat:    { out: "uvOut", title: "НДС на УСН",
+               fields: ["uvIncome","uvInput"], run: "calcUsnVat" },
 };
 
 function readFields(kind) {
@@ -855,10 +1383,10 @@ async function saveCalc(kind) {
     const it = d.items.find(x => x.id === savedId);
     if (!it) return;
 
-    const tabIndex = Object.keys(CALC_FIELDS).indexOf(kind);
-    const order = ["regimes","salary","ipfee","vat","penalty","fee"];
-    const idx = order.indexOf(kind);
-    if (idx >= 0) document.querySelectorAll(".tabs .tab")[idx]?.click();
+    /* Раньше здесь был список видов расчёта в «правильном» порядке —
+       он отставал от вкладок и открывал не ту. Теперь вкладку находим
+       по самой панели. */
+    openCalcKind(kind);
 
     for (const [id, val] of Object.entries(it.inputs || {})) {
       const el = document.getElementById(id);

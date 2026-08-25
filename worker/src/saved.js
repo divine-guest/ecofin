@@ -13,7 +13,12 @@ import { json, fail, now } from "./lib.js";
 
 const MAX_SAVED = 50;          // больше человек всё равно не разберёт
 const KINDS = ["regimes", "salary", "ipfee", "vat", "fee", "penalty",
-               "vacation", "sick", "dividends", "deduction"];
+               "vacation", "sick", "dividends", "deduction",
+               /* Расчёты, добавленные в калькулятор позже: пени по налогам
+                  (ст. 75 НК), проценты за пользование чужими деньгами
+                  (ст. 395 ГК), компенсация за задержку зарплаты (ст. 236 ТК),
+                  расчёт при увольнении и НДС на упрощёнке. */
+               "taxpen", "gk395", "wagedelay", "dismissal", "usnvat"];
 
 const publicRow = r => ({
   id: r.id,
