@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=59">
+<link rel="stylesheet" href="css/style.css?v=60">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -81,18 +81,41 @@
     <!-- 1. Налоговые режимы -->
     <div class="tab-panel active game-stage" id="calc0">
       <div class="calc-row">
-        <div style="flex:1;min-width:240px">
-          <div class="form-group"><label>Доход за год, ₽</label><input type="number" id="txIn" value="1200000" oninput="calcTax()"></div>
-          <div class="form-group"><label>Расходы за год, ₽</label><input type="number" id="txExp" value="300000" oninput="calcTax()"></div>
-          <div class="form-group"><label>Есть работники?</label>
-            <select id="txEmp" onchange="calcTax()"><option value="no">Нет</option><option value="yes">Да</option></select>
+        <div style="flex:1;min-width:280px">
+          <div class="grid cols-2">
+            <div class="form-group">
+              <label>Кто вы</label>
+              <select id="txWho" onchange="calcTax()">
+                <option value="ip">ИП</option>
+                <option value="ooo">ООО</option>
+                <option value="self">Физлицо — рассматриваю самозанятость</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Работников</label>
+              <input type="number" id="txWorkers" value="0" min="0" max="200" oninput="calcTax()">
+            </div>
+          </div>
+          <div class="form-group"><label>Доход за год, ₽</label>
+            <input type="number" id="txIn" value="2000000" oninput="calcTax()"></div>
+          <div class="form-group"><label>Расходы за год, ₽</label>
+            <input type="number" id="txExp" value="800000" oninput="calcTax()">
+            <p class="hint">Только подтверждённые документами — иначе их не примут.</p>
+          </div>
+          <div class="form-group">
+            <label>Потенциальный доход по патенту, ₽ за год</label>
+            <input type="number" id="txPsn" value="0" min="0" oninput="calcTax()">
+            <p class="hint">Патент считается не от выручки, а от суммы, которую установил ваш регион.
+              Точную цифру даёт калькулятор ФНС:
+              <a href="https://patent.nalog.ru/" target="_blank" rel="noopener">patent.nalog.ru</a>.</p>
+          </div>
+          <div class="form-group">
+            <label><input type="checkbox" id="txAgro" onchange="calcTax()"> Сельхозпроизводство — более 70% дохода</label>
           </div>
         </div>
         <div class="calc-result" id="txOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налоговые режимы')">Скачать / печать</button>
       </div>
-      <p style="color:var(--muted);font-size:var(--t-xs);margin-top:14px" id="txNote"></p>
-      <div id="partnersTax"></div>
     </div>
     <div class="tab-panel game-stage" id="calcSalary">
       <div class="calc-row">
@@ -294,12 +317,12 @@
   </div>
 </main>
 
-<script src="js/partners.js?v=59"></script>
-<script src="js/rates.js?v=59"></script>
-<script src="js/themes.js?v=59"></script>
-<script src="js/api.js?v=59"></script>
-<script src="js/app.js?v=59"></script>
-<script src="js/ai.js?v=59"></script>
+<script src="js/partners.js?v=60"></script>
+<script src="js/rates.js?v=60"></script>
+<script src="js/themes.js?v=60"></script>
+<script src="js/api.js?v=60"></script>
+<script src="js/app.js?v=60"></script>
+<script src="js/ai.js?v=60"></script>
 <script>
 initPage("calc.html");
 
@@ -329,56 +352,49 @@ const fmt = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
    «Доходы» почти всегда выигрывали, а нагрузка занижалась почти вдвое.
    Теперь все три варианта считаются одинаково: налог + взносы. */
 function calcTax() {
-  const income = +document.getElementById("txIn").value || 0;
-  const exp = +document.getElementById("txExp").value || 0;
-  const emp = document.getElementById("txEmp").value === "yes";
-  const contrib = RATES.contributions(income);
+  const g = id => document.getElementById(id);
+  const income = +g("txIn").value || 0;
+  const expenses = +g("txExp").value || 0;
+  const workers = Math.max(0, +g("txWorkers").value || 0);
+  const who = g("txWho").value;
+  const psnPotential = +g("txPsn").value || 0;
+  const agro = g("txAgro").checked;
 
-  const npdOk = !emp && income <= RATES.npd.limit;
-  const npd = npdOk ? income * RATES.npd.rateCompanies : null;   // взносов у НПД нет
-
-  /* Взносы уменьшают налог: без работников — полностью, с работниками — вдвое.
-     Итог всё равно включает сами взносы, иначе сравнение было бы нечестным. */
-  const deductible = emp ? contrib / 2 : contrib;
-  const usn6 = Math.max(0, income * RATES.usn.incomeRate - deductible) + contrib;
-
-  const usn15base = Math.max((income - exp) * RATES.usn.profitRate, income * RATES.usn.minTaxRate);
-  const usn15 = usn15base + contrib;
-
-  const rows = [
-    { name: "НПД (самозанятость)", val: npd,
-      note: npdOk ? `${RATES.npd.rateCompanies * 100}% с юрлиц, страховых взносов нет`
-                  : `недоступно: есть работники или доход выше ${(RATES.npd.limit / 1e6).toLocaleString("ru-RU")} млн ₽` },
-    { name: "УСН «Доходы» 6%", val: usn6,
-      note: `налог за вычетом взносов ${emp ? "(50%)" : "(100%)"} + сами взносы ${fmt(contrib)}` },
-    { name: "УСН «Доходы − расходы» 15%", val: usn15,
-      note: `не менее 1% с дохода + взносы ${fmt(contrib)}` },
-  ];
-  const valid = rows.filter(r => r.val !== null);
-  const best = valid.reduce((a, b) => (a.val <= b.val ? a : b));
-  const worst = valid.reduce((a, b) => (a.val >= b.val ? a : b));
+  /* Патент и АУСН зависят от региона, поэтому спрашиваем недостающее,
+     а не подставляем среднее по стране. */
+  const rows = RATES.compareRegimes({ income, expenses, workers, who, psnPotential, agro });
+  const valid = rows.filter(r => r.total !== null);
+  const best = valid.length ? valid.reduce((a, b) => (a.total <= b.total ? a : b)) : null;
+  const worst = valid.length ? valid.reduce((a, b) => (a.total >= b.total ? a : b)) : null;
 
   const vat = income > RATES.usn.vatThreshold
     ? `<p style="color:var(--danger);font-size:var(--t-sm);margin-top:10px">
-         Доход выше ${(RATES.usn.vatThreshold / 1e6).toLocaleString("ru-RU")} млн ₽ — на УСН добавляется НДС, он в расчёт не включён.
+         Доход выше ${(RATES.usn.vatThreshold / 1e6).toLocaleString("ru-RU")} млн ₽ — на УСН добавляется НДС.
+         В расчёт он не включён: обычно его перекладывают на покупателя.
        </p>` : "";
 
-  document.getElementById("txOut").innerHTML = `
+  const workersNote = workers > 0
+    ? `<p style="font-size:var(--t-sm);color:var(--muted);margin-top:8px">
+         С работниками налог на УСН «Доходы» дополнительно уменьшается на взносы за них — но не более чем вдвое.
+         Здесь это не учтено: нужен фонд оплаты труда.
+       </p>` : "";
+
+  g("txOut").innerHTML = `
     <table class="cmp-table">
-      ${rows.map(r => `<tr class="${r === best ? "best" : ""}">
-        <td>${r.name}<br><span style="font-size:var(--t-xs);color:var(--muted)">${r.note}</span></td>
-        <td style="text-align:right;white-space:nowrap"><b>${r.val === null ? "—" : fmt(r.val)}</b></td>
+      ${rows.map(r => `<tr class="${r === best ? "best" : ""}${r.total === null ? " off" : ""}">
+        <td>${r.name}<br><span style="font-size:var(--t-xs);color:var(--muted)">${
+          r.total === null ? "не подходит: " + r.why : r.note}</span></td>
+        <td style="text-align:right;white-space:nowrap"><b>${r.total === null ? "—" : fmt(r.total)}</b></td>
       </tr>`).join("")}
     </table>
-    <p style="margin-top:12px"><b>Рекомендация:</b> ${best.name}${
-      valid.length > 1 && worst.val > best.val
-        ? ` — на ${fmt(worst.val - best.val)} выгоднее худшего варианта`
-        : ""}.</p>
-    ${vat}
-    <p style="color:var(--muted);font-size:var(--t-xs);margin-top:10px">Все суммы — налог вместе со страховыми взносами за год. ${RATES.disclaimer()}</p>`;
+    ${best ? `<p style="margin-top:12px"><b>Выгоднее всего:</b> ${best.name}${
+      valid.length > 1 && worst.total > best.total
+        ? ` — экономия ${fmt(worst.total - best.total)} в год против худшего варианта`
+        : ""}.</p>` : ""}
+    ${vat}${workersNote}
+    <p style="font-size:var(--t-xs);color:var(--muted);margin-top:10px">${RATES.disclaimer()}</p>`;
 }
 
-/* --- 2. Пеня --- */
 function calcPenalty() {
   const sum = +document.getElementById("pnSum").value || 0;
   const rate = +document.getElementById("pnRate").value || 0;

@@ -5,7 +5,10 @@
 import { json, fail, now, isPro, normEmail } from "./lib.js";
 import { logAction } from "./auth.js";
 import { notify, localDay, addDays, nextDue } from "./reminders.js";
-import { aiQuota, spendAI } from "./quota.js";
+import { aiQuota, spendAI, toolQuota, analyzeQuota } from "./quota.js";
+import { PLANS, planOf, tierOf } from "./plans.js";
+import { balanceOf } from "./points.js";
+import { codeFor } from "./referral.js";
 
 const TG = "https://api.telegram.org/bot";
 const LINK_TTL = 15 * 60 * 1000;
@@ -90,12 +93,47 @@ export async function status(request, env, origin, user) {
 
 /* ---------- Вебхук ---------- */
 
+
+/* Короткие советы: повод открыть бота, когда сроков нет.
+   Меняются раз в сутки и одинаковы у всех — списка на месяц хватает,
+   чтобы не повторяться слишком быстро. */
+const TIPS = [
+  "Взносы ИП за себя начисляются, даже если дохода не было совсем. Нулевой год — не повод не платить.",
+  "На УСН «Доходы» без работников взносы уменьшают налог полностью — вплоть до нуля. С работниками — не более чем наполовину.",
+  "Не пишите «в том числе НДС» в счёте, если вы на УСН без НДС: этот НДС придётся заплатить в бюджет.",
+  "Проверяйте статус самозанятого перед каждой оплатой и берите чек. Без чека расход не подтверждён.",
+  "Нельзя два года после увольнения оформлять бывшего работника как самозанятого на те же работы — это прямое основание для доначислений.",
+  "Отпускные выплачивают не позднее чем за три дня до отпуска. Нарушение — повод перенести отпуск по заявлению.",
+  "Патент считается не от выручки, а от потенциального дохода, который установил регион. Проверить свою цифру: patent.nalog.ru",
+  "Требование из налоговой нельзя игнорировать: письменное пояснение с расчётом часто снимает вопрос без последствий.",
+  "Неустойка выше 10–15% суммы долга обычно снижается судом по ст. 333 ГК РФ.",
+  "Закрыли ИП — не забудьте декларацию и взносы. Штрафы придут уже физлицу.",
+  "Больничный за первые три дня платит работодатель, дальше — СФР. Пособие облагается НДФЛ.",
+  "По искам о защите прав потребителей до 1 млн ₽ госпошлина не платится.",
+  "Договор с самозанятым переквалифицируют в трудовой, если оплата фиксированная и ежемесячная. Платите за результат по акту.",
+  "Документы храните минимум четыре года: налоговая может проверить и после закрытия бизнеса.",
+  "Сверяйте расчётный счёт контрагента с выпиской ЕГРЮЛ перед первой оплатой — реквизиты в письме могут быть подменены.",
+];
+
 const HELP = `Я помогу не пропустить сроки и отвечу на вопросы по праву, налогам и финансам.
 
-<b>Команды</b>
-/start — привязать аккаунт
+<b>Сроки</b>
 /sroki — ближайшие напоминания
 /dobavit — добавить напоминание
+
+<b>Подписка</b>
+/podpiska — что у вас сейчас и до какого числа
+/kupit — оформить или продлить
+/promo КОД — активировать промокод
+
+<b>Профиль</b>
+/profil — тариф, лимиты, баллы
+/bally — баланс и как его пополнить
+/pozvat — позвать друга и получить баллы
+/imya Новое Имя — сменить имя
+
+<b>Прочее</b>
+/sovet — короткий совет по делу
 /stop — отключить уведомления
 /help — эта справка
 
@@ -169,6 +207,140 @@ async function handle(env, chatId, text, username) {
     await env.DB.prepare("UPDATE users SET tg_chat_id = NULL WHERE email = ?").bind(user.email).run();
     await env.DB.prepare("UPDATE reminders SET channel = 'site' WHERE email = ?").bind(user.email).run();
     return send(env, chatId, "Отключил. Напоминания останутся в кабинете на сайте. Вернуться можно в любой момент — снова привяжите аккаунт.");
+  }
+
+
+  /* ---------- Подписка ---------- */
+
+  if (text === "/podpiska" || text === "/подписка") {
+    const plan = planOf(user);
+    const tier = tierOf(user);
+    if (tier === "free") {
+      return send(env, chatId,
+        `Сейчас у вас тариф <b>${esc(plan.title)}</b> — бесплатный.\n\n` +
+        `Что он даёт: ${plan.limits.aiPerDay} вопроса в день, ` +
+        `${plan.limits.toolUses} пробный запуск инструментов, ${plan.limits.reminders} напоминания.\n\n` +
+        `Оформить платный: /kupit`);
+    }
+    const left = user.pro_until
+      ? Math.ceil((user.pro_until - now()) / 86400000) : null;
+    return send(env, chatId,
+      `Ваш тариф: <b>${esc(plan.title)}</b>\n` +
+      (left !== null
+        ? `Действует до ${new Date(user.pro_until).toLocaleDateString("ru-RU")} — осталось ${left} дн.\n\n`
+        : "Бессрочно.\n\n") +
+      (left !== null && left <= 7
+        ? "Подписка скоро закончится. Продлить: /kupit\n"
+        : "Продлить заранее: /kupit\n") +
+      `Сменить тариф — там же.`);
+  }
+
+  if (text === "/kupit" || text === "/купить") {
+    const site = env.SITE_URL || "";
+    const rows = ["basic", "pro"].map(id => {
+      const pl = PLANS[id];
+      const save = Math.round((1 - pl.price.year / (pl.price.month * 12)) * 100);
+      return `<b>${esc(pl.title)}</b> — ${pl.price.month} ₽ в месяц или ${pl.price.year} ₽ за год (выгода ${save}%)\n` +
+             `   ${esc(pl.tagline || "")}`;
+    }).join("\n\n");
+
+    const bal = await balanceOf(env, user.email);
+    const points = bal > 0
+      ? `\n\nНа балансе ${bal} баллов — ими можно закрыть до половины цены.`
+      : "";
+
+    return send(env, chatId,
+      `<b>Тарифы</b>\n\n${rows}${points}\n\n` +
+      `Оформить: ${site}/dashboard.html?pay=1\n` +
+      `Оплата открывается сразу, входить заново не нужно.`);
+  }
+
+  if (text.startsWith("/promo") || text.startsWith("/промо")) {
+    const code = text.replace(/^\/\S+\s*/, "").trim().toUpperCase();
+    if (!code) return send(env, chatId, "Формат: <code>/promo КОД</code>");
+
+    const codes = String(env.PROMO_CODES || "").split(",").map(x => x.trim()).filter(Boolean);
+    const found = codes.map(c => c.split(":")).find(([n]) => n.toUpperCase() === code);
+    if (!found) return send(env, chatId, "Такого промокода нет. Проверьте написание.");
+
+    const already = await env.DB.prepare(
+      "SELECT id FROM payments WHERE email = ? AND source = 'promo' AND plan = ?"
+    ).bind(user.email, code).first();
+    if (already) return send(env, chatId, "Этот промокод вы уже использовали.");
+
+    const days = Math.max(1, Number(found[1]) || 0);
+    const until = Math.max(user.pro_until || 0, now()) + days * 86400000;
+    await env.DB.prepare("UPDATE users SET plan = 'pro', pro_until = ? WHERE email = ?")
+      .bind(until, user.email).run();
+    await env.DB.prepare(
+      `INSERT INTO payments (id, email, amount, plan, source, status, created_at, completed_at)
+       VALUES (?, ?, 0, ?, 'promo', 'succeeded', ?, ?)`
+    ).bind(`promo-${now()}-${user.email}`, user.email, code, now(), now()).run();
+    await logAction(env, user.email, `Промокод ${code} из Telegram: +${days} дн.`);
+
+    return send(env, chatId,
+      `Готово! Тариф «Про» на ${days} дн.\n` +
+      `Действует до ${new Date(until).toLocaleDateString("ru-RU")}.`);
+  }
+
+  /* ---------- Профиль ---------- */
+
+  if (text === "/profil" || text === "/профиль") {
+    const plan = planOf(user);
+    const ai = await aiQuota(env, user);
+    const tool = await toolQuota(env, user);
+    const an = await analyzeQuota(env, user);
+    const bal = await balanceOf(env, user.email);
+    const lim = v => (v.limit === null ? "без ограничений" : `${v.left} из ${v.limit}`);
+
+    return send(env, chatId,
+      `<b>${esc(user.name)}</b>\n${esc(user.email)}\n\n` +
+      `Тариф: <b>${esc(plan.title)}</b>` +
+      (user.pro_until ? ` до ${new Date(user.pro_until).toLocaleDateString("ru-RU")}` : "") + "\n" +
+      `Баллы: ${bal}\n\n` +
+      `<b>Осталось сегодня</b>\n` +
+      `Вопросов ИИ: ${lim(ai)}\n` +
+      `Запусков инструментов: ${lim(tool)}\n` +
+      `Разборов документов в месяц: ${lim(an)}\n\n` +
+      `Сменить имя: <code>/imya Иван Петров</code>\n` +
+      `Всё остальное — в кабинете: ${env.SITE_URL || ""}/dashboard.html`);
+  }
+
+  if (text === "/bally" || text === "/баллы") {
+    const bal = await balanceOf(env, user.email);
+    return send(env, chatId,
+      `На балансе: <b>${bal}</b> баллов\n\n` +
+      `1 балл = 1 ₽ скидки. Оплатить баллами можно до половины стоимости подписки.\n\n` +
+      `Как получить:\n` +
+      `• 150 — другу за регистрацию по вашей ссылке\n` +
+      `• 150 — вам, когда друг начнёт пользоваться\n` +
+      `• 500 — вам, когда друг впервые оплатит\n\n` +
+      `Ваша ссылка: /pozvat`);
+  }
+
+  if (text === "/pozvat" || text === "/позвать") {
+    const code = codeFor(user.email);
+    const link = `${env.SITE_URL || ""}/auth.html?ref=${code}`;
+    return send(env, chatId,
+      `Ваша пригласительная ссылка:\n${link}\n\n` +
+      `Другу — 150 баллов сразу при регистрации. Вам — 150, когда он начнёт пользоваться, ` +
+      `и ещё 500, когда впервые оплатит.\n\n` +
+      `Баллы тратятся внутри сервиса и не сгорают.`);
+  }
+
+  if (text.startsWith("/imya") || text.startsWith("/имя")) {
+    const name = text.replace(/^\/\S+\s*/, "").trim().slice(0, 80);
+    if (name.length < 2) return send(env, chatId, "Формат: <code>/imya Иван Петров</code>");
+    await env.DB.prepare("UPDATE users SET name = ? WHERE email = ?").bind(name, user.email).run();
+    await logAction(env, user.email, "Имя изменено из Telegram");
+    return send(env, chatId, `Готово. Теперь вас зовут <b>${esc(name)}</b>.`);
+  }
+
+  /* ---------- Совет ---------- */
+
+  if (text === "/sovet" || text === "/совет") {
+    const tip = TIPS[Math.floor(Date.now() / 86400000) % TIPS.length];
+    return send(env, chatId, `<b>Совет дня</b>\n\n${tip}`);
   }
 
   if (text === "/sroki" || text === "/срок" || text === "/сроки") {

@@ -1422,6 +1422,16 @@ function initPage(active) {
      объявлений в файле — на этом проект уже спотыкался. */
   restoreChat();
   CHATJOBS.resume();
+
+  /* Ссылка из бота вида ?pay=1 или ?pay=pro сразу открывает оплату:
+     иначе человек, пришедший платить, попадает в кабинет и должен
+     искать кнопку сам. */
+  const payParam = new URLSearchParams(location.search).get("pay");
+  if (payParam && PF.user()) {
+    const tier = ["basic", "pro"].includes(payParam) ? payParam : null;
+    setTimeout(() => PAY.open(tier), 400);
+    history.replaceState(null, "", location.pathname);
+  }
   initRevealAnimations();
 
   if (!document.querySelector('link[rel="manifest"]')) {

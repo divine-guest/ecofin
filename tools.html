@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=59">
+<link rel="stylesheet" href="css/style.css?v=60">
 </head>
 <body>
 <main class="section tint-green">
@@ -180,9 +180,18 @@
           <label>Ваш статус</label>
           <select id="taxRole">
             <option>Самозанятый (НПД)</option>
-            <option>ИП на УСН «Доходы»</option>
-            <option>ИП на патенте</option>
-            <option>ООО на УСН</option>
+            <option>ИП на УСН «Доходы» 6%</option>
+            <option>ИП на УСН «Доходы минус расходы» 15%</option>
+            <option>ИП на патенте (ПСН)</option>
+            <option>ИП на АУСН</option>
+            <option>ИП на ОСНО</option>
+            <option>ИП на ЕСХН</option>
+            <option>ООО на УСН «Доходы» 6%</option>
+            <option>ООО на УСН «Доходы минус расходы» 15%</option>
+            <option>ООО на АУСН</option>
+            <option>ООО на ОСНО</option>
+            <option>ООО на ЕСХН</option>
+            <option>Ещё не выбрал — подскажите</option>
           </select>
         </div>
         <div class="form-group"><label>Годовой доход (₽)</label><input type="number" id="taxIncome" placeholder="1200000"></div>
@@ -234,13 +243,13 @@
   <div class="container"><div id="partnersTools"></div></div>
 </main>
 
-<script src="js/themes.js?v=59"></script>
-<script src="js/api.js?v=59"></script>
-<script src="js/app.js?v=59"></script>
-<script src="js/ai.js?v=59"></script>
-<script src="js/templates.js?v=59"></script>
-<script src="js/docscan.js?v=59"></script>
-<script src="js/partners.js?v=59"></script>
+<script src="js/themes.js?v=60"></script>
+<script src="js/api.js?v=60"></script>
+<script src="js/app.js?v=60"></script>
+<script src="js/ai.js?v=60"></script>
+<script src="js/templates.js?v=60"></script>
+<script src="js/docscan.js?v=60"></script>
+<script src="js/partners.js?v=60"></script>
 <script>
 initPage("tools.html");
 
@@ -485,14 +494,19 @@ const DOCUI = {
   },
 };
 
+/* Перечисляем режимы прямо в задании: без этого модель по привычке
+   отвечает только про УСН, потому что о нём чаще пишут. */
+const ALL_REGIMES = "НПД (самозанятость), УСН «Доходы» 6%, УСН «Доходы минус расходы» 15%, " +
+  "патент (ПСН), АУСН, ЕСХН, ОСНО (НДФЛ для ИП или налог на прибыль для ООО)";
+
 function taxHelp() {
   const role = document.getElementById("taxRole").value;
   const income = document.getElementById("taxIncome").value;
   const extra = document.getElementById("taxExtra").value;
   return runAI(
-    `Ты — налоговый консультант. Статус: ${role}. Годовой доход: ${income} ₽. Дополнительно: ${extra}. Рассчитай налоговую нагрузку по подходящим режимам (НПД, УСН, патент, АУСН), сравни их, дай рекомендацию по выбору режима и напомни о ключевых сроках уплаты и лимитах на 2026 год.`,
+    `Ты — налоговый консультант. Статус: ${role}. Годовой доход: ${income} ₽. Дополнительно: ${extra}. Рассчитай налоговую нагрузку по всем режимам: ${ALL_REGIMES}, сравни их, дай рекомендацию по выбору режима и напомни о ключевых сроках уплаты и лимитах на 2026 год.`,
     () => OFFLINE.tax(role, income), "taxResult", "Налоговый расчёт (" + role + ")",
-    "Ты — налоговый консультант-практик. Дай полный расчёт по каждому подходящему режиму (НПД, УСН 6%, УСН 15%, ПСН, АУСН, НДС-пороги) с формулами и суммами, сравнительную таблицу, итоговую рекомендацию и календарь ключевых дат уплаты. Все изменения законодательства учитывай с оговоркой о проверке актуальности."
+    "Ты — налоговый консультант-практик. Дай полный расчёт по каждому подходящему режиму (НПД, УСН 6%, УСН 15%, ПСН, АУСН, НДС-пороги) с формулами и суммами, сравнительную таблицу, итоговую рекомендацию и календарь ключевых дат уплаты. Все изменения законодательства учитывай с оговоркой о проверке актуальности. ОБЯЗАТЕЛЬНО рассмотри ВСЕ применимые режимы: НПД, УСН 6%, УСН 15%, патент, АУСН, ЕСХН, ОСНО — и объясни, почему неподходящие не подходят. Патент и АУСН зависят от региона: скажи, где проверить. Не ограничивайся УСН."
   );
 }
 

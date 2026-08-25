@@ -38,6 +38,44 @@ const RATES = {
     vatThreshold: 60000000,// с этого дохода на УСН появляется НДС
   },
 
+
+  /* --- Патент (ПСН), гл. 26.5 НК РФ ---
+     Налог считается от потенциально возможного дохода, который
+     устанавливает регион, а не от фактической выручки. Единой цифры
+     нет — её берут из закона субъекта. */
+  psn: {
+    rate: 0.06,
+    incomeLimit: 60000000,   // лимит фактического дохода
+    workersLimit: 15,
+  },
+
+  /* --- АУСН, 17-ФЗ ---
+     Взносы за себя и обычные взносы за работников не платятся: вместо
+     них фиксированный взнос на травматизм. Режим действует не во всех
+     регионах — проверять по своему. */
+  ausn: {
+    incomeRate: 0.08,
+    profitRate: 0.20,
+    minTaxRate: 0.03,
+    incomeLimit: 60000000,
+    workersLimit: 5,
+    injuryFixed: 2750,       // фиксированный взнос на травматизм за год
+  },
+
+  /* --- ЕСХН, гл. 26.1 НК РФ ---
+     Только для сельхозпроизводителей: не менее 70% дохода от
+     сельхоздеятельности. */
+  eshn: {
+    rate: 0.06,
+    vatExemptUpTo: 60000000, // до этого дохода можно не платить НДС
+  },
+
+  /* --- ОСНО --- */
+  osno: {
+    profitTaxRate: 0.25,     // налог на прибыль организаций с 2025 г.
+    proDeduction: 0.20,      // профвычет ИП без подтверждённых расходов
+  },
+
   /* --- НДФЛ с трудовых доходов: пятиступенчатая шкала с 2025 г. --- */
   ndflScale: [
     { upTo: 2400000, rate: 0.13 },
@@ -155,6 +193,93 @@ const RATES = {
   },
 
   ndfl(amount) { return this.progressive(amount, this.ndflScale); },
+
+  /* Сравнение систем налогообложения.
+     Возвращает список: название, сумма к уплате за год, пояснение и
+     доступность. Взносы включены в итог у всех режимов, где они есть, —
+     иначе сравнение было бы нечестным.
+
+     who: "ip" | "ooo" | "self"   psnPotential — потенциальный доход по патенту */
+  compareRegimes({ income = 0, expenses = 0, workers = 0, who = "ip",
+                   psnPotential = 0, agro = false } = {}) {
+    const out = [];
+    const contrib = this.contributions(income);
+    const isIp = who === "ip" || who === "self";
+    /* Без работников взносы гасят налог полностью, с работниками — вдвое. */
+    const deductible = workers > 0 ? contrib / 2 : contrib;
+
+    const add = (id, name, total, note, why) =>
+      out.push({ id, name, total, note, available: total !== null, why });
+
+    /* НПД — только физлицо или ИП без работников. */
+    if (who !== "ooo") {
+      const ok = workers === 0 && income <= this.npd.limit;
+      add("npd", "НПД (самозанятость)",
+        ok ? income * this.npd.rateCompanies : null,
+        `${this.npd.rateCompanies * 100}% с юрлиц, 4% с физлиц. Взносов нет, отчётности нет`,
+        ok ? "" : (workers > 0 ? "нельзя нанимать работников"
+                               : `доход выше ${(this.npd.limit / 1e6).toFixed(1)} млн ₽`));
+    }
+
+    /* УСН «Доходы». */
+    add("usn6", "УСН «Доходы» 6%",
+      Math.max(0, income * this.usn.incomeRate - (isIp ? deductible : 0)) + (isIp ? contrib : 0),
+      isIp ? `налог минус взносы ${workers > 0 ? "(до 50%)" : "(полностью)"} + сами взносы ${Math.round(contrib).toLocaleString("ru-RU")} ₽`
+           : "6% с выручки", "");
+
+    /* УСН «Доходы минус расходы» — с минимальным налогом 1%. */
+    const usn15 = Math.max((income - expenses) * this.usn.profitRate,
+                           income * this.usn.minTaxRate) + (isIp ? contrib : 0);
+    add("usn15", "УСН «Доходы − расходы» 15%", usn15,
+      `не меньше 1% с дохода${isIp ? " + взносы" : ""}`, "");
+
+    /* Патент — считается от потенциального дохода региона. */
+    if (isIp) {
+      const ok = income <= this.psn.incomeLimit && workers <= this.psn.workersLimit && psnPotential > 0;
+      add("psn", "Патент (ПСН)",
+        ok ? psnPotential * this.psn.rate + contrib : null,
+        `6% от потенциального дохода региона${psnPotential ? "" : " — введите его"} + взносы`,
+        income > this.psn.incomeLimit ? `доход выше ${this.psn.incomeLimit / 1e6} млн ₽`
+          : workers > this.psn.workersLimit ? `больше ${this.psn.workersLimit} работников`
+          : psnPotential > 0 ? "" : "нужен потенциальный доход из закона региона");
+    }
+
+    /* АУСН — без взносов, но с ограничениями и не во всех регионах. */
+    const ausnOk = income <= this.ausn.incomeLimit && workers <= this.ausn.workersLimit;
+    const ausnIncome = income * this.ausn.incomeRate + this.ausn.injuryFixed;
+    const ausnProfit = Math.max((income - expenses) * this.ausn.profitRate,
+                                income * this.ausn.minTaxRate) + this.ausn.injuryFixed;
+    add("ausn", "АУСН 8%", ausnOk ? ausnIncome : null,
+      "страховых взносов нет, отчётности почти нет. Не во всех регионах",
+      ausnOk ? "" : (income > this.ausn.incomeLimit ? "доход выше 60 млн ₽"
+                                                    : `больше ${this.ausn.workersLimit} работников`));
+    add("ausnProfit", "АУСН 20% с прибыли", ausnOk ? ausnProfit : null,
+      "не меньше 3% с дохода, взносов нет", ausnOk ? "" : "те же ограничения");
+
+    /* ЕСХН — только сельхозпроизводителям. */
+    if (agro) {
+      add("eshn", "ЕСХН 6%",
+        Math.max(0, income - expenses) * this.eshn.rate + (isIp ? contrib : 0),
+        `6% с прибыли${isIp ? " + взносы" : ""}. НДС можно не платить при доходе до ${this.eshn.vatExemptUpTo / 1e6} млн ₽`, "");
+    }
+
+    /* ОСНО — считаем без НДС: он перекладывается на покупателя.
+       Зато прямо предупреждаем, что он появляется. */
+    if (who === "ooo") {
+      add("osno", "ОСНО (налог на прибыль)",
+        Math.max(0, income - expenses) * this.osno.profitTaxRate,
+        `${this.osno.profitTaxRate * 100}% с прибыли, сверху НДС 20%`, "");
+    } else {
+      const base = expenses > 0 ? Math.max(0, income - expenses)
+                                : income * (1 - this.osno.proDeduction);
+      add("osno", "ОСНО (НДФЛ)", this.ndfl(base) + contrib,
+        expenses > 0 ? "НДФЛ с прибыли + взносы, сверху НДС 20%"
+                     : `НДФЛ с дохода за вычетом ${this.osno.proDeduction * 100}% профвычета + взносы, сверху НДС 20%`, "");
+    }
+
+    return out;
+  },
+
 
   /* Взносы работодателя за год с указанной годовой зарплаты.
      small — малое или среднее предприятие (льготный тариф). */

@@ -1495,3 +1495,8 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 .check-link:hover { border-color: var(--primary); text-decoration: none; }
 .check-link b { font-size: var(--t-sm); }
 .check-link span { font-size: var(--t-xs); color: var(--muted); }
+
+
+/* Недоступный режим показываем, а не прячем: человеку важно понять,
+   почему он не подходит, а не гадать, куда делся вариант. */
+.cmp-table tr.off { opacity: .55; }

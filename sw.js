@@ -1,17 +1,17 @@
 /* ПравоФин — service worker (офлайн-кэш).
    Версию поднимаем при каждом релизе: иначе у вернувшихся посетителей
    останется старый кэш и новый фронтенд не подхватится. */
-const CACHE = "pravofin-v59";
+const CACHE = "pravofin-v60";
 
 const ASSETS = [
   "index.html", "tools.html", "calc.html", "courses.html", "games.html",
   "knowledge.html", "dashboard.html", "auth.html", "expenses.html",
   "search.html", "faq.html", "about.html", "legal.html", "onboarding.html",
   "404.html",
-  "css/style.css?v=59",
-  "js/contacts.js?v=59", "js/themes.js?v=59", "js/api.js?v=59", "js/app.js?v=59", "js/partners.js?v=59", "js/ai.js?v=59", "js/rates.js?v=59", "js/docscan.js?v=59",
-  "js/games.js?v=59", "js/knowledge.js?v=59", "js/templates.js?v=59", "js/courses.js?v=59",
-  "js/competencies.js?v=59",
+  "css/style.css?v=60",
+  "js/contacts.js?v=60", "js/themes.js?v=60", "js/api.js?v=60", "js/app.js?v=60", "js/partners.js?v=60", "js/ai.js?v=60", "js/rates.js?v=60", "js/docscan.js?v=60",
+  "js/games.js?v=60", "js/knowledge.js?v=60", "js/templates.js?v=60", "js/courses.js?v=60",
+  "js/competencies.js?v=60",
   "manifest.webmanifest", "icon.svg",
 ];
 
