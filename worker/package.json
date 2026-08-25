@@ -1,11 +1,17 @@
 {
-  "name": "pravofin-ai-worker",
+  "name": "pravofin-api",
   "private": true,
+  "type": "module",
+  "description": "Сервер ПравоФин. Один и тот же код работает и на Cloudflare Workers, и на обычной машине с Node: разница спрятана в worker/node/db.mjs.",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "secret": "wrangler secret put AI_API_KEY",
-    "tail": "wrangler tail"
+    "start": "node node/server.mjs",
+    "test:db": "node node/test-db.mjs",
+    "deploy:cf": "node deploy.mjs"
   },
-  "devDependencies": { "wrangler": "^4.20.0" }
+  "dependencies": {
+    "node-sqlite3-wasm": "^0.8.60"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.8.1"
+  }
 }
