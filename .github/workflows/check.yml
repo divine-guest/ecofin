@@ -65,3 +65,6 @@ jobs:
 
       - name: Проверка формул в калькуляторах
         run: node tests/rates.mjs
+
+      - name: Целостность содержания
+        run: node tests/content.mjs
