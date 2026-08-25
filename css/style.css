@@ -1639,3 +1639,39 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
   background: var(--surface-2); line-height: 1.65; font-size: var(--t-sm);
   max-height: 320px; overflow-y: auto;
 }
+
+
+/* ===== Блоки статьи базы знаний =====
+   Шаги и частые ошибки — самое ценное в правовом тексте, поэтому они
+   выделены, а не спрятаны в общий поток. */
+.kb-summary {
+  font-size: 1.02rem; color: var(--muted); line-height: 1.6;
+  margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+}
+.kb-part { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+.kb-part h4 {
+  font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .1em;
+  color: var(--muted); margin-bottom: 10px;
+}
+.kb-part ol, .kb-part ul { margin: 0; padding-left: 1.25em; display: flex; flex-direction: column; gap: 8px; }
+.kb-part li { line-height: 1.6; }
+.kb-steps h4 { color: var(--primary); }
+.kb-steps li::marker { color: var(--primary); font-weight: 700; }
+.kb-mistakes h4 { color: var(--danger); }
+.kb-mistakes li::marker { color: var(--danger); }
+.kb-law p { font-size: var(--t-sm); color: var(--muted); line-height: 1.7; }
+
+/* ===== Разбор ответа в тесте =====
+   Показывается всегда, а не только при ошибке: угадавший тоже не
+   обязательно понимает, почему это верно. */
+.quiz-why {
+  margin-top: 16px; padding: 16px 18px; border-radius: 14px;
+  background: var(--surface-2); border-left: 3px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+}
+.quiz-why.ok { border-left-color: var(--success, #2C7A52); }
+.quiz-why.no { border-left-color: var(--danger); }
+.quiz-why b { font-size: var(--t-sm); }
+.quiz-why.ok b { color: var(--success, #2C7A52); }
+.quiz-why.no b { color: var(--danger); }
+.quiz-why p { line-height: 1.6; font-size: var(--t-sm); color: var(--text); }

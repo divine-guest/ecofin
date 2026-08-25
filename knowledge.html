@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=66">
+<link rel="stylesheet" href="css/style.css?v=67">
 </head>
 <body>
 <main class="section tint-navy">
@@ -38,7 +38,10 @@
 
     <!-- Статьи -->
     <div class="tab-panel active" id="kb0">
-      <input type="text" id="articleSearch" placeholder="🔍 Поиск по статьям..." oninput="renderArticles(this.value)" style="margin-bottom:16px">
+      <input type="search" id="kbSearch" placeholder="Найти: патент, увольнение, блокировка счёта…"
+             oninput="renderArticles(this.value)" style="margin-bottom:12px">
+      <!-- Фильтр по областям: 28 статей одним списком читаются плохо. -->
+      <div class="qa-topics" id="kbAreas" style="margin-bottom:18px"></div>
       <div id="articleList"></div>
       <div class="article-full card" id="articleFull" style="margin-top:16px"></div>
     </div>
@@ -51,13 +54,13 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=66"></script>
-<script src="js/rates.js?v=66"></script>
-<script src="js/api.js?v=66"></script>
-<script src="js/app.js?v=66"></script>
-<script src="js/ai.js?v=66"></script>
-<script src="js/competencies.js?v=66"></script>
-<script src="js/knowledge.js?v=66"></script>
+<script src="js/themes.js?v=67"></script>
+<script src="js/rates.js?v=67"></script>
+<script src="js/api.js?v=67"></script>
+<script src="js/app.js?v=67"></script>
+<script src="js/ai.js?v=67"></script>
+<script src="js/competencies.js?v=67"></script>
+<script src="js/knowledge.js?v=67"></script>
 <script>
 initPage("knowledge.html");
 
@@ -68,15 +71,72 @@ function switchKb(i, btn) {
 }
 
 /* --- Статьи --- */
+let kbArea = "";
+
+/* Фильтр по областям: 28 статей одним списком читаются плохо. */
+function renderAreas() {
+  const box = document.getElementById("kbAreas");
+  if (!box || box.dataset.filled) return;
+  box.dataset.filled = "1";
+  const areas = [...new Set(ARTICLES.map(a => a.area).filter(Boolean))];
+  box.innerHTML = areas.map(a =>
+    `<button class="qa-chip" data-area="${escapeHtml(a)}" onclick="pickArea('${escapeHtml(a)}')">${escapeHtml(a)}</button>`
+  ).join("");
+}
+
+function pickArea(a) {
+  kbArea = kbArea === a ? "" : a;
+  document.querySelectorAll("#kbAreas .qa-chip").forEach(c =>
+    c.classList.toggle("on", c.dataset.area === kbArea));
+  renderArticles(document.getElementById("kbSearch")?.value || "");
+}
+
 function renderArticles(filter = "") {
+  renderAreas();
+  const f = filter.toLowerCase();
   const list = ARTICLES.map((a, i) => ({ ...a, i }))
-    .filter(a => !filter || (a.title + a.code + a.body).toLowerCase().includes(filter.toLowerCase()));
+    .filter(a => !kbArea || a.area === kbArea)
+    /* Ищем и по шагам с ошибками: человек часто помнит формулировку ошибки,
+       а не заголовок статьи. */
+    .filter(a => !f || (a.title + a.code + (a.summary || "") + a.body +
+      (a.steps || []).join(" ") + (a.mistakes || [])
+        .join(" ")).toLowerCase().includes(f));
+
   document.getElementById("articleList").innerHTML = list.length
     ? list.map(a => `<div class="article-item" onclick="openArticle(${a.i})">
-        <b>${a.title}</b> <span class="badge">${a.code}</span>
-        <div class="meta">${a.body.slice(0, 120)}…</div>
+        <b>${escapeHtml(a.title)}</b> <span class="badge">${escapeHtml(a.code)}</span>
+        <div class="meta">${escapeHtml(a.summary || a.body.slice(0, 120) + "…")}</div>
       </div>`).join("")
-    : `<p style="color:var(--muted)">Ничего не найдено</p>`;
+    : `<p style="color:var(--muted)">Ничего не найдено. Попробуйте другое слово или снимите фильтр по теме.</p>`;
+}
+
+/* Блоки статьи, которых раньше не было: что сделать, на чём попадаются,
+   на какие нормы опереться, куда идти дальше. */
+function renderArticleParts(a) {
+  const list = (arr, cls) => arr.map(x => `<li>${escapeHtml(x)}</li>`).join("");
+  let html = "";
+
+  if (a.steps && a.steps.length) {
+    html += `<div class="kb-part kb-steps">
+      <h4>Что сделать</h4><ol>${list(a.steps)}</ol></div>`;
+  }
+  if (a.mistakes && a.mistakes.length) {
+    html += `<div class="kb-part kb-mistakes">
+      <h4>Частые ошибки</h4><ul>${list(a.mistakes)}</ul></div>`;
+  }
+  if (a.law && a.law.length) {
+    html += `<div class="kb-part kb-law">
+      <h4>Нормы</h4><p>${a.law.map(escapeHtml).join(" · ")}</p></div>`;
+  }
+  if (a.related && a.related.length) {
+    const links = a.related.map(t => {
+      const j = ARTICLES.findIndex(x => x.title === t);
+      return j < 0 ? "" : `<button class="btn small secondary" onclick="openArticle(${j})">${escapeHtml(t)}</button>`;
+    }).filter(Boolean).join("");
+    if (links) html += `<div class="kb-part kb-related"><h4>Читать дальше</h4>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${links}</div></div>`;
+  }
+  return html;
 }
 function openArticle(i) {
   const a = ARTICLES[i];
@@ -102,8 +162,11 @@ function openArticle(i) {
   ];
   const hit = CALC_FOR.find(([re]) => re.test(a.title + " " + a.body));
 
-  el.innerHTML = `<span class="badge">${a.code}</span><h3 style="margin:10px 0">${a.title}</h3>
+  el.innerHTML = `<span class="badge">${escapeHtml(a.code)}</span>
+    <h3 style="margin:10px 0">${escapeHtml(a.title)}</h3>
+    ${a.summary ? `<p class="kb-summary">${escapeHtml(a.summary)}</p>` : ""}
     <div class="body">${escapeHtml(a.body)}</div>
+    ${renderArticleParts(a)}
     ${checked ? `<p class="hint" style="margin-top:14px">
       Сверено с первоисточником ${checked}. Нормы меняются — перед подачей
       документов проверьте актуальную редакцию (сайт ФНС, КонсультантПлюс).
@@ -149,27 +212,59 @@ function startTest(key) {
   document.getElementById("testStage").scrollIntoView({ behavior: "smooth" });
   renderQuestion();
 }
+/* Порядок вариантов перемешивается при каждом показе. Так угадать по
+   расположению нельзя в принципе — раньше 16 из 19 правильных ответов
+   стояли посередине, и тест проходился, не читая вопросов. */
+let shuffled = [];
+
+function shuffleOpts(c) {
+  const pairs = c.opts.map((text, i) => ({ text, right: i === c.correct }));
+  for (let i = pairs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+  }
+  return pairs;
+}
+
 function renderQuestion() {
   const c = test.questions[qIdx];
+  shuffled = shuffleOpts(c);
   document.getElementById("testStage").innerHTML = `
-    <p class="badge">${test.title} · вопрос ${qIdx + 1} из ${test.questions.length}</p>
+    <p class="badge">${escapeHtml(test.title)} · вопрос ${qIdx + 1} из ${test.questions.length}</p>
     <div class="progress-bar" style="margin:12px 0"><div style="width:${(qIdx / test.questions.length) * 100}%"></div></div>
-    <h3 style="margin-bottom:16px">${c.text}</h3>
-    ${c.opts.map((o, i) => `<button class="quiz-option" onclick="answerTest(${i})">${o}</button>`).join("")}`;
+    <h3 style="margin-bottom:16px">${escapeHtml(c.text)}</h3>
+    ${shuffled.map((o, i) => `<button class="quiz-option" onclick="answerTest(${i})">${escapeHtml(o.text)}</button>`).join("")}
+    <div id="quizWhy"></div>`;
 }
+
 function answerTest(i) {
   const c = test.questions[qIdx];
   const btns = document.querySelectorAll("#testStage .quiz-option");
   btns.forEach((b, j) => {
     b.disabled = true;
-    if (j === c.correct) b.classList.add("correct");
+    if (shuffled[j].right) b.classList.add("correct");
     else if (j === i) b.classList.add("wrong");
   });
-  if (i === c.correct) correct++;
-  setTimeout(() => {
-    qIdx++;
-    if (qIdx >= test.questions.length) finishTest(); else renderQuestion();
-  }, 900);
+
+  const right = shuffled[i].right;
+  if (right) correct++;
+
+  /* Разбор показываем всегда, а не только при ошибке: угадавший тоже
+     не обязательно понимает, почему это верно. Дальше — по кнопке,
+     чтобы человек успел прочитать. */
+  const last = qIdx + 1 >= test.questions.length;
+  document.getElementById("quizWhy").innerHTML = `
+    <div class="quiz-why ${right ? "ok" : "no"}">
+      <b>${right ? "Верно" : "Неверно"}</b>
+      ${c.why ? `<p>${escapeHtml(c.why)}</p>` : ""}
+      <button class="btn small" onclick="nextQuestion()">${last ? "Показать результат" : "Дальше"}</button>
+    </div>`;
+  document.getElementById("quizWhy").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function nextQuestion() {
+  qIdx++;
+  if (qIdx >= test.questions.length) finishTest(); else renderQuestion();
 }
 function finishTest() {
   const pct = Math.round((correct / test.questions.length) * 100);
@@ -182,6 +277,7 @@ function finishTest() {
       <p class="stat-value">${pct}%</p>
       <p style="color:var(--muted)">Верно ${correct} из ${test.questions.length} · компетенция +${grown}%</p><br>
       <button class="btn" onclick="startTest('${testKey}')">Пройти ещё раз</button>
+      <a class="btn secondary" href="#kbTop" onclick="document.querySelectorAll('.tab')[0].click()">К статьям</a>
     </div>`;
 }
 </script>
