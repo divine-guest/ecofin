@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=58">
+<link rel="stylesheet" href="css/style.css?v=59">
 </head>
 <body>
 <main class="section tint-navy">
@@ -32,10 +32,10 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=58"></script>
-<script src="js/api.js?v=58"></script>
-<script src="js/app.js?v=58"></script>
-<script src="js/ai.js?v=58"></script>
+<script src="js/themes.js?v=59"></script>
+<script src="js/api.js?v=59"></script>
+<script src="js/app.js?v=59"></script>
+<script src="js/ai.js?v=59"></script>
 <script>
 initPage("admin.html");
 
@@ -52,9 +52,16 @@ const AD = {
   dateTime(ts) { return ts ? new Date(ts).toLocaleString("ru-RU") : "—"; },
 
   /* Осталось дней подписки — для колонки «до какого числа». */
+  /* Платная подписка — это любой платный уровень, а не только «Про».
+     Раньше проверка стояла в трёх местах по отдельности, и «Базовый»
+     всюду выглядел как бесплатный. */
+  paid(u) {
+    return u.isAdmin || u.isOwner || u.plan === "pro" || u.plan === "basic";
+  },
+
   until(u) {
     if (u.isAdmin) return "бессрочно";
-    if (u.plan !== "pro") return "—";
+    if (!this.paid(u)) return "—";
     if (!u.proUntil) return "бессрочно";
     const days = Math.ceil((u.proUntil - Date.now()) / 86400000);
     return `${this.date(u.proUntil)} (${days} дн.)`;
@@ -200,8 +207,9 @@ const AD = {
     const badge = u.isOwner
       ? '<span class="badge pro">владелец</span>'
       : u.isAdmin ? '<span class="badge">админ</span>'
-      : u.plan === "pro" ? '<span class="badge ok">PRO</span>'
-      : '<span class="badge">Free</span>';
+      : u.plan === "pro" ? '<span class="badge ok">Про</span>'
+      : u.plan === "basic" ? '<span class="badge ok">Базовый</span>'
+      : '<span class="badge">Старт</span>';
 
     return `
       <tr>
@@ -218,8 +226,8 @@ const AD = {
           <button class="btn small secondary" onclick="AD.card('${encodeURIComponent(u.email)}')">Карточка</button>
           <button class="btn small secondary" onclick="AD.resetPassword('${encodeURIComponent(u.email)}')">Сбросить пароль</button>
           ${u.isAdmin ? "" : `
-            <button class="btn small gold" onclick="AD.quickGrant('${encodeURIComponent(u.email)}')">+ Pro</button>
-            ${u.plan === "pro" ? `<button class="btn small secondary" onclick="AD.revoke('${encodeURIComponent(u.email)}')">Снять</button>` : ""}
+            <button class="btn small gold" onclick="AD.quickGrant('${encodeURIComponent(u.email)}')">+ Подписка</button>
+            ${this.paid(u) && !u.isAdmin ? `<button class="btn small secondary" onclick="AD.revoke('${encodeURIComponent(u.email)}')">Снять</button>` : ""}
           `}
           ${meOwner && !u.isOwner && !me ? `
             <button class="btn small ${u.isAdmin ? "secondary" : ""}" onclick="AD.setRole('${encodeURIComponent(u.email)}', ${u.isAdmin ? "false" : "true"})">
@@ -317,7 +325,7 @@ const AD = {
       const u = d.user;
       alert(
         `${u.name} <${u.email}>\n` +
-        `Роль: ${u.role} | План: ${u.plan} | Подписка до: ${this.until(u)}\n` +
+        `Роль: ${u.role} | Тариф: ${u.planTitle || u.plan} | Подписка до: ${this.until(u)}\n` +
         `Регистрация: ${this.dateTime(u.createdAt)}\n` +
         `Последний вход: ${this.dateTime(u.lastLoginAt)}\n` +
         `Пробных запусков израсходовано: ${u.toolUses}\n\n` +

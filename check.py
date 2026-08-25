@@ -108,6 +108,26 @@ def check_meta(page, html):
     if 'lang="ru"' not in html:
         warn(page, "не указан язык страницы")
 
+
+def check_tiers():
+    """Ловит проверки вида plan === "pro", в которых забыт «Базовый».
+
+       Дефект повторялся трижды: подписчик «Базового» показывался как
+       бесплатный, потому что код писался, когда платный уровень был
+       один. Считаем подозрительной строку со сравнением с "pro",
+       рядом с которой нигде не упомянут "basic"."""
+    for f in glob.glob("*.html") + glob.glob("js/*.js"):
+        lines = io.open(f, encoding="utf-8").read().split("\n")
+        for i, ln in enumerate(lines):
+            if not re.search(r'[=!]==\s*"pro"|"pro"\s*[=!]==', ln):
+                continue
+            # Смотрим строку и её соседей: тройная развилка — это нормально.
+            around = "\n".join(lines[max(0, i - 2):i + 3])
+            if '"basic"' in around or "isPro" in around or "hasFeature" in around:
+                continue
+            err(f, f'строка {i + 1}: платным считается только «Про» — '
+                   f'подписчик «Базового» будет выглядеть бесплатным')
+
 def check_secrets():
     """Ключи не должны попадать в файлы, которые отдаются браузеру."""
     patterns = [(r"sk-[a-zA-Z0-9-]{16,}", "ключ ИИ-провайдера"),
@@ -130,6 +150,7 @@ def main():
         check_assets(page, html)
         check_calls(page, html)
         check_meta(page, html)
+    check_tiers()
     check_secrets()
 
     print(f"Проверено страниц: {len(pages)}\n")
