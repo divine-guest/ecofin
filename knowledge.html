@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=72">
+<link rel="stylesheet" href="css/style.css?v=73">
 </head>
 <body>
 <main class="section tint-navy">
@@ -54,14 +54,15 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=72"></script>
-<script src="js/rates.js?v=72"></script>
-<script src="js/api.js?v=72"></script>
-<script src="js/app.js?v=72"></script>
-<script src="js/palette.js?v=72"></script>
-<script src="js/ai.js?v=72"></script>
-<script src="js/competencies.js?v=72"></script>
-<script src="js/knowledge.js?v=72"></script>
+<script src="js/themes.js?v=73"></script>
+<script src="js/rates.js?v=73"></script>
+<script src="js/api.js?v=73"></script>
+<script src="js/app.js?v=73"></script>
+<script src="js/progress.js?v=73"></script>
+<script src="js/palette.js?v=73"></script>
+<script src="js/ai.js?v=73"></script>
+<script src="js/competencies.js?v=73"></script>
+<script src="js/knowledge.js?v=73"></script>
 <script>
 initPage("knowledge.html");
 
@@ -143,6 +144,7 @@ function openArticle(i) {
   const a = ARTICLES[i];
   const el = document.getElementById("articleFull");
   el.classList.add("show");
+  markRead(a.title);
   /* Правовой текст без даты проверки не заслуживает доверия и рискован
      юридически: нормы меняются, а статья выглядит вечной. Дату берём
      из единого конфига ставок, чтобы она не разъезжалась с расчётами. */
@@ -280,6 +282,24 @@ function finishTest() {
       <button class="btn" onclick="startTest('${testKey}')">Пройти ещё раз</button>
       <a class="btn secondary" href="#kbTop" onclick="document.querySelectorAll('.tab')[0].click()">К статьям</a>
     </div>`;
+}
+
+/* Что человек уже читал.
+
+   «Личный план развития» в кабинете подбирает следующую статью и
+   пропускает прочитанные — но отметки никто не ставил, и план всегда
+   советовал одну и ту же статью, сколько бы её ни открывали.
+   Список уезжает на сервер: читал на телефоне — учтётся на компьютере. */
+function markRead(title) {
+  const u = PF.user();
+  if (!u) return;
+  const key = "pf_read_" + u.email;
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(key) || "[]"); } catch {}
+  if (list.includes(title)) return;
+  list.push(title);
+  localStorage.setItem(key, JSON.stringify(list.slice(-200)));
+  if (typeof PROGRESS !== "undefined") PROGRESS.push("read");
 }
 
 /* Открытие по ссылке из кабинета: #a=Заголовок статьи или #test=ключ.

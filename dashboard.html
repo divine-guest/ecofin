@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=72">
+<link rel="stylesheet" href="css/style.css?v=73">
 </head>
 <body>
 <main class="section">
@@ -33,14 +33,15 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=72"></script>
-<script src="js/api.js?v=72"></script>
-<script src="js/app.js?v=72"></script>
-<script src="js/palette.js?v=72"></script>
-<script src="js/ai.js?v=72"></script>
-<script src="js/knowledge.js?v=72"></script>
-<script src="js/competencies.js?v=72"></script>
-<script src="js/courses.js?v=72"></script>
+<script src="js/themes.js?v=73"></script>
+<script src="js/api.js?v=73"></script>
+<script src="js/app.js?v=73"></script>
+<script src="js/progress.js?v=73"></script>
+<script src="js/palette.js?v=73"></script>
+<script src="js/ai.js?v=73"></script>
+<script src="js/knowledge.js?v=73"></script>
+<script src="js/competencies.js?v=73"></script>
+<script src="js/courses.js?v=73"></script>
 <script>
 initPage("dashboard.html");
 
@@ -59,6 +60,9 @@ const CAL = (() => {
     const s = JSON.parse(localStorage.getItem(key()) || "{}");
     s.money = arr;
     localStorage.setItem(key(), JSON.stringify(s));
+    /* Серия дней — главный ежедневный крючок сервиса. Раньше она жила
+       только в этом браузере и обнулялась при переходе на телефон. */
+    if (typeof PROGRESS !== "undefined") PROGRESS.push("habits");
   }
   function iso(y, m, d) { return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`; }
   function todayISO() { const t = new Date(); return iso(t.getFullYear(), t.getMonth(), t.getDate()); }
@@ -916,8 +920,14 @@ async function fillCabinet() {
     TRIAL.check().catch(() => {}),
     COMP.pull().catch(() => {}),
   ]);
-  renderCabinet();
+  refillCabinet();
+}
 
+/* Перерисовать кабинет и заново наполнить всё, что рисуется поверх
+   разметки. Вынесено отдельно, потому что зовётся ещё и после того,
+   как с сервера приехал прогресс с другого устройства. */
+function refillCabinet() {
+  renderCabinet();
   const slot = document.getElementById("trialSlot");
   if (slot) slot.innerHTML = TRIAL.banner();
   PLAN.render();
@@ -927,6 +937,10 @@ async function fillCabinet() {
   NOTES.load();
   SUMMARY.load();
 }
+
+/* Приехала «Копилка» и уроки с другого устройства — показываем их сразу,
+   а не после перезагрузки страницы. */
+document.addEventListener("pf:progress", refillCabinet);
 
 /* ============ Продление подписки ============
 

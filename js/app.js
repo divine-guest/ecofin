@@ -42,6 +42,7 @@ const PF = {
     const s = this.scores();
     s[game] = Math.max(s[game] || 0, points);
     localStorage.setItem(this.localKey("scores"), JSON.stringify(s));
+    if (typeof PROGRESS !== "undefined") PROGRESS.push("scores");
   },
   scores() { try { return JSON.parse(localStorage.getItem(this.localKey("scores")) || "{}"); } catch { return {}; } },
   getScore(game) { return this.scores()[game] || 0; },
@@ -53,6 +54,7 @@ const PF = {
     if (!Object.keys(safe).length) return;
     const cur = this.prefs();
     localStorage.setItem(this.localKey("prefs"), JSON.stringify({ ...cur, ...safe }));
+    if (typeof PROGRESS !== "undefined") PROGRESS.push("prefs");
   },
   prefs() { try { return JSON.parse(localStorage.getItem(this.localKey("prefs")) || "{}"); } catch { return {}; } },
 

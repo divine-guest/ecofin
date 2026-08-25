@@ -12,6 +12,7 @@ import * as reminders from "./reminders.js";
 import * as aijobs from "./aijobs.js";
 import * as qa from "./qa.js";
 import * as saved from "./saved.js";
+import * as progress from "./progress.js";
 import * as summary from "./summary.js";
 import { runDigest } from "./digest.js";
 import * as points from "./points.js";
@@ -57,6 +58,9 @@ const ROUTES = [
   ["POST", "/api/notes", saved.saveNotes, "user"],
   ["GET", "/api/summary", summary.summary, "user"],
   ["GET", "/api/competencies", saved.comp, "user"],
+  ["GET", "/api/progress", progress.getAll, "user"],
+  ["POST", "/api/progress", progress.put, "user"],
+  ["POST", "/api/progress/clear", progress.clear, "user"],
   ["POST", "/api/competencies", saved.saveComp, "user"],
 
   ["GET", "/api/qa", qa.list, "public"],

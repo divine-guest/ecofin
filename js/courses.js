@@ -104,11 +104,18 @@ const COURSE_PROGRESS = {
   done(courseId, lessonIdx) {
     const p = this.get();
     p[courseId] = [...new Set([...(p[courseId] || []), lessonIdx])];
-    localStorage.setItem(this.key(), JSON.stringify(p));
+    this.set(p);
   },
   reset(courseId) {
     const p = this.get();
     delete p[courseId];
+    this.set(p);
+  },
+  /* Прогресс уезжает на сервер: пройденный на работе урок должен
+     остаться пройденным и дома. Пройденный урок не «непроходится»,
+     поэтому слияние безопасно — см. js/progress.js. */
+  set(p) {
     localStorage.setItem(this.key(), JSON.stringify(p));
+    if (typeof PROGRESS !== "undefined") PROGRESS.push("courses");
   },
 };

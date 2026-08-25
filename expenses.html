@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=72">
+<link rel="stylesheet" href="css/style.css?v=73">
 </head>
 <body>
 <main class="section tint-green">
@@ -61,12 +61,13 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=72"></script>
-<script src="js/api.js?v=72"></script>
-<script src="js/app.js?v=72"></script>
-<script src="js/palette.js?v=72"></script>
-<script src="js/ai.js?v=72"></script>
-<script src="js/competencies.js?v=72"></script>
+<script src="js/themes.js?v=73"></script>
+<script src="js/api.js?v=73"></script>
+<script src="js/app.js?v=73"></script>
+<script src="js/progress.js?v=73"></script>
+<script src="js/palette.js?v=73"></script>
+<script src="js/ai.js?v=73"></script>
+<script src="js/competencies.js?v=73"></script>
 <script>
 initPage("expenses.html");
 
@@ -74,13 +75,22 @@ const CATS = ["Еда", "Жильё", "Транспорт", "Бизнес", "З�
 const CAT_COLORS = ["#e86a6a", "#5b8def", "#22c55e", "#0e8f86", "#d9b437", "#8b7cf0", "#f0936a", "#8a94a0"];
 const key = () => "pf_exp_" + (PF.user() ? PF.user().email : "guest");
 const all = () => JSON.parse(localStorage.getItem(key()) || '{"items":[],"limit":0}');
-const save = d => localStorage.setItem(key(), JSON.stringify(d));
+/* Живые записи. Удалённые не выбрасываем, а помечаем: дневник теперь
+   синхронизируется между устройствами, и выброшенная запись вернулась бы
+   с телефона, где о её удалении ещё не знают. Пометка «удалено»
+   переживает слияние, отсутствие записи — нет. */
+const live = d => (d || all()).items.filter(x => !x.del);
+const save = d => {
+  localStorage.setItem(key(), JSON.stringify(d));
+  /* Траты живут на сервере: внесённое с телефона видно с компьютера. */
+  if (typeof PROGRESS !== "undefined") PROGRESS.push("expenses");
+};
 
 document.getElementById("exCat").innerHTML = CATS.map(c => `<option>${c}</option>`).join("");
 
 function monthItems() {
   const now = new Date(), p = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
-  return all().items.filter(x => x.date.startsWith(p));
+  return live().filter(x => x.date.startsWith(p));
 }
 function render() {
   const items = monthItems();
@@ -90,7 +100,7 @@ function render() {
   const lim = all().limit;
   document.getElementById("exLimit").textContent = lim ? Math.max(0, lim - total).toLocaleString("ru-RU") + " ₽ осталось" : "не задан";
 
-  document.getElementById("exList").innerHTML = all().items.slice(0, 30).map((x, i) => `
+  document.getElementById("exList").innerHTML = live().slice(0, 30).map((x, i) => `
     <p style="padding:7px 0;border-bottom:1px solid var(--border);font-size:var(--t-sm);display:flex;justify-content:space-between;gap:8px">
       <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${CAT_COLORS[CATS.indexOf(x.cat)] || "#888"}"></span>
         ${x.cat} · <span style="color:var(--muted)">${x.date.slice(8)}.${x.date.slice(5, 7)}</span></span>
@@ -113,7 +123,12 @@ function addExp() {
   const cat = document.getElementById("exCat").value;
   if (!sum) return toast("Введите сумму");
   const d = all();
-  d.items.unshift({ sum, cat, date: new Date().toISOString().slice(0, 10) });
+  d.items.unshift({
+    /* Свой номер у каждой записи: по нему устройства понимают, что это
+       одна и та же трата, а не две одинаковых. */
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    sum, cat, date: new Date().toISOString().slice(0, 10),
+  });
   save(d);
   document.getElementById("exSum").value = "";
   COMP.award("finance", 1);
@@ -122,9 +137,10 @@ function addExp() {
 }
 function delExp(i) {
   const d = all();
-  const now = new Date(), p = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
-  const monthIdx = d.items.map((x, j) => x.date.startsWith(p) ? j : -1).filter(j => j >= 0)[i];
-  d.items.splice(monthIdx, 1);
+  const target = live(d)[i];
+  if (!target) return;
+  const row = d.items.find(x => x === target);
+  if (row) row.del = 1;
   save(d); render();
 }
 function setLimit() {
@@ -133,6 +149,8 @@ function setLimit() {
   toast(v ? "Лимит установлен" : "Лимит снят");
 }
 render();
+/* Приехали траты с другого устройства — показываем сразу. */
+document.addEventListener("pf:progress", render);
 </script>
 </body>
 </html>

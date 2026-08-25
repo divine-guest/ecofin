@@ -102,6 +102,13 @@ const API = {
     set(id) { return API.request("/api/themes", { method: "POST", body: { id } }); },
   },
 
+  /* Прогресс между устройствами: «Копилка», курсы, практикум, траты. */
+  progress: {
+    all() { return API.request("/api/progress"); },
+    put(key, data) { return API.request("/api/progress", { method: "POST", body: { key, data } }); },
+    clear(key) { return API.request("/api/progress/clear", { method: "POST", body: { key } }); },
+  },
+
   /* --- Напоминания и уведомления --- */
   reminders: {
     list() { return API.request("/api/reminders"); },
