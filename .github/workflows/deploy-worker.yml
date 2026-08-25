@@ -15,6 +15,10 @@ on:
     paths:
       - 'worker/src/**'
       - 'worker/schema.sql'
+      # Миграции применяются самой выкаткой, значит новая миграция —
+      # такой же повод выкатиться, как и новый код.
+      - 'worker/migrate-*.sql'
+      - 'worker/wrangler.toml'
       - 'worker/deploy.mjs'
       - '.github/workflows/deploy-worker.yml'
 
