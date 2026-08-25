@@ -157,6 +157,18 @@ export async function listThemes(request, env, origin, user) {
 }
 
 /* POST /api/themes {id} — возможность тарифа «Про». */
+/* POST /api/digest {off} — включить или выключить сводку недели.
+   Отдельной ручкой, а не внутри профиля: человек ищет её там, где
+   отключают уведомления, а не там, где меняют имя. */
+export async function setDigest(request, env, origin, user) {
+  const b = await request.json().catch(() => ({}));
+  const off = b.off ? 1 : 0;
+  await env.DB.prepare("UPDATE users SET digest_off = ? WHERE email = ?")
+    .bind(off, user.email).run();
+  await logAction(env, user.email, off ? "Сводка недели отключена" : "Сводка недели включена");
+  return json(env, origin, { off: Boolean(off) });
+}
+
 export async function setTheme(request, env, origin, user) {
   const { hasFeature } = await import("./plans.js");
   const b = await request.json().catch(() => ({}));

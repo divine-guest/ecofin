@@ -128,6 +128,7 @@ export function publicUser(row) {
     isOwner: row.role === "owner",
     tier: tierOf(row),
     planTitle: planOf(row).title,
+    digestOff: Boolean(row.digest_off),
     features: planOf(row).features,
     themeAccent: row.theme_accent || "",
     points: row.points || 0,

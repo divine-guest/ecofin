@@ -12,6 +12,7 @@ import * as reminders from "./reminders.js";
 import * as aijobs from "./aijobs.js";
 import * as qa from "./qa.js";
 import * as saved from "./saved.js";
+import { runDigest } from "./digest.js";
 import * as points from "./points.js";
 import * as courses from "./courses.js";
 import * as telegram from "./telegram.js";
@@ -46,6 +47,7 @@ const ROUTES = [
   /* Фоновые задачи ИИ: вопрос переживает переход на другую страницу. */
   /* Публичная лента: читают все, предлагают вошедшие, решает владелец. */
   /* Кабинет: сохранённые расчёты и история вопросов. */
+  ["POST", "/api/digest", auth.setDigest, "user"],
   ["GET", "/api/saved", saved.list, "user"],
   ["POST", "/api/saved", saved.save, "user"],
   ["POST", "/api/saved/delete", saved.remove, "user"],
@@ -149,6 +151,8 @@ export default {
   async scheduled(event, env, ctx) {
     if (!env.DB) return;
     ctx.waitUntil(telegram.runReminders(env).catch(e => console.error("cron", e.message)));
+    /* Сводка недели: сама решает, у кого сейчас утро понедельника. */
+    ctx.waitUntil(runDigest(env, telegram.send).catch(e => console.error("digest", e.message)));
   },
 
   async fetch(request, env, ctx) {

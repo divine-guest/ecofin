@@ -97,7 +97,7 @@ export async function status(request, env, origin, user) {
 /* Короткие советы: повод открыть бота, когда сроков нет.
    Меняются раз в сутки и одинаковы у всех — списка на месяц хватает,
    чтобы не повторяться слишком быстро. */
-const TIPS = [
+export const TIPS = [
   "Взносы ИП за себя начисляются, даже если дохода не было совсем. Нулевой год — не повод не платить.",
   "На УСН «Доходы» без работников взносы уменьшают налог полностью — вплоть до нуля. С работниками — не более чем наполовину.",
   "Не пишите «в том числе НДС» в счёте, если вы на УСН без НДС: этот НДС придётся заплатить в бюджет.",
@@ -133,6 +133,7 @@ const HELP = `Я помогу не пропустить сроки и отвеч
 /imya Новое Имя — сменить имя
 
 <b>Прочее</b>
+/svodka — что у вас на этой неделе
 /sovet — короткий совет по делу
 /stop — отключить уведомления
 /help — эта справка
@@ -337,6 +338,25 @@ async function handle(env, chatId, text, username) {
   }
 
   /* ---------- Совет ---------- */
+
+  if (text === "/svodka" || text === "/сводка") {
+    const { previewDigest } = await import("./digest.js");
+    const d = await previewDigest(env, user);
+    return send(env, chatId, d
+      ? d.text
+      : "На этой неделе ничего срочного. Сводка приходит по понедельникам утром — " +
+        "отключить можно командой /svodka_off");
+  }
+
+  if (text === "/svodka_off" || text === "/сводка_выкл") {
+    await env.DB.prepare("UPDATE users SET digest_off = 1 WHERE email = ?").bind(user.email).run();
+    return send(env, chatId, "Сводка недели отключена. Вернуть: /svodka_on");
+  }
+
+  if (text === "/svodka_on" || text === "/сводка_вкл") {
+    await env.DB.prepare("UPDATE users SET digest_off = 0 WHERE email = ?").bind(user.email).run();
+    return send(env, chatId, "Сводка недели включена. Приходит по понедельникам утром.");
+  }
 
   if (text === "/sovet" || text === "/совет") {
     const tip = TIPS[Math.floor(Date.now() / 86400000) % TIPS.length];
