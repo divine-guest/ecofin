@@ -34,6 +34,7 @@ const PALETTE = {
 
   base() {
     const list = [
+      { kind: "Раздел", title: "Что делать: разбор ситуаций", href: "situations.html" },
       { kind: "Раздел", title: "Кабинет", href: "dashboard.html" },
       { kind: "Раздел", title: "ИИ-инструменты", href: "tools.html" },
       { kind: "Раздел", title: "Калькуляторы", href: "calc.html" },

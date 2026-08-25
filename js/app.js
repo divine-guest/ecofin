@@ -245,9 +245,11 @@ function renderHeader(active) {
      статус в профиле. Человек не ищет пропавший пункт — он решает,
      что раздела нет. Предсказуемость здесь важнее умности. */
   const main = [
+    /* «Что делать» стоит первым намеренно: человек приходит не за
+       инструментом, а с бедой, и не знает, в какой раздел ему идти. */
+    ["situations.html", "Что делать"],
     ["tools.html", "ИИ-инструменты"],
     ["calc.html", "Калькуляторы"],
-    ["games.html", "Практикум"],
     ["knowledge.html", "База знаний"],
   ];
 
@@ -258,8 +260,8 @@ function renderHeader(active) {
 
   const shown = new Set(pages.map(([h]) => h));
   const rest = [
-    ["answers.html", "Ответы"], ["courses.html", "Курсы"], ["expenses.html", "Дневник трат"],
-    ["search.html", "Поиск"], ["faq.html", "Вопросы"],
+    ["games.html", "Практикум"], ["answers.html", "Ответы"], ["courses.html", "Курсы"],
+    ["expenses.html", "Дневник трат"], ["search.html", "Поиск"], ["faq.html", "Вопросы"],
   ].filter(([h]) => !shown.has(h));
 
   const link = ([href, label]) =>
@@ -301,7 +303,7 @@ function renderFooter() {
   f.innerHTML = `<div class="container">
     <p><b>ПравоФин</b> — экосистема юридической и финансовой грамотности © 2026</p>
     <p class="footer-nav">
-      ${L("tools.html", "Инструменты")} · ${L("calc.html", "Калькуляторы")} ·
+      ${L("situations.html", "Что делать")} · ${L("tools.html", "Инструменты")} · ${L("calc.html", "Калькуляторы")} ·
       ${L("knowledge.html", "База знаний")} · ${L("courses.html", "Курсы")} ·
       ${L("answers.html", "Ответы на вопросы")} · ${L("games.html", "Практикум")} ·
       ${L("expenses.html", "Дневник трат")} ·

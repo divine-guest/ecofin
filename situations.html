@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Что делать: разбор ситуаций — ПравоФин</title>
+<!-- seo:start -->
+<meta name="description" content="Не платят по договору, пришло требование из налоговой, заблокировали счёт, увольняется работник — ответьте на несколько вопросов и получите план действий со сроками и расчётами.">
+<link rel="canonical" href="https://divine-guest.github.io/ecofin/situations.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ПравоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Что делать: разбор ситуаций — ПравоФин">
+<meta property="og:description" content="Опишите, что случилось, — получите порядок действий, сроки и расчёты. Без регистрации.">
+<meta property="og:url" content="https://divine-guest.github.io/ecofin/situations.html">
+<meta property="og:image" content="https://divine-guest.github.io/ecofin/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ПравоФин — право, налоги и финансы в одном сервисе">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<!-- seo:end -->
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css?v=81">
+<style>
+  /* На печать уходит только план: человек несёт его бухгалтеру или юристу. */
+  @media print {
+    .site-header, .site-footer, .chat-toggle, .no-print, #sitPicker { display: none !important; }
+    .sit-plan { border: none; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<main class="section">
+  <div class="container" style="max-width:860px">
+    <div class="section-title">
+      <h1>Что делать, если <span>случилось</span></h1>
+      <div class="line"></div>
+      <p class="subtitle">
+        Выберите ситуацию, ответьте на несколько вопросов — и получите порядок действий:
+        что сделать, в какие сроки, сколько считать и на что опереться. Без регистрации.
+      </p>
+    </div>
+
+    <!-- Список ситуаций. Он же — то, ради чего сюда приходят из поиска:
+         человек не знает, что гуглить, он знает только «мне не платят». -->
+    <div id="sitPicker"></div>
+
+    <!-- Вопросы и план -->
+    <div id="sitFlow"></div>
+  </div>
+</main>
+
+<script src="js/themes.js?v=81"></script>
+<script src="js/rates.js?v=81"></script>
+<script src="js/api.js?v=81"></script>
+<script src="js/app.js?v=81"></script>
+<script src="js/progress.js?v=81"></script>
+<script src="js/palette.js?v=81"></script>
+<script src="js/ai.js?v=81"></script>
+<script src="js/situations.js?v=81"></script>
+<script>
+initPage("situations.html");
+
+/* ============ Разбор ситуации ============
+
+   Три состояния: список ситуаций → вопросы по одному → план.
+   Состояние держим в адресе (#s=debt), чтобы ссылку можно было
+   переслать и чтобы кнопка «назад» в браузере работала как ожидается. */
+const SIT = {
+  current: null,
+  answers: {},
+  step: 0,
+
+  /* --- Список --- */
+  showList() {
+    this.current = null;
+    document.getElementById("sitFlow").innerHTML = "";
+    const box = document.getElementById("sitPicker");
+    box.style.display = "block";
+    box.innerHTML = `
+      <div class="grid cols-2">
+        ${SITUATIONS.map(s => `
+          <a class="card sit-card" href="#s=${s.id}" onclick="SIT.open('${s.id}');return false">
+            <span class="badge">${escapeHtml(s.area)}</span>
+            <h3>${escapeHtml(s.title)}</h3>
+            <p>${escapeHtml(s.lead)}</p>
+          </a>`).join("")}
+      </div>
+      <p class="hint" style="margin-top:20px;text-align:center">
+        Ситуации нет в списке? <a href="#" onclick="chatToggle();return false">Спросите консультанта</a> —
+        три вопроса в день бесплатно.
+      </p>`;
+  },
+
+  /* --- Вопросы --- */
+  open(id) {
+    const s = SITUATIONS.find(x => x.id === id);
+    if (!s) return this.showList();
+    this.current = s;
+    this.answers = {};
+    this.step = 0;
+    history.replaceState(null, "", "#s=" + id);
+    document.getElementById("sitPicker").style.display = "none";
+    trackEvent("situation_open", { id });
+    this.renderQuestion();
+  },
+
+  renderQuestion() {
+    const s = this.current;
+    const q = s.questions[this.step];
+    document.getElementById("sitFlow").innerHTML = `
+      <button class="btn small secondary" onclick="SIT.back()">← ${
+        this.step === 0 ? "Все ситуации" : "Назад"}</button>
+      <div class="card sit-question">
+        <p class="hint">${escapeHtml(s.title)} · вопрос ${this.step + 1} из ${s.questions.length}</p>
+        <div class="progress-bar" style="margin:10px 0 18px">
+          <div style="width:${Math.round(this.step / s.questions.length * 100)}%"></div>
+        </div>
+        <h3>${escapeHtml(q.q)}</h3>
+        <div class="sit-options">
+          ${q.options.map(([v, label]) => `
+            <button class="quiz-option" onclick="SIT.answer('${q.key}','${v}')">${escapeHtml(label)}</button>
+          `).join("")}
+        </div>
+      </div>`;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  },
+
+  answer(key, value) {
+    this.answers[key] = value;
+    this.step++;
+    if (this.step < this.current.questions.length) return this.renderQuestion();
+    this.renderPlan();
+  },
+
+  back() {
+    if (this.step === 0) { history.replaceState(null, "", location.pathname); return this.showList(); }
+    this.step--;
+    this.renderQuestion();
+  },
+
+  /* --- План --- */
+  renderPlan() {
+    const s = this.current;
+    const p = s.plan(this.answers);
+    this.plan = p;
+    trackEvent("situation_plan", { id: s.id });
+
+    const link = ([href, label]) => /^https?:/.test(href)
+      ? `<a class="sit-link" href="${href}" target="_blank" rel="noopener">${escapeHtml(label)} ↗</a>`
+      : `<a class="sit-link" href="${href}">${escapeHtml(label)}</a>`;
+
+    const deadlines = p.steps.filter(x => x.deadline);
+
+    document.getElementById("sitFlow").innerHTML = `
+      <button class="btn small secondary no-print" onclick="SIT.back()">← Изменить ответы</button>
+
+      <div class="card sit-plan">
+        <span class="badge">${escapeHtml(s.area)}</span>
+        <h2 class="sit-plan-title">${escapeHtml(p.title)}</h2>
+        <p class="sit-summary">${escapeHtml(p.summary)}</p>
+
+        ${p.warn.map(w => `<p class="calc-warn">${escapeHtml(w)}</p>`).join("")}
+
+        <ol class="sit-steps">
+          ${p.steps.map(st => `
+            <li>
+              <div class="sit-step-head">
+                <b>${escapeHtml(st.do)}</b>
+                ${st.when ? `<span class="sit-when">${escapeHtml(st.when)}</span>` : ""}
+              </div>
+              <p>${escapeHtml(st.why)}</p>
+              ${st.link ? link(st.link) : ""}
+            </li>`).join("")}
+        </ol>
+
+        <p class="kb-checked">Это порядок действий по общему правилу, а не юридическая консультация:
+          в вашей ситуации могут быть обстоятельства, которые всё меняют. Нормы сверены
+          на ${new Date(RATES.checkedOn).toLocaleDateString("ru-RU")}.</p>
+      </div>
+
+      <div class="card sit-next no-print">
+        <h3>Что дальше</h3>
+        <div class="sit-actions">
+          ${deadlines.length ? `
+            <button class="btn gold" onclick="SIT.addDeadlines(this)">
+              Поставить ${deadlines.length} ${plural(deadlines.length, "срок", "срока", "сроков")} в напоминания
+            </button>` : ""}
+          <button class="btn" onclick="SIT.ask()">Спросить консультанта про свой случай</button>
+          <button class="btn secondary" onclick="window.print()">Скачать план</button>
+        </div>
+        ${p.articles.length ? `
+          <h4 style="margin:18px 0 10px">Разобраться подробнее</h4>
+          <div class="sit-articles">
+            ${p.articles.map(t => `<a class="btn small secondary" href="knowledge.html#a=${encodeURIComponent(t)}">${escapeHtml(t)}</a>`).join("")}
+          </div>` : ""}
+      </div>
+
+      <p class="hint no-print" style="text-align:center;margin-top:18px">
+        <a href="#" onclick="SIT.showList();history.replaceState(null,'',location.pathname);return false">← Другая ситуация</a>
+      </p>`;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  },
+
+  /* Сроки плана — в напоминания. У бесплатного тарифа их три:
+     дальше сервер честно скажет про лимит, а не мы в браузере. */
+  async addDeadlines(btn) {
+    if (!PF.user()) {
+      toast("Войдите — напомним заранее и бесплатно");
+      return setTimeout(() => (location.href = "auth.html?from=situation"), 1200);
+    }
+    const list = this.plan.steps.filter(x => x.deadline);
+    btn.disabled = true;
+    btn.textContent = "Добавляем…";
+    let ok = 0, limit = false, err = "";
+
+    for (const st of list) {
+      const due = new Date(Date.now() + st.deadline * 86400000).toISOString().slice(0, 10);
+      try {
+        await API.reminders.create({
+          title: st.do.slice(0, 140),
+          due,
+          repeat: "none",
+          channel: PF.isPro() ? "both" : "site",
+          note: this.plan.title,
+        });
+        ok++;
+      } catch (e) {
+        if (e.isPaywall) { limit = true; break; }
+        err = e.message;
+      }
+    }
+
+    btn.disabled = false;
+    btn.textContent = `Поставить ${list.length} ${plural(list.length, "срок", "срока", "сроков")} в напоминания`;
+    trackEvent("situation_deadlines", { added: ok });
+
+    if (ok) toast(`Готово: ${ok} ${plural(ok, "срок", "срока", "сроков")} в кабинете, вкладка «Дела»`);
+    if (limit) showPaywall("В плане больше сроков, чем помещается на бесплатном тарифе.", "basic");
+    else if (err) toast(err, "error");
+  },
+
+  /* Вопрос консультанту уже собран из ответов — человеку не нужно
+     пересказывать свою ситуацию заново. */
+  ask() {
+    const q = this.plan.ask;
+    if (!PF.user()) {
+      sessionStorage.setItem("pf_pending_question", q);
+      toast("Секунда — заведём аккаунт, и я отвечу");
+      return setTimeout(() => (location.href = "auth.html?from=situation"), 900);
+    }
+    chatToggle();
+    const input = document.getElementById("chatInput");
+    input.value = q;
+    chatSend();
+  },
+};
+
+/* Открытие по ссылке: situations.html#s=debt можно переслать. */
+function sitFromHash() {
+  const m = location.hash.match(/^#s=([a-z]+)$/);
+  if (m && SITUATIONS.some(s => s.id === m[1])) SIT.open(m[1]);
+  else SIT.showList();
+}
+sitFromHash();
+window.addEventListener("hashchange", sitFromHash);
+</script>
+</body>
+</html>
