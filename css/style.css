@@ -1593,10 +1593,18 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 .sit-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 .sit-articles { display: flex; gap: 8px; flex-wrap: wrap; }
 
-@media (max-width: 480px) {
+@media (max-width: 560px) {
   .sit-steps li { padding-left: 38px; }
   .sit-steps li::before { width: 26px; height: 26px; }
   .sit-actions .btn { width: 100%; }
+  /* На телефоне срок уходит на свою строку и переносится: длинные
+     формулировки вроде «не позднее 3 рабочих дней с допуска» иначе
+     уезжают за край экрана. */
+  .sit-step-head { display: block; }
+  .sit-when {
+    display: inline-block; white-space: normal;
+    margin-top: 6px; line-height: 1.4; border-radius: 12px;
+  }
 }
 
 /* ===== Сертификат за курс =====
