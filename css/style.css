@@ -541,7 +541,10 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
 .nav-burger { display: none; }
 .mobile-menu { display: none; }
 
-@media (max-width: 860px) {
+/* Бургер включается раньше: шесть пунктов меню перестают помещаться
+   уже около 960 пикселей, и между 860 и 1024 последние из них
+   уходили за край в горизонтальную прокрутку. */
+@media (max-width: 1010px) {
   /* двухслойная шапка: название+кнопки сверху, пункты — ниже в два ряда */
   .nav { height: auto; flex-wrap: wrap; padding: 10px 0; row-gap: 4px; }
   .logo { order: 0; font-size: 1.02rem; gap: 6px; }
