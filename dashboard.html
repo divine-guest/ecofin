@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=65">
+<link rel="stylesheet" href="css/style.css?v=66">
 </head>
 <body>
 <main class="section">
@@ -33,12 +33,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=65"></script>
-<script src="js/api.js?v=65"></script>
-<script src="js/app.js?v=65"></script>
-<script src="js/ai.js?v=65"></script>
-<script src="js/competencies.js?v=65"></script>
-<script src="js/courses.js?v=65"></script>
+<script src="js/themes.js?v=66"></script>
+<script src="js/api.js?v=66"></script>
+<script src="js/app.js?v=66"></script>
+<script src="js/ai.js?v=66"></script>
+<script src="js/competencies.js?v=66"></script>
+<script src="js/courses.js?v=66"></script>
 <script>
 initPage("dashboard.html");
 
@@ -862,17 +862,25 @@ async function pcSend() {
    раньше, весь скрипт падает на «Cannot access before initialization»,
    и всё, что идёт следом, просто не выполняется. */
 renderCabinet();
+fillCabinet();
+
 document.addEventListener("pf:ready", ({ detail }) => {
   if (!detail.user) { location.href = "auth.html"; return; }
   renderCabinet();
+  /* Перерисовка стирает всё, что дозаполнено с сервера, — заполняем
+     заново. Раньше плашка пробного и списки пропадали ровно в момент,
+     когда приходил пользователь. */
+  fillCabinet();
 });
 
-/* Пробный период показываем первым делом: это единственное место, где
-   бесплатный человек видит, чего именно он не получает. */
-TRIAL.check().then(() => {
+/* Всё, что подгружается с сервера уже после отрисовки кабинета. */
+async function fillCabinet() {
+  await TRIAL.check();
   const slot = document.getElementById("trialSlot");
   if (slot) slot.innerHTML = TRIAL.banner();
-});
+  SAVED.load();
+  HISTORY.load();
+}
 
 /* ============ Сохранённые расчёты ============
    Посчитал — сохранил — вернулся. Раньше расчёт жил до закрытия
@@ -958,8 +966,6 @@ const HISTORY = {
   },
 };
 
-SAVED.load();
-HISTORY.load();
 </script>
 </body>
 </html>
