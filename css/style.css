@@ -643,10 +643,16 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
 /* ============ Восстановленные блоки ============ */
 /* Статьи базы знаний */
 .article-item {
+  /* Теперь это ссылка на отдельную страницу статьи, а не div:
+     человек может открыть в новой вкладке и переслать адрес,
+     а поисковик — дойти до всех 28 страниц. Отсюда block и цвет текста. */
+  display: block; color: inherit;
   border: 1px solid var(--border); border-radius: 14px; padding: 17px 19px;
   background: var(--surface); cursor: pointer; margin-bottom: 10px;
   transition: border-color .2s, transform .2s, box-shadow .2s;
 }
+.article-item:hover { text-decoration: none; }
+.article-item:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .article-item:hover { border-color: var(--primary); transform: translateX(6px); box-shadow: var(--shadow); }
 .article-item .meta { font-size: .82rem; color: var(--muted); }
 .article-item .badge { margin-left: 8px; }
@@ -1763,6 +1769,40 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 .kb-mistakes h4 { color: var(--danger); }
 .kb-mistakes li::marker { color: var(--danger); }
 .kb-law p { font-size: var(--t-sm); color: var(--muted); line-height: 1.7; }
+
+/* ===== Отдельные страницы статей (папка st/) =====
+   28 статей раньше существовали только как якоря внутри одной страницы,
+   то есть для поиска не существовали вовсе. Теперь у каждой свой адрес,
+   и эти стили — их оформление. Заголовки внутри текста приходят от
+   сборщика, поэтому здесь размечены h2 и h3, а не только классы. */
+.crumbs {
+  font-size: var(--t-xs); color: var(--muted); margin-bottom: 16px;
+}
+.crumbs a { color: var(--muted); }
+.crumbs a:hover { color: var(--primary); }
+
+.kb-article h1 {
+  font-family: "Onest", Georgia, serif; font-size: var(--t-xl);
+  line-height: 1.18; margin: 10px 0 14px; text-wrap: balance;
+}
+.kb-article h2 {
+  font-family: "Onest", Georgia, serif; font-size: var(--t-lg);
+  margin: 26px 0 10px; line-height: 1.25;
+}
+.kb-article > p { margin-bottom: 14px; line-height: 1.72; }
+.kb-article ul { margin: 0 0 14px; padding-left: 1.25em; }
+.kb-article ul li { margin-bottom: 7px; line-height: 1.65; }
+.kb-article .kb-part h3 {
+  font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .1em;
+  color: var(--muted); margin-bottom: 10px; font-family: inherit; font-weight: 700;
+}
+.kb-article .kb-steps h3 { color: var(--primary); }
+.kb-article .kb-mistakes h3 { color: var(--danger); }
+.kb-checked {
+  margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--border);
+  font-size: var(--t-xs); color: var(--muted); line-height: 1.6;
+}
+.kb-cta { margin-top: 20px; border: 1.5px solid var(--primary); }
 
 /* ===== Разбор ответа в тесте =====
    Показывается всегда, а не только при ошибке: угадавший тоже не

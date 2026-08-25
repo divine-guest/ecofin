@@ -1639,14 +1639,21 @@ function initPage(active) {
   }
   initRevealAnimations();
 
+  /* Корень сайта. Страницы статей лежат в подпапке st/, и относительный
+     путь «manifest.webmanifest» вёл бы у них в никуда — вместе с ним
+     пропадало бы предложение установить приложение. */
+  const ROOT = location.pathname.includes("/st/")
+    ? location.pathname.replace(/\/st\/.*$/, "/")
+    : "./";
+
   if (!document.querySelector('link[rel="manifest"]')) {
     const m = document.createElement("link");
     m.rel = "manifest";
-    m.href = "manifest.webmanifest";
+    m.href = ROOT + "manifest.webmanifest";
     document.head.appendChild(m);
   }
   if ("serviceWorker" in navigator && location.protocol === "https:") {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register(ROOT + "sw.js", { scope: ROOT }).catch(() => {});
   }
 
   /* Разлогин где угодно — сразу перерисовываем шапку. */

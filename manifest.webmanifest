@@ -1,13 +1,28 @@
 {
   "name": "ПравоФин — право, налоги и финансы",
   "short_name": "ПравоФин",
-  "description": "ИИ-инструменты, курсы, игры и база знаний по праву, налогам и финансам",
-  "start_url": "index.html",
+  "description": "ИИ-консультант, разбор договоров, 12 калькуляторов и напоминания о налоговых сроках",
+  "start_url": "index.html?src=pwa",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#071816",
   "theme_color": "#0e8f86",
   "lang": "ru",
+  "dir": "ltr",
+  "categories": ["business", "finance", "productivity"],
   "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Спросить консультанта", "short_name": "Вопрос", "url": "dashboard.html#tab=assistant",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "Калькуляторы", "short_name": "Расчёт", "url": "calc.html",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "Сроки и напоминания", "short_name": "Сроки", "url": "dashboard.html#tab=tasks",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
   ]
 }

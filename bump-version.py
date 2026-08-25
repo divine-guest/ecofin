@@ -47,3 +47,4 @@ if sw_new != sw:
 
 io.open(VERSION_FILE, "w", encoding="utf-8").write(str(version))
 print(f"версия ресурсов: {version}, страниц обновлено: {changed}")
+print("не забудьте пересобрать страницы статей: node build-seo.mjs")

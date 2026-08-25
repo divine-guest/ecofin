@@ -1,69 +1,244 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Собирается автоматически: node build-seo.mjs. Руками не править. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://divine-guest.github.io/ecofin/</loc>
-    <lastmod>2026-08-23</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://divine-guest.github.io/ecofin/tools.html</loc>
-    <lastmod>2026-08-23</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.9</priority>
   </url>
   <url>
     <loc>https://divine-guest.github.io/ecofin/calc.html</loc>
-    <lastmod>2026-08-23</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/knowledge.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/answers.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
     <loc>https://divine-guest.github.io/ecofin/courses.html</loc>
-    <lastmod>2026-08-23</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://divine-guest.github.io/ecofin/games.html</loc>
-    <lastmod>2026-08-23</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://divine-guest.github.io/ecofin/knowledge.html</loc>
-    <lastmod>2026-08-23</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://divine-guest.github.io/ecofin/about.html</loc>
-    <lastmod>2026-08-23</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://divine-guest.github.io/ecofin/faq.html</loc>
-    <lastmod>2026-08-23</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://divine-guest.github.io/ecofin/legal.html</loc>
-    <lastmod>2026-08-23</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://divine-guest.github.io/ecofin/search.html</loc>
-    <lastmod>2026-08-23</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://divine-guest.github.io/ecofin/expenses.html</loc>
-    <lastmod>2026-08-23</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/search.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/legal.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/samozanyatost-npd-polnyy-razbor.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/usn-dohody-protiv-dohody-minus-rashody.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/nds-na-uproschenke-kogda-poyavlyaetsya-i-chto-delat.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/patentnaya-sistema-psn-dlya-ip.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/strahovye-vznosy-ip-za-sebya-skolko-i-kogda.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/nalogovye-vychety-dlya-fizlic.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/trebovanie-iz-nalogovoy-chto-delat.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/nalogovaya-proverka-kameralnaya-i-vyezdnaya.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/dogovor-okazaniya-uslug-na-chto-smotret.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/iskovaya-davnost-kak-ona-rabotaet.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/vzyskanie-dolgov-poshagovyy-algoritm.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/neustoyka-penya-shtraf-v-chem-raznica.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/schet-na-oplatu-chto-v-nem-dolzhno-byt.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/proverka-kontragenta-dolzhnaya-osmotritelnost.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/arenda-pomescheniya-chto-proverit-do-podpisaniya.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/prava-potrebitelya-vozvrat-sroki-pretenziya.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/priem-na-rabotu-bez-oshibok.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/uvolnenie-zakonnye-varianty.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/otpusknye-raschet-i-sroki-vyplaty.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/bolnichnyy-kak-schitaetsya-i-skolko-zaplatyat.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/dogovor-s-samozanyatym-kak-ne-poluchit-trudovoy.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/115-fz-pochemu-banki-blokiruyut-scheta.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/bankrotstvo-fizlica-kogda-imeet-smysl.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/lichnye-finansy-s-chego-nachat-poryadok.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/kak-zakryt-ip-pravilno.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/ekonomicheskie-prestupleniya-gde-prohodit-gran.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/personalnye-dannye-chto-obyazan-biznes.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://divine-guest.github.io/ecofin/st/avtorskie-prava-chto-zaschischeno-i-kak-dokazat-svoe.html</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 </urlset>

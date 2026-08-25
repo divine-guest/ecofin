@@ -1,8 +1,19 @@
+# Внимание: поисковики читают robots.txt только из корня домена,
+# то есть divine-guest.github.io/robots.txt, а этот файл лежит
+# в /ecofin/. Пока сайт живёт на поддомене GitHub Pages, он не
+# действует — закрытые разделы защищены метатегом noindex прямо
+# в разметке (dashboard, admin, auth, onboarding). Файл заработает
+# сразу после переезда на собственный домен.
+
 User-agent: *
 Allow: /
+
 Disallow: /admin.html
 Disallow: /dashboard.html
 Disallow: /auth.html
 Disallow: /onboarding.html
+
+# Отдельные страницы статей — то, ради чего сайт вообще ищут.
+Allow: /st/
 
 Sitemap: https://divine-guest.github.io/ecofin/sitemap.xml
