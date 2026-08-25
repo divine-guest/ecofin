@@ -1693,3 +1693,96 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 }
 .plan-item > div { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 200px; }
 .plan-item .hint { font-size: var(--t-xs); }
+
+
+/* ===== Быстрый поиск (Ctrl+K) =====
+   Одно поле, которое ищет везде: разделы, калькуляторы, инструменты,
+   свои расчёты, сроки и прошлые вопросы. */
+.palette-bd {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(10, 16, 14, .55); backdrop-filter: blur(3px);
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 12vh 16px 16px;
+}
+.palette-bd.open { display: flex; }
+.palette {
+  width: 100%; max-width: 620px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 18px; overflow: hidden;
+  box-shadow: 0 24px 60px -20px rgba(0,0,0,.5);
+  display: flex; flex-direction: column; max-height: 74vh;
+}
+.palette input {
+  border: none; border-bottom: 1px solid var(--border); border-radius: 0;
+  padding: 18px 20px; font-size: 1.05rem; background: transparent;
+}
+.palette input:focus { outline: none; box-shadow: none; }
+.palette-list { overflow-y: auto; padding: 6px; }
+.palette-item {
+  display: grid; grid-template-columns: 92px 1fr; gap: 4px 12px;
+  width: 100%; text-align: left; padding: 11px 14px; border: none;
+  background: transparent; border-radius: 12px; cursor: pointer;
+  font-family: inherit; color: var(--text);
+}
+.palette-item:hover, .palette-item.on { background: var(--surface-2); }
+.palette-kind {
+  font-size: var(--t-xs); color: var(--muted); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em; padding-top: 2px;
+}
+.palette-title { font-weight: 600; }
+.palette-note {
+  grid-column: 2; font-size: var(--t-xs); color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.palette-empty { padding: 24px 20px; color: var(--muted); font-size: var(--t-sm); }
+.palette-foot {
+  display: flex; gap: 16px; padding: 10px 20px;
+  border-top: 1px solid var(--border); background: var(--surface-2);
+  font-size: var(--t-xs); color: var(--muted);
+}
+@media (max-width: 640px) {
+  .palette-bd { padding: 8vh 10px 10px; }
+  .palette-item { grid-template-columns: 1fr; }
+  .palette-kind { padding-top: 0; }
+  .palette-note, .palette-foot { display: none; }
+}
+
+
+/* ===== Итоги: сколько сделано =====
+   Человек не помнит, что сделал за полгода, и потому не чувствует,
+   за что платит. Показываем это его же цифрами. */
+.sum-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+  margin-bottom: 16px;
+}
+.sum-cell {
+  background: var(--surface); padding: 16px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sum-cell b {
+  font-family: "Onest", Georgia, serif; font-size: 1.6rem;
+  line-height: 1.1; color: var(--primary);
+}
+.sum-cell span { font-size: var(--t-xs); color: var(--muted); line-height: 1.45; }
+.sum-saved { font-size: 1.02rem; line-height: 1.6; margin-bottom: 6px; }
+.sum-saved b { color: var(--primary); }
+
+/* ===== Достижения =====
+   Привязаны к действиям, а не ко времени: «зашёл 7 дней подряд»
+   ничего не говорит о пользе. */
+.badge-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px; margin-top: 12px;
+}
+.badge-card {
+  border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 6px; opacity: .6;
+}
+.badge-card.on { opacity: 1; border-color: var(--primary); }
+.badge-card b { font-size: var(--t-sm); }
+.badge-card > span { font-size: var(--t-xs); color: var(--muted); line-height: 1.45; }
+.badge-card .progress-bar { margin-top: 2px; }
+
+/* Блокнот: без кнопки «сохранить» — она лишний повод потерять запись. */
+#notesBox { width: 100%; resize: vertical; font-family: inherit; line-height: 1.6; }

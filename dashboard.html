@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=69">
+<link rel="stylesheet" href="css/style.css?v=71">
 </head>
 <body>
 <main class="section">
@@ -33,13 +33,14 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=69"></script>
-<script src="js/api.js?v=69"></script>
-<script src="js/app.js?v=69"></script>
-<script src="js/ai.js?v=69"></script>
-<script src="js/knowledge.js?v=69"></script>
-<script src="js/competencies.js?v=69"></script>
-<script src="js/courses.js?v=69"></script>
+<script src="js/themes.js?v=71"></script>
+<script src="js/api.js?v=71"></script>
+<script src="js/app.js?v=71"></script>
+<script src="js/palette.js?v=71"></script>
+<script src="js/ai.js?v=71"></script>
+<script src="js/knowledge.js?v=71"></script>
+<script src="js/competencies.js?v=71"></script>
+<script src="js/courses.js?v=71"></script>
 <script>
 initPage("dashboard.html");
 
@@ -323,6 +324,18 @@ function renderCabinet() {
       </div>
     </div>
 
+    <!-- Итоги: сколько сделано и во что это обошлось бы у специалиста -->
+    <div class="card" style="margin-bottom:28px" data-tab="overview">
+      <h3>Ваши итоги</h3>
+      <div id="summaryBox"><p class="hint">Считаем…</p></div>
+    </div>
+
+    <!-- Достижения -->
+    <div class="card" style="margin-bottom:28px" data-tab="learn">
+      <h3>Достижения <span class="badge" id="badgeCount"></span></h3>
+      <div id="badgeBox"><p class="hint">Загружаем…</p></div>
+    </div>
+
     <!-- Индивидуальный план развития -->
     <div class="card" style="margin-bottom:28px" data-tab="learn">
       <h3>Индивидуальный план развития</h3>
@@ -352,6 +365,16 @@ function renderCabinet() {
 
     <!-- Документы и сроки -->
     <div class="grid cols-2" style="margin-bottom:28px">
+      <div class="card" data-tab="tasks">
+        <h3>Блокнот</h3>
+        <p class="hint" style="margin-bottom:10px">
+          Что не забыть, реквизиты, вопросы бухгалтеру. Сохраняется само,
+          доступен с любого устройства.
+        </p>
+        <textarea id="notesBox" rows="7" placeholder="Например: спросить про патент на 2027, реквизиты ООО «Ромашка»…"></textarea>
+        <p class="hint" id="notesState" style="margin-top:6px">&nbsp;</p>
+      </div>
+
       <div class="card" data-tab="tasks">
         <h3>Мои расчёты</h3>
         <p class="hint" style="margin-bottom:12px">
@@ -885,6 +908,8 @@ async function fillCabinet() {
   SAVED.load();
   HISTORY.load();
   /* Подтягиваем компетенции с сервера, потом строим план. */
+  NOTES.load();
+  SUMMARY.load();
   await COMP.pull();
   renderCabinet();
   PLAN.render();
@@ -1040,6 +1065,93 @@ const PLAN = {
           <a class="btn small secondary" href="knowledge.html#test=${testKey}">Пройти</a>
         </div>
       </div>`;
+  },
+};
+
+/* ============ Блокнот ============
+   Сохраняется сам, без кнопки: кнопка «сохранить» в блокноте — лишний
+   повод потерять запись. Ждём паузу в наборе, чтобы не слать запрос
+   на каждую букву. */
+const NOTES = {
+  timer: null,
+
+  async load() {
+    const box = document.getElementById("notesBox");
+    if (!box) return;
+    try {
+      const d = await API.notes.get();
+      box.value = d.text || "";
+      this.stamp(d.updatedAt);
+    } catch {}
+    box.oninput = () => {
+      clearTimeout(this.timer);
+      document.getElementById("notesState").textContent = "Печатаете…";
+      this.timer = setTimeout(() => this.save(), 900);
+    };
+  },
+
+  async save() {
+    const box = document.getElementById("notesBox");
+    try {
+      const d = await API.notes.save(box.value);
+      this.stamp(d.updatedAt);
+    } catch {
+      document.getElementById("notesState").textContent = "Не удалось сохранить";
+    }
+  },
+
+  stamp(at) {
+    const el = document.getElementById("notesState");
+    if (!el) return;
+    el.textContent = at
+      ? "Сохранено " + new Date(at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+      : "\u00a0";
+  },
+};
+
+/* ============ Итоги и достижения ============
+   Человек не помнит, что сделал за полгода, и потому не чувствует, за
+   что платит. Показываем это его же цифрами. */
+const SUMMARY = {
+  async load() {
+    let d;
+    try { d = await API.summary(); } catch { return; }
+
+    const box = document.getElementById("summaryBox");
+    if (box) {
+      const s = d.stats;
+      const cell = (n, label) => `<div class="sum-cell"><b>${n}</b><span>${label}</span></div>`;
+      box.innerHTML = `
+        <div class="sum-grid">
+          ${cell(s.days, plural(s.days, "день с нами", "дня с нами", "дней с нами"))}
+          ${cell(s.questions, plural(s.questions, "вопрос консультанту", "вопроса консультанту", "вопросов консультанту"))}
+          ${cell(s.analyzed, plural(s.analyzed, "разбор документа", "разбора документов", "разборов документов"))}
+          ${cell(s.reminders, plural(s.reminders, "срок под контролем", "срока под контролем", "сроков под контролем"))}
+          ${cell(s.savedCalcs, plural(s.savedCalcs, "сохранённый расчёт", "сохранённых расчёта", "сохранённых расчётов"))}
+          ${cell(s.remindersSent, plural(s.remindersSent, "напоминание пришло", "напоминания пришло", "напоминаний пришло"))}
+        </div>
+        ${d.saved > 0 ? `
+          <p class="sum-saved">
+            Столько же работы у специалиста по средним ставкам стоило бы
+            примерно <b>${d.saved.toLocaleString("ru-RU")} ₽</b>.
+          </p>
+          <p class="hint">Это оценка, а не счёт: консультация от ${d.prices.question} ₽,
+            проверка договора от ${d.prices.analyze} ₽, составление документа от ${d.prices.document} ₽.</p>
+        ` : `<p class="hint">Начните пользоваться — здесь появится, сколько вы сделали и сколько это стоило бы у специалиста.</p>`}`;
+    }
+
+    const bb = document.getElementById("badgeBox");
+    if (bb) {
+      document.getElementById("badgeCount").textContent = `${d.earned} из ${d.total}`;
+      bb.innerHTML = `<div class="badge-grid">${d.badges.map(b => `
+        <div class="badge-card ${b.done ? "on" : ""}">
+          <b>${escapeHtml(b.title)}</b>
+          <span>${escapeHtml(b.text)}</span>
+          ${b.done ? `<span class="badge ok">Получено</span>`
+                   : `<div class="progress-bar"><div style="width:${Math.round(b.have / b.need * 100)}%"></div></div>
+                      <span class="hint">${b.have} из ${b.need}</span>`}
+        </div>`).join("")}</div>`;
+    }
   },
 };
 </script>

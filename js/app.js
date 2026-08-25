@@ -189,6 +189,12 @@ function escapeHtml(s) {
 /* Значки шапки — вектор, как и знак весов: наследуют цвет темы и
    выглядят одинаково во всех системах. На узких экранах остаются
    только они, подпись прячется. */
+const SEARCH_SVG = `<svg class="pill-icon" viewBox="0 0 24 24" aria-hidden="true"
+  fill="none" stroke="currentColor" stroke-width="1.8"
+  stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="10.8" cy="10.8" r="6.6"/><path d="M15.6 15.6L20 20"/>
+</svg>`;
+
 const BELL_SVG = `<svg class="pill-icon" viewBox="0 0 24 24" aria-hidden="true"
   fill="none" stroke="currentColor" stroke-width="1.7"
   stroke-linecap="round" stroke-linejoin="round">
@@ -268,6 +274,7 @@ function renderHeader(active) {
       <button class="nav-burger" onclick="this.closest('.site-header').classList.toggle('menu-open')" aria-label="Меню">Меню</button>
       <nav class="nav-links">${links}</nav>
       ${u ? `<button class="header-pill notif-btn" onclick="NOTIFY.open()" title="Уведомления" aria-label="Уведомления">${BELL_SVG}<span class="pill-text">Уведомления</span></button>` : ""}
+      <button class="header-pill" onclick="PALETTE.show()" title="Быстрый поиск — Ctrl+K" aria-label="Быстрый поиск">${SEARCH_SVG}<span class="pill-text">Поиск</span></button>
       <button class="header-pill theme-toggle" onclick="toggleTheme()" title="Сменить тему" aria-label="Сменить тему">${themeIcon}<span class="pill-text">${themeLabel}</span></button>
       ${auth}
     </div>

@@ -80,6 +80,26 @@ export async function remove(request, env, origin, user) {
   return json(env, origin, { ok: true });
 }
 
+/* ---------- Заметки ----------
+   Место, чтобы записать «спросить бухгалтера про патент» или реквизиты
+   контрагента. Сейчас люди пишут это себе в мессенджер и теряют. */
+
+const MAX_NOTE = 4000;
+
+/* GET /api/notes */
+export async function notes(request, env, origin, user) {
+  return json(env, origin, { text: user.notes || "", updatedAt: user.notes_at || 0 });
+}
+
+/* POST /api/notes {text} */
+export async function saveNotes(request, env, origin, user) {
+  const b = await request.json().catch(() => ({}));
+  const text = String(b.text || "").slice(0, MAX_NOTE);
+  await env.DB.prepare("UPDATE users SET notes = ?, notes_at = ? WHERE email = ?")
+    .bind(text, now(), user.email).run();
+  return json(env, origin, { ok: true, updatedAt: now() });
+}
+
 /* ---------- Профиль компетенций ---------- */
 
 const COMP_AREAS = ["tax", "contracts", "finance", "accounting", "labor"];
