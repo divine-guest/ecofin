@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=77">
+<link rel="stylesheet" href="css/style.css?v=78">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -325,14 +325,46 @@
       </div>
       <div id="invoicePanel"><div id="invoicePaper"></div></div>
     </div>
+    <!-- ===== Личный налоговый календарь =====
+         Был общим на всех: «сроки для ИП и ООО на УСН». Человек должен был
+         сам понять, какие из них его. А ведь именно страх пропустить платёж
+         возвращает сюда каждый месяц — значит, список обязан быть своим. -->
     <div class="tab-panel game-stage" id="calc7">
-      <p style="color:var(--muted);margin-bottom:6px">Ключевые сроки для ИП и ООО на УСН. Нажмите «+ в сроки» — появится напоминание в кабинете с повтором раз в год.</p>
+      <p style="color:var(--muted);margin-bottom:12px">
+        Скажите, кто вы — и календарь покажет только ваши сроки, а не все сразу.
+      </p>
+      <div class="grid cols-3 no-print" style="margin-bottom:16px">
+        <div class="form-group"><label>Форма</label>
+          <select id="calWho" onchange="renderTaxCal()">
+            <option value="ip">ИП</option>
+            <option value="ooo">ООО</option>
+            <option value="self">Самозанятый</option>
+          </select></div>
+        <div class="form-group"><label>Налоговый режим</label>
+          <select id="calRegime" onchange="renderTaxCal()">
+            <option value="usn6">УСН «Доходы» 6%</option>
+            <option value="usn15">УСН «Доходы минус расходы» 15%</option>
+            <option value="npd">НПД (самозанятость)</option>
+            <option value="psn">Патент</option>
+            <option value="ausn">АУСН</option>
+            <option value="eshn">ЕСХН</option>
+            <option value="osno">ОСНО</option>
+          </select></div>
+        <div class="form-group"><label>Работники</label>
+          <select id="calWorkers" onchange="renderTaxCal()">
+            <option value="0">Нет</option>
+            <option value="1">Есть</option>
+          </select></div>
+      </div>
+      <label class="consent no-print" style="margin-bottom:16px">
+        <input type="checkbox" id="calVat" onchange="renderTaxCal()">
+        <span>Плачу НДС — доход превысил порог освобождения на упрощёнке
+          или я на общей системе</span>
+      </label>
       <p class="hint" style="margin-bottom:14px">
         С 2023 года подача и уплата разведены: отчётность сдают до 25 числа,
         деньги списывают с единого налогового счёта 28 числа. Если дата выпадает
         на выходной, срок переносится на ближайший рабочий день.
-        Ежемесячно: уведомление по НДФЛ и взносам за работников — 25 числа,
-        уплата — 28 числа. НДС платят тремя равными долями 28 числа каждого месяца квартала.
       </p>
       <div id="taxCal"></div>
     </div>
@@ -497,14 +529,14 @@
   </div>
 </main>
 
-<script src="js/partners.js?v=77"></script>
-<script src="js/rates.js?v=77"></script>
-<script src="js/themes.js?v=77"></script>
-<script src="js/api.js?v=77"></script>
-<script src="js/app.js?v=77"></script>
-<script src="js/progress.js?v=77"></script>
-<script src="js/palette.js?v=77"></script>
-<script src="js/ai.js?v=77"></script>
+<script src="js/partners.js?v=78"></script>
+<script src="js/rates.js?v=78"></script>
+<script src="js/themes.js?v=78"></script>
+<script src="js/api.js?v=78"></script>
+<script src="js/app.js?v=78"></script>
+<script src="js/progress.js?v=78"></script>
+<script src="js/palette.js?v=78"></script>
+<script src="js/ai.js?v=78"></script>
 <script>
 initPage("calc.html");
 
@@ -758,33 +790,216 @@ function saveInvoice() {
   toast("Счёт сохранён в моих документах");
 }
 
-/* --- Календарь отчётности --- */
-/* Даты выверены по НК РФ. В прежней версии было три ошибки: итоговый
-   платёж УСН для ООО стоял на 28 января вместо 28 марта, декларации ИП
-   и ООО были свалены в одну дату, а срок подачи (25-е) путался со сроком
-   уплаты (28-е) — с 2023 года это разные дни из-за единого налогового
-   платежа. */
+/* --- Календарь отчётности ---
+
+   Был общим на всех: «сроки для ИП и ООО на УСН». Человек должен был сам
+   понять, какие из них его, а какие чужие — и обычно не понимал.
+   А ведь именно страх пропустить платёж возвращает сюда каждый месяц.
+
+   Теперь календарь личный: спрашиваем форму, режим и есть ли работники,
+   и показываем только то, что касается этого человека. Одной кнопкой
+   всё это ставится в напоминания с повтором раз в год.
+
+   Даты выверены по НК РФ. С 2023 года подача и уплата разведены:
+   отчёт сдают до 25-го, деньги списывают с единого счёта 28-го.
+   В прежней версии было три ошибки: итоговый платёж УСН для ООО стоял
+   на 28 января вместо 28 марта, декларации ИП и ООО были свалены
+   в одну дату, а срок подачи путался со сроком уплаты.               */
+
+/* who: ip | ooo | self (самозанятый)
+   regimes: каким режимам подходит; пусто — всем
+   workers: true — только если есть работники, false — только если нет */
 const TAX_CAL = [
-  ["25 марта", "Декларация по УСН за прошлый год — ООО"],
-  ["28 марта", "Итоговый платёж по УСН за прошлый год — ООО"],
-  ["25 апреля", "Декларация по УСН за прошлый год — ИП"],
-  ["28 апреля", "Итоговый платёж УСН за прошлый год (ИП) и аванс за I квартал"],
-  ["1 июля", "Взносы ИП: 1% с дохода свыше 300 000 ₽ за прошлый год"],
-  ["28 июля", "Авансовый платёж по УСН за полугодие"],
-  ["28 октября", "Авансовый платёж по УСН за 9 месяцев"],
-  ["28 декабря", "Фиксированные страховые взносы ИП за себя за текущий год"],
+  /* Взносы ИП за себя — не зависят от режима, кроме НПД и АУСН. */
+  { day: "1 июля", text: "Взносы ИП: 1% с дохода свыше 300 000 ₽ за прошлый год",
+    who: ["ip"], regimes: ["usn6", "usn15", "psn", "eshn", "osno"] },
+  { day: "28 декабря", text: "Фиксированные страховые взносы ИП за себя",
+    who: ["ip"], regimes: ["usn6", "usn15", "psn", "eshn", "osno"] },
+
+  /* УСН. */
+  { day: "25 марта", text: "Декларация по УСН за прошлый год — ООО",
+    who: ["ooo"], regimes: ["usn6", "usn15"] },
+  { day: "28 марта", text: "Итоговый платёж по УСН за прошлый год — ООО",
+    who: ["ooo"], regimes: ["usn6", "usn15"] },
+  { day: "25 апреля", text: "Декларация по УСН за прошлый год — ИП",
+    who: ["ip"], regimes: ["usn6", "usn15"] },
+  { day: "25 апреля", text: "Уведомление об авансе по УСН за I квартал",
+    who: ["ip", "ooo"], regimes: ["usn6", "usn15"] },
+  { day: "28 апреля", text: "Аванс по УСН за I квартал (у ИП — и налог за прошлый год)",
+    who: ["ip", "ooo"], regimes: ["usn6", "usn15"] },
+  { day: "25 июля", text: "Уведомление об авансе по УСН за полугодие",
+    who: ["ip", "ooo"], regimes: ["usn6", "usn15"] },
+  { day: "28 июля", text: "Аванс по УСН за полугодие",
+    who: ["ip", "ooo"], regimes: ["usn6", "usn15"] },
+  { day: "25 октября", text: "Уведомление об авансе по УСН за 9 месяцев",
+    who: ["ip", "ooo"], regimes: ["usn6", "usn15"] },
+  { day: "28 октября", text: "Аванс по УСН за 9 месяцев",
+    who: ["ip", "ooo"], regimes: ["usn6", "usn15"] },
+
+  /* НПД: приложение само считает налог, но заплатить надо вовремя. */
+  { day: "12 января", text: "НПД: начисление за декабрь приходит в приложении «Мой налог»",
+    who: ["self", "ip"], regimes: ["npd"] },
+  { day: "28 января", text: "Уплата НПД за декабрь (и так каждый месяц — 28 числа)",
+    who: ["self", "ip"], regimes: ["npd"] },
+
+  /* Патент. Точные даты зависят от срока патента — говорим об этом прямо. */
+  { day: "31 марта", text: "Патент до 6 месяцев: оплатить не позже окончания срока",
+    who: ["ip"], regimes: ["psn"] },
+  { day: "31 декабря", text: "Патент на год: оставшиеся 2/3 стоимости",
+    who: ["ip"], regimes: ["psn"] },
+
+  /* АУСН — ежемесячно, зато без деклараций и взносов. */
+  { day: "25 января", text: "АУСН: уведомление о налоге за декабрь (и так каждый месяц)",
+    who: ["ip", "ooo"], regimes: ["ausn"] },
+  { day: "28 января", text: "АУСН: уплата налога за декабрь (и так каждый месяц)",
+    who: ["ip", "ooo"], regimes: ["ausn"] },
+
+  /* ЕСХН. */
+  { day: "25 марта", text: "Декларация по ЕСХН за прошлый год",
+    who: ["ip", "ooo"], regimes: ["eshn"] },
+  { day: "28 марта", text: "Налог по ЕСХН за прошлый год",
+    who: ["ip", "ooo"], regimes: ["eshn"] },
+  { day: "28 июля", text: "Авансовый платёж по ЕСХН за полугодие",
+    who: ["ip", "ooo"], regimes: ["eshn"] },
+
+  /* ОСНО. */
+  { day: "25 апреля", text: "Декларация 3-НДФЛ за прошлый год — ИП",
+    who: ["ip"], regimes: ["osno"] },
+  { day: "15 июля", text: "НДФЛ за прошлый год — ИП",
+    who: ["ip"], regimes: ["osno"] },
+  { day: "25 марта", text: "Декларация по налогу на прибыль за прошлый год",
+    who: ["ooo"], regimes: ["osno"] },
+  { day: "28 марта", text: "Налог на прибыль за прошлый год",
+    who: ["ooo"], regimes: ["osno"] },
+
+  /* НДС — у ОСНО всегда, у УСН при доходе выше порога освобождения. */
+  { day: "25 января", text: "Декларация по НДС за IV квартал (и так каждый квартал)",
+    who: ["ip", "ooo"], regimes: ["osno", "vat"] },
+  { day: "28 января", text: "НДС: первая треть за IV квартал (28 числа трёх месяцев подряд)",
+    who: ["ip", "ooo"], regimes: ["osno", "vat"] },
+
+  /* Работники — одинаково у всех режимов, где они разрешены. */
+  { day: "25 января", text: "6-НДФЛ за год и РСВ за IV квартал",
+    who: ["ip", "ooo"], regimes: [], workers: true },
+  { day: "25 апреля", text: "6-НДФЛ и РСВ за I квартал",
+    who: ["ip", "ooo"], regimes: [], workers: true },
+  { day: "25 июля", text: "6-НДФЛ и РСВ за полугодие",
+    who: ["ip", "ooo"], regimes: [], workers: true },
+  { day: "25 октября", text: "6-НДФЛ и РСВ за 9 месяцев",
+    who: ["ip", "ooo"], regimes: [], workers: true },
+  { day: "25 января", text: "Уведомление по НДФЛ и взносам за работников — так каждый месяц",
+    who: ["ip", "ooo"], regimes: [], workers: true },
+  { day: "28 января", text: "Уплата НДФЛ и взносов за работников — так каждый месяц",
+    who: ["ip", "ooo"], regimes: [], workers: true },
 ];
-document.getElementById("taxCal").innerHTML = `<table class="cmp-table">` + TAX_CAL.map(([d, t]) => `
-  <tr><td style="white-space:nowrap"><b>${d}</b></td><td>${t}</td>
-  <td style="text-align:right"><button class="btn small secondary" onclick="addTaxDeadline('${d}','${t.slice(0, 40)}')">+ в сроки</button></td></tr>`).join("") + `</table>`;
+
+const CAL_MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня",
+                    "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+
+/* Сортируем по календарю, а не по порядку в коде: человек читает год
+   сверху вниз и ищет «что ближайшее». */
+function calSortKey(day) {
+  const [d, m] = day.split(" ");
+  return CAL_MONTHS.indexOf(m) * 100 + (+d || 0);
+}
+
+function myDeadlines() {
+  const who = document.getElementById("calWho").value;
+  const regime = document.getElementById("calRegime").value;
+  const workers = document.getElementById("calWorkers").value === "1";
+  const vat = document.getElementById("calVat").checked;
+
+  return TAX_CAL
+    .filter(e => e.who.includes(who))
+    .filter(e => {
+      if (e.workers === true && !workers) return false;
+      if (!e.regimes.length) return true;
+      if (e.regimes.includes(regime)) return true;
+      /* НДС на упрощёнке появляется при доходе выше порога освобождения —
+         это отдельная галочка, а не отдельный режим. */
+      return e.regimes.includes("vat") && vat;
+    })
+    .sort((a, b) => calSortKey(a.day) - calSortKey(b.day));
+}
+
+function renderTaxCal() {
+  const list = myDeadlines();
+  const box = document.getElementById("taxCal");
+  if (!list.length) {
+    box.innerHTML = `<p class="hint">Для этого сочетания сроков нет: на НПД без работников
+      отчётности не существует вовсе — приложение «Мой налог» считает всё само.</p>`;
+    return;
+  }
+
+  /* Ближайший срок отмечаем: за ним человек и приходит. */
+  const today = new Date();
+  const nowKey = (today.getMonth()) * 100 + today.getDate();
+  const next = list.find(e => calSortKey(e.day) >= nowKey) || list[0];
+
+  box.innerHTML = `
+    <p class="hint" style="margin-bottom:10px">Ваших сроков в году: <b>${list.length}</b>.
+      Ближайший — <b>${next.day}</b>.</p>
+    <table class="cmp-table">
+      ${list.map(e => `
+        <tr class="${e === next ? "best" : ""}">
+          <td style="white-space:nowrap"><b>${e.day}</b></td>
+          <td>${escapeHtml(e.text)}</td>
+          <td style="text-align:right">
+            <button class="btn small secondary" onclick="addTaxDeadline('${e.day}', ${JSON.stringify(e.text.slice(0, 60)).replace(/"/g, "&quot;")})">+ в сроки</button>
+          </td>
+        </tr>`).join("")}
+    </table>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn gold" onclick="addAllDeadlines(this)">Поставить все ${list.length} сроков в напоминания</button>
+      <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Мой налоговый календарь')">Скачать / печать</button>
+    </div>
+    <p class="hint" style="margin-top:10px">Напомним за три дня, за день и в сам день —
+      на сайте, а на платных тарифах ещё и в Telegram. Повтор раз в год ставится
+      автоматически: налоговые даты возвращаются каждый год.</p>`;
+}
+
+/* Одной кнопкой — весь свой год. Это и есть смысл личного календаря:
+   человек не должен добавлять двадцать дат по одной. */
+async function addAllDeadlines(btn) {
+  if (!PF.user()) {
+    toast("Войдите, чтобы сохранить сроки");
+    return setTimeout(() => (location.href = PF.href("auth.html?from=calendar")), 1200);
+  }
+  const list = myDeadlines();
+  btn.disabled = true;
+  btn.textContent = "Добавляем…";
+  let ok = 0, fail = 0;
+  for (const e of list) {
+    try { await addTaxDeadline(e.day, e.text.slice(0, 60), true); ok++; }
+    catch { fail++; }
+  }
+  btn.disabled = false;
+  btn.textContent = `Поставить все ${list.length} сроков в напоминания`;
+  trackEvent("calendar_add_all", { count: ok });
+  toast(fail
+    ? `Добавлено ${ok}, не удалось ${fail}. Попробуйте ещё раз`
+    : `Готово: ${ok} сроков в кабинете, во вкладке «Дела»`);
+}
+
+/* Профиль подсказывает, кто человек: если он указал статус при
+   регистрации, календарь сразу открывается «своим». */
+function initTaxCal() {
+  const prefs = PF.prefs ? PF.prefs() : {};
+  const map = { ip: "ip", ooo: "ooo", self: "self", buh: "ooo" };
+  const who = map[prefs.status] || map[prefs.profile] || "ip";
+  const el = document.getElementById("calWho");
+  if (el) el.value = who;
+  renderTaxCal();
+}
+
 /* Раньше срок писался в localStorage старой системы, которую больше
    никто не читает: кнопка «срабатывала», а в кабинете ничего не появлялось.
    Теперь создаётся настоящее напоминание на сервере — с повтором раз в год,
    потому что налоговые даты возвращаются каждый год. */
-async function addTaxDeadline(day, title) {
+async function addTaxDeadline(day, title, quiet) {
   if (!PF.user()) {
     toast("Войдите, чтобы сохранить срок");
-    return setTimeout(() => (location.href = "auth.html"), 1200);
+    return setTimeout(() => (location.href = PF.href("auth.html?from=calendar")), 1200);
   }
   const MONTHS = ["января","февраля","марта","апреля","мая","июня",
                   "июля","августа","сентября","октября","ноября","декабря"];
@@ -809,15 +1024,19 @@ async function addTaxDeadline(day, title) {
       note: "Из календаря отчётности",
     });
     trackEvent("calendar_deadline");
-    toast("Добавлено в сроки — напомним заранее");
+    if (!quiet) toast("Добавлено в сроки — напомним заранее");
   } catch (e) {
+    /* При массовом добавлении ошибку показывает вызывающий: двадцать
+       всплывашек подряд — это не сообщение, а помеха. */
+    if (quiet) throw e;
     if (e.isPaywall) showPaywall(e.message);
     else toast(e.message, "error");
   }
 }
-KEYRATE.init();
-calcTax(); calcPenalty(); calcVacation(); calcSick(); calcDiv(); calcDeduction();
-calcTaxPen(); calcGk(); calcWage(); calcFire(); calcUsnVat(); calcLoan(); calcWords();
+/* Первый расчёт всех панелей перенесён в самый конец файла: здесь он
+   обращался к KEYRATE и CALC_FIELDS, объявленным ниже через const, и
+   весь остаток скрипта падал молча — вместе с новыми калькуляторами.
+   На этих граблях проект стоял уже дважды. */
 renderPosInputs(); renderInvoice();
 document.getElementById("ivDate").valueAsDate = new Date();
 renderInvoice();
@@ -1399,6 +1618,14 @@ async function saveCalc(kind) {
     history.replaceState(null, "", location.pathname);
   } catch {}
 })();
+
+/* ============ Первый расчёт ============
+   Строго в конце файла: всё, к чему обращаются эти вызовы, объявлено
+   выше по тексту. Поставить их раньше — уронить весь скрипт молча. */
+KEYRATE.init();
+initTaxCal();
+calcTax(); calcPenalty(); calcVacation(); calcSick(); calcDiv(); calcDeduction();
+calcTaxPen(); calcGk(); calcWage(); calcFire(); calcUsnVat(); calcLoan(); calcWords();
 </script>
 </body>
 </html>
