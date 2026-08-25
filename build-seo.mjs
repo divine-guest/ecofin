@@ -207,13 +207,12 @@ function articlePage(a, all, version, updated) {
 <script src="../js/progress.js?v=${version}"></script>
 <script src="../js/palette.js?v=${version}"></script>
 <script>
-/* Шапка и подвал общие для всего сайта, но ссылки в них относительные:
-   со страницы в подпапке они бы вели в никуда. Поправляем после отрисовки. */
+/* Шапка, подвал и быстрый поиск общие для всего сайта. Про подпапку они
+   знают сами: PF.base смотрит на адрес страницы и подставляет «../»
+   ко всем внутренним ссылкам. Поправлять их здесь после отрисовки
+   бесполезно — шапка перерисовывается ещё раз, когда сервер
+   подтвердит сессию, и правки пропадают. */
 initPage("knowledge.html");
-document.querySelectorAll("header a[href], footer a[href]").forEach(a => {
-  const h = a.getAttribute("href");
-  if (h && !/^(https?:|#|[.]{2}[/]|mailto:)/.test(h)) a.setAttribute("href", "../" + h);
-});
 </script>
 </body>
 </html>

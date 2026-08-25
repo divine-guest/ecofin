@@ -5,6 +5,16 @@
 const PF = {
   themeKey: "pf_theme",
 
+  /* Путь к корню сайта от текущей страницы.
+
+     Страницы статей лежат в подпапке st/, а шапка и подвал собираются
+     кодом с относительными ссылками вида «calc.html». Со страницы в
+     подпапке такая ссылка вела бы в st/calc.html, то есть в никуда.
+     Поправлять ссылки после отрисовки бесполезно: шапка перерисовывается
+     ещё раз, когда сервер подтвердит сессию, и правки пропадают. */
+  base: location.pathname.includes("/st/") ? "../" : "",
+  href(page) { return /^(https?:|#|mailto:)/.test(page) ? page : this.base + page; },
+
   user() { return API.cached(); },
   /* «Есть платная подписка» — любой платный тариф, не только старший.
      После появления «Базового» проверка на plan === "pro" молча считала
@@ -26,7 +36,7 @@ const PF = {
 
   async logout() {
     await API.logout();
-    location.href = "index.html";
+    location.href = PF.href("index.html");
   },
 
   /* Журнал действий ведёт сервер (он же — источник правды для админки).
@@ -253,7 +263,7 @@ function renderHeader(active) {
   ].filter(([h]) => !shown.has(h));
 
   const link = ([href, label]) =>
-    `<a href="${href}" class="${active === href ? "active" : ""}">${label}</a>`;
+    `<a href="${PF.href(href)}" class="${active === href ? "active" : ""}">${label}</a>`;
 
   /* Никаких выпадающих меню: список в потоке накрывал соседние пункты,
      а спрятанный за кнопкой раздел люди просто не находят. */
@@ -263,8 +273,8 @@ function renderHeader(active) {
      В шапке компьютера остаётся только нужное этому человеку. */
   const mobileLinks = links + rest.map(link).join("");
   const auth = u
-    ? `<a href="dashboard.html" class="btn small">${avatarHtml(u)}${escapeHtml(u.name.split(" ")[0])}</a>`
-    : `<a href="auth.html" class="btn small">Войти</a>`;
+    ? `<a href="${PF.href("dashboard.html")}" class="btn small">${avatarHtml(u)}${escapeHtml(u.name.split(" ")[0])}</a>`
+    : `<a href="${PF.href("auth.html")}" class="btn small">Войти</a>`;
   const dark = document.documentElement.getAttribute("data-theme") === "dark";
   const themeLabel = dark ? "Тёмная тема" : "Светлая тема";
   const themeIcon = dark ? MOON_SVG : SUN_SVG;
@@ -272,7 +282,7 @@ function renderHeader(active) {
   header.className = "site-header";
   header.innerHTML = `
     <div class="container nav">
-      <a href="index.html" class="logo">${SCALES_SVG}Право<b>Фин</b></a>
+      <a href="${PF.href("index.html")}" class="logo">${SCALES_SVG}Право<b>Фин</b></a>
       <button class="nav-burger" onclick="this.closest('.site-header').classList.toggle('menu-open')" aria-label="Меню">Меню</button>
       <nav class="nav-links">${links}</nav>
       ${u ? `<button class="header-pill notif-btn" onclick="NOTIFY.open()" title="Уведомления" aria-label="Уведомления">${BELL_SVG}<span class="pill-text">Уведомления</span></button>` : ""}
@@ -287,16 +297,18 @@ function renderHeader(active) {
 function renderFooter() {
   const f = document.createElement("footer");
   f.className = "site-footer";
+  const L = (href, label) => `<a href="${PF.href(href)}">${label}</a>`;
   f.innerHTML = `<div class="container">
     <p><b>ПравоФин</b> — экосистема юридической и финансовой грамотности © 2026</p>
     <p class="footer-nav">
-      <a href="tools.html">Инструменты</a> · <a href="calc.html">Калькуляторы</a> ·
-      <a href="knowledge.html">База знаний</a> · <a href="courses.html">Курсы</a> ·
-      <a href="answers.html">Ответы на вопросы</a> · <a href="games.html">Практикум</a> ·
-      <a href="expenses.html">Дневник трат</a> ·
-      <a href="search.html">Поиск</a>
+      ${L("tools.html", "Инструменты")} · ${L("calc.html", "Калькуляторы")} ·
+      ${L("knowledge.html", "База знаний")} · ${L("courses.html", "Курсы")} ·
+      ${L("answers.html", "Ответы на вопросы")} · ${L("games.html", "Практикум")} ·
+      ${L("expenses.html", "Дневник трат")} ·
+      ${L("search.html", "Поиск")}
     </p>
-    <p><a href="about.html">О сервисе</a> · <a href="about.html#contact">Связаться</a> · <a href="faq.html">Частые вопросы</a> · <a href="legal.html">Правовые документы</a></p>
+    <p>${L("about.html", "О сервисе")} · ${L("about.html#contact", "Связаться")} ·
+       ${L("faq.html", "Частые вопросы")} · ${L("legal.html", "Правовые документы")}</p>
     <p>Материалы носят информационный характер и не являются юридической консультацией.</p>
   </div>`;
   document.body.appendChild(f);
@@ -404,7 +416,7 @@ async function chatSend() {
   /* Консультант — только для вошедших: иначе лимит не к кому привязать. */
   if (!PF.user()) {
     addMsg("bot", "Чтобы задать вопрос ИИ-консультанту, войдите или зарегистрируйтесь — это бесплатно.");
-    setTimeout(() => (location.href = "auth.html"), 1600);
+    setTimeout(() => (location.href = PF.href("auth.html")), 1600);
     return;
   }
 
@@ -602,7 +614,7 @@ const QAOFFER = {
       const d = await API.request("/api/qa/offer", { method: "POST", body: { jobId, topic } });
       box.innerHTML = d.already
         ? `<span>Этот разбор уже предложен.</span>`
-        : `<span>Спасибо! Разбор появится в <a href="answers.html">общей ленте</a> после проверки.</span>`;
+        : `<span>Спасибо! Разбор появится в <a href="${PF.href("answers.html")}">общей ленте</a> после проверки.</span>`;
       trackEvent("qa_offer");
     } catch (e) {
       box.innerHTML = `<span>Не получилось: ${escapeHtml(e.message)}</span>`;
@@ -664,7 +676,7 @@ const PAY = {
   chosen: "basic",
 
   async open(planId) {
-    if (!PF.user()) return (location.href = "auth.html");
+    if (!PF.user()) return (location.href = PF.href("auth.html"));
     if (planId) this.chosen = planId;
 
     let bd = document.getElementById("payBackdrop");
@@ -758,7 +770,7 @@ const PAY = {
               <b>${escapeHtml(this.data.enterprise.title)}</b> · ${escapeHtml(this.data.enterprise.price)}
               <p class="hint">${escapeHtml(this.data.enterprise.tagline)}. ${this.data.enterprise.perks.map(escapeHtml).join(" · ")}</p>
             </div>
-            <a class="btn small secondary" href="about.html#contact">Обсудить</a>
+            <a class="btn small secondary" href="${PF.href("about.html#contact")}">Обсудить</a>
           </div>` : ""}
       </div>`;
   },
@@ -837,7 +849,7 @@ const SETTINGS = {
 
   open(tab) {
     const u = PF.user();
-    if (!u) return (location.href = "auth.html");
+    if (!u) return (location.href = PF.href("auth.html"));
     this._avatar = u.avatar || "";
     this._tab = tab || "profile";
 
@@ -927,7 +939,7 @@ const SETTINGS = {
         <label>Электронная почта</label>
         <input type="text" value="${escapeHtml(u.email)}" disabled>
         <p class="hint">Почта — это логин, она не меняется. Нужен другой адрес —
-          <a href="about.html#contact" target="_blank" rel="noopener">напишите в поддержку</a>.</p>
+          <a href="${PF.href("about.html#contact")}" target="_blank" rel="noopener">напишите в поддержку</a>.</p>
       </div>
 
       <button class="btn wide" onclick="SETTINGS.save()">Сохранить изменения</button>`;
@@ -1274,7 +1286,7 @@ const SETTINGS = {
     try {
       await API.deleteAccount();
       toast("Аккаунт удалён");
-      setTimeout(() => (location.href = "index.html"), 700);
+      setTimeout(() => (location.href = PF.href("index.html")), 700);
     } catch (e) { toast(e.message, "error"); }
   },
 };
@@ -1539,7 +1551,7 @@ async function applyPromo(inputId) {
 function requirePro(feature, need) {
   if (!PF.user()) {
     toast("Сначала войдите — это бесплатно");
-    setTimeout(() => (location.href = "auth.html?from=feature"), 1200);
+    setTimeout(() => (location.href = PF.href("auth.html?from=feature")), 1200);
     return false;
   }
   if (PF.isPro()) return true;
@@ -1687,6 +1699,6 @@ function askPendingQuestion() {
 
 /* Страницы, которым нужен вошедший пользователь, зовут это вместо своей проверки. */
 function requireAuth() {
-  if (!API.token()) { location.href = "auth.html"; return false; }
+  if (!API.token()) { location.href = PF.href("auth.html"); return false; }
   return true;
 }

@@ -237,10 +237,10 @@ const PALETTE = {
         document.querySelector(".tabs")?.scrollIntoView({ behavior: "smooth" });
         return;
       }
-      location.href = it.href + "#tab=" + it.tab;
+      location.href = PF.href(it.href) + "#tab=" + it.tab;
       return;
     }
-    location.href = it.href;
+    location.href = PF.href(it.href);
   },
 };
 
