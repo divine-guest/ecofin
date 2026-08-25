@@ -1,15 +1,29 @@
-name = "pravofin-ai"
+name = "pravofin-api"
 main = "src/index.js"
 compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]
 
-# Секрет (НЕ здесь!):  wrangler secret put AI_API_KEY
+# Выкатываем скриптом deploy.mjs через REST API, а не wrangler: wrangler 4
+# требует Node 22, а на рабочей машине 18. Этот файл нужен как единое место
+# для несекретных настроек — и deploy.mjs читает отсюда id базы.
+
+# Идентификатор базы — не секрет: без токена он бесполезен, и wrangler
+# точно так же хранит его в открытом виде. Держать его здесь важно:
+# без него выкатка из GitHub Actions пыталась найти базу по списку,
+# упиралась в «Authentication error» и молча не выкатывалась вовсе —
+# сервер месяцами оставался бы на старом коде.
+[[d1_databases]]
+binding = "DB"
+database_name = "pravofin"
+database_id = "00a64f5f-477b-4eb4-98a0-7bd1385556e5"
+
+# Раз в час: напоминания о сроках, недельная сводка, автопродление подписок.
+[triggers]
+crons = ["0 * * * *"]
+
+# Секреты (НЕ здесь): AI_API_KEY, YOOKASSA_SECRET_KEY, TELEGRAM_BOT_TOKEN,
+# TELEGRAM_WEBHOOK_SECRET, RECOVERY_SECRET — лежат в worker/.env
+# и в секрете WORKER_ENV репозитория.
 [vars]
 AI_BASE_URL = "https://api.aitunnel.ru/v1"
 AI_MODEL = "deepseek-chat"
-
-# Честный лимит запросов через KV. Раскомментируйте после:
-#   wrangler kv namespace create RL
-# и подставьте выданный id.
-# [[kv_namespaces]]
-# binding = "RL"
-# id = "СЮДА_ID_ИЗ_КОМАНДЫ_ВЫШЕ"

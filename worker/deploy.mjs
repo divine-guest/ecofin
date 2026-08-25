@@ -31,6 +31,22 @@ const VAR_KEYS = [
   "YOOKASSA_SHOP_ID", "TELEGRAM_BOT_USERNAME",
 ];
 
+/* Id базы из wrangler.toml — запасной путь, когда его нет в .env.
+
+   На этом уже потеряли месяц: секрет WORKER_ENV в репозитории собрали до
+   того, как D1_DATABASE_ID появился в локальном .env. Выкатка из Actions
+   каждый раз пыталась найти базу по списку, упиралась в «Authentication
+   error» (у токена D1 нет права на перечисление) и падала. Локальные
+   выкатки при этом проходили — поэтому поломку никто не замечал, а
+   сервер просто оставался на старом коде. */
+async function d1FromWrangler() {
+  try {
+    const toml = await readFile(join(HERE, "wrangler.toml"), "utf8");
+    const m = toml.match(/database_id\s*=\s*"([0-9a-f-]{36})"/i);
+    return m ? m[1] : "";
+  } catch { return ""; }
+}
+
 async function loadEnvFile() {
   try {
     const raw = await readFile(join(HERE, ".env"), "utf8");
@@ -193,6 +209,10 @@ async function enableSubdomain() {
 
 const main = async () => {
   const cfg = { ...(await loadEnvFile()), ...process.env };
+  if (!cfg.D1_DATABASE_ID) {
+    cfg.D1_DATABASE_ID = await d1FromWrangler();
+    if (cfg.D1_DATABASE_ID) console.log("  id базы взят из wrangler.toml");
+  }
   console.log(`Деплой воркера «${SCRIPT}»`);
 
   const bindings = [];
