@@ -14,6 +14,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
 import { sql } from "./_admin.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -32,6 +33,7 @@ const SUITES = [
   ["courses", "платные уроки закрыты, первый открыт"],
   ["points", "баллы: начисление, потолок, запрет минуса"],
   ["preview", "что видно до оплаты"],
+  ["qa", "публичная лента: согласие, проверка, публикация"],
   ["bot", "команды Telegram: подписка, профиль, промокод"],
   ["cron", "ежечасная рассылка напоминаний"],
 ];
@@ -47,6 +49,17 @@ function run(file) {
     p.stderr.on("data", (d) => (out += d));
     p.on("close", (code) => resolve({ code, out }));
   });
+}
+
+/* Секрет вебхука лежит в worker/.env. Без него сюита бота молча
+   проверяет одну строчку вместо двадцати — это хуже, чем падение,
+   потому что выглядит как успех. */
+if (!process.env.TELEGRAM_WEBHOOK_SECRET) {
+  try {
+    const env = readFileSync(join(HERE, "..", "worker", ".env"), "utf8");
+    const m = env.match(/^TELEGRAM_WEBHOOK_SECRET=(.*)$/m);
+    if (m) process.env.TELEGRAM_WEBHOOK_SECRET = m[1].trim();
+  } catch {}
 }
 
 if (!process.env.D1_API_TOKEN) {
@@ -86,7 +99,7 @@ for (const [file, what] of SUITES) {
 /* Убираем за собой всё, что могли оставить упавшие сюиты. */
 for (const t of ["reminders", "reminder_sent", "point_ops", "payments",
                  "notifications", "sessions", "usage", "actions",
-                 "tg_link_codes", "ai_jobs"]) {
+                 "tg_link_codes", "ai_jobs", "public_qa", "qa_useful"]) {
   try { await sql(`DELETE FROM ${t} WHERE email LIKE '%@test.ru'`); } catch {}
 }
 try { await sql("DELETE FROM users WHERE email LIKE '%@test.ru'"); } catch {}
