@@ -230,7 +230,7 @@ function renderHeader(active) {
 
   const shown = new Set(pages.map(([h]) => h));
   const rest = [
-    ["courses.html", "Курсы"], ["expenses.html", "Дневник трат"],
+    ["answers.html", "Ответы"], ["courses.html", "Курсы"], ["expenses.html", "Дневник трат"],
     ["search.html", "Поиск"], ["faq.html", "Вопросы"],
   ].filter(([h]) => !shown.has(h));
 
@@ -273,7 +273,8 @@ function renderFooter() {
     <p class="footer-nav">
       <a href="tools.html">Инструменты</a> · <a href="calc.html">Калькуляторы</a> ·
       <a href="knowledge.html">База знаний</a> · <a href="courses.html">Курсы</a> ·
-      <a href="games.html">Практикум</a> · <a href="expenses.html">Дневник трат</a> ·
+      <a href="answers.html">Ответы на вопросы</a> · <a href="games.html">Практикум</a> ·
+      <a href="expenses.html">Дневник трат</a> ·
       <a href="search.html">Поиск</a>
     </p>
     <p><a href="about.html">О сервисе</a> · <a href="about.html#contact">Связаться</a> · <a href="faq.html">Частые вопросы</a> · <a href="legal.html">Правовые документы</a></p>
@@ -505,6 +506,7 @@ const CHATJOBS = {
         el.classList.remove("thinking");
         el.textContent = answer;
         el.removeAttribute("id");
+        if (job.status === "done") QAOFFER.attach(el, id);
       } else if (document.getElementById("chatMessages") && !already) {
         addMsg("bot", answer);
       }
@@ -542,6 +544,50 @@ const CHATJOBS = {
         j => j.kind === "chat" && j.status === "pending" && !hist.some(m => m.jobId === j.id));
       if (lost.length) { this.save(lost.map(j => j.id)); this.watch(); }
     } catch {}
+  },
+};
+
+/* ============ Предложить разбор в общую ленту ============
+   Ответ, который видит один человек, пропадает. Опубликованный
+   отвечает следующему, кто искал то же самое, и приводит людей из
+   поиска — лента растёт сама.
+
+   Только по согласию и только после проверки владельцем: в вопросы
+   вставляют суммы, имена и реквизиты. Имя автора не показывается. */
+const QAOFFER = {
+  topics: ["Налоги", "Договоры", "Работники", "ИП и ООО",
+           "Самозанятость", "Проверки и штрафы", "Деньги и счета", "Общее"],
+
+  attach(afterEl, jobId) {
+    if (!PF.user() || afterEl.nextElementSibling?.classList?.contains("qa-offer")) return;
+    const box = document.createElement("div");
+    box.className = "qa-offer";
+    box.innerHTML = `
+      <span>Разрешить опубликовать этот разбор? Поможет тем, кто ищет то же самое.
+        Имя и почта не показываются.</span>
+      <div class="row">
+        <select class="qa-topic">${this.topics.map(t => `<option>${escapeHtml(t)}</option>`).join("")}</select>
+        <button class="btn small" data-job="${jobId}">Опубликовать</button>
+        <button class="btn small secondary">Не нужно</button>
+      </div>`;
+
+    const [publish, skip] = box.querySelectorAll("button");
+    publish.onclick = () => this.send(box, jobId, box.querySelector(".qa-topic").value);
+    skip.onclick = () => box.remove();
+    afterEl.after(box);
+  },
+
+  async send(box, jobId, topic) {
+    box.innerHTML = `<span>Отправляем…</span>`;
+    try {
+      const d = await API.request("/api/qa/offer", { method: "POST", body: { jobId, topic } });
+      box.innerHTML = d.already
+        ? `<span>Этот разбор уже предложен.</span>`
+        : `<span>Спасибо! Разбор появится в <a href="answers.html">общей ленте</a> после проверки.</span>`;
+      trackEvent("qa_offer");
+    } catch (e) {
+      box.innerHTML = `<span>Не получилось: ${escapeHtml(e.message)}</span>`;
+    }
   },
 };
 

@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=60">
+<link rel="stylesheet" href="css/style.css?v=61">
 </head>
 <body>
 <main class="section tint-navy">
@@ -32,10 +32,10 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=60"></script>
-<script src="js/api.js?v=60"></script>
-<script src="js/app.js?v=60"></script>
-<script src="js/ai.js?v=60"></script>
+<script src="js/themes.js?v=61"></script>
+<script src="js/api.js?v=61"></script>
+<script src="js/app.js?v=61"></script>
+<script src="js/ai.js?v=61"></script>
 <script>
 initPage("admin.html");
 
@@ -136,6 +136,16 @@ const AD = {
             <button class="btn small secondary" ${this.offset === 0 ? "disabled" : ""} onclick="AD.page(-1)">← Назад</button>
             <button class="btn small secondary" ${this.offset + this.limit >= this.total ? "disabled" : ""} onclick="AD.page(1)">Вперёд →</button>
           </div>` : ""}
+      </div>
+
+      <div class="card" style="margin-top:20px" id="qaCard">
+        <h3 style="margin-bottom:6px">Вопросы в общую ленту <span class="badge" id="qaCount">0</span></h3>
+        <p style="color:var(--muted);font-size:var(--t-sm);margin-bottom:14px">
+          Люди разрешили опубликовать свой разбор. Проверьте, не осталось ли в вопросе
+          личного — сумм, имён, реквизитов. Формулировку вопроса можно поправить под то,
+          как люди ищут: именно она попадёт в поиск.
+        </p>
+        <div id="qaQueue"><p class="hint">Загружаем…</p></div>
       </div>
 
       <div class="card" style="margin-top:20px">
@@ -251,6 +261,57 @@ const AD = {
       await fn();
       toast(okMsg);
       await this.load();
+    } catch (e) { toast(e.message, "error"); }
+  },
+
+  /* ---------- Очередь публичной ленты ---------- */
+
+  async qaLoad() {
+    const box = document.getElementById("qaQueue");
+    if (!box) return;
+    let d;
+    try { d = await API.admin.qaPending(); }
+    catch { box.innerHTML = `<p class="hint">Не удалось загрузить.</p>`; return; }
+
+    document.getElementById("qaCount").textContent = d.total;
+    if (!d.items.length) {
+      box.innerHTML = `<p class="hint">Пока нечего проверять. Разборы появятся, когда люди начнут их предлагать.</p>`;
+      return;
+    }
+
+    box.innerHTML = "";
+    d.items.forEach(it => {
+      const el = document.createElement("div");
+      el.className = "qa-review";
+      el.innerHTML = `
+        <label>Вопрос — попадёт в поиск, можно поправить</label>
+        <textarea rows="2" data-q="${it.id}">${escapeHtml(it.question)}</textarea>
+        <div class="qa-review-row">
+          <select data-topic="${it.id}">
+            ${["Налоги","Договоры","Работники","ИП и ООО","Самозанятость","Проверки и штрафы","Деньги и счета","Общее"]
+              .map(t => `<option${t === it.topic ? " selected" : ""}>${t}</option>`).join("")}
+          </select>
+          <span class="hint">предложил: ${escapeHtml(it.email)}</span>
+        </div>
+        <details style="margin:10px 0">
+          <summary style="cursor:pointer;font-size:var(--t-sm)">Показать ответ целиком</summary>
+          <div class="qa-review-answer">${escapeHtml(it.answer).replace(/\n/g, "<br>")}</div>
+        </details>
+        <div class="qa-review-row">
+          <button class="btn small" onclick="AD.qaDecide(${it.id}, 'publish')">Опубликовать</button>
+          <button class="btn small secondary" onclick="AD.qaDecide(${it.id}, 'reject')">Отклонить</button>
+        </div>`;
+      box.appendChild(el);
+    });
+  },
+
+  async qaDecide(id, action) {
+    const q = document.querySelector(`[data-q="${id}"]`)?.value.trim();
+    const topic = document.querySelector(`[data-topic="${id}"]`)?.value;
+    try {
+      await API.admin.qaDecide(id, action, q, topic);
+      toast(action === "publish" ? "Опубликовано" : "Отклонено");
+      this.qaLoad();
     } catch (e) { toast(e.message, "error"); }
   },
 
@@ -405,6 +466,8 @@ document.addEventListener("pf:ready", async ({ detail }) => {
       : `<div class="card"><p>Не удалось загрузить данные: ${escapeHtml(e.message)}</p></div>`;
   }
 });
+
+AD.qaLoad();
 </script>
 </body>
 </html>

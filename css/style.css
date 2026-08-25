@@ -1500,3 +1500,58 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 /* Недоступный режим показываем, а не прячем: человеку важно понять,
    почему он не подходит, а не гадать, куда делся вариант. */
 .cmp-table tr.off { opacity: .55; }
+
+
+/* ===== Публичная лента вопросов =====
+   Вопрос виден сразу, ответ раскрывается: так на экран помещается
+   десяток разборов, и человек находит свой, не листая простыни. */
+.qa-controls { display: flex; flex-direction: column; gap: 12px; margin-bottom: 22px; }
+.qa-controls input[type="search"] { width: 100%; }
+.qa-topics { display: flex; flex-wrap: wrap; gap: 8px; }
+.qa-chip {
+  padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--surface);
+  color: var(--muted); font-family: inherit; font-size: var(--t-sm); font-weight: 600;
+  transition: border-color .2s, color .2s;
+}
+.qa-chip:hover { border-color: var(--primary); color: var(--primary); }
+.qa-chip.on { border-color: var(--primary); color: var(--primary); background: var(--surface-2); }
+
+.qa-item {
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px 18px; margin-bottom: 12px; background: var(--surface);
+}
+.qa-item summary { cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.qa-item summary::-webkit-details-marker { display: none; }
+.qa-q { font-weight: 600; }
+.qa-meta { font-size: var(--t-xs); color: var(--muted); }
+.qa-a {
+  margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+  line-height: 1.65; white-space: normal;
+}
+.qa-actions {
+  margin-top: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+}
+
+/* Предложение опубликовать — после ответа в чате. */
+.qa-offer {
+  margin-top: 8px; padding: 10px 12px; border-radius: 12px;
+  background: var(--surface-2); font-size: var(--t-sm);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.qa-offer .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+
+/* ===== Проверка вопросов перед публикацией ===== */
+.qa-review {
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px; margin-bottom: 12px;
+}
+.qa-review label { display: block; font-size: var(--t-xs); color: var(--muted); margin-bottom: 4px; }
+.qa-review textarea { width: 100%; min-height: 52px; }
+.qa-review-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.qa-review-answer {
+  margin-top: 10px; padding: 12px; border-radius: 10px;
+  background: var(--surface-2); font-size: var(--t-sm); line-height: 1.6;
+  max-height: 260px; overflow-y: auto;
+}

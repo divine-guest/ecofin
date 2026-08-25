@@ -1,0 +1,146 @@
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Разборы реальных вопросов по налогам, договорам, работникам и проверкам. Отвечает консультант ПравоФин — читать можно без регистрации.">
+<title>Ответы на вопросы — ПравоФин</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css?v=61">
+
+<main>
+  <section class="section">
+    <div class="container">
+      <div class="section-title">
+        <h1>Ответы на вопросы</h1>
+        <div class="line"></div>
+        <p class="subtitle">
+          Разборы, которые люди разрешили опубликовать. Имён нет — только вопрос и ответ.
+          Читать можно без регистрации.
+        </p>
+      </div>
+
+      <div class="qa-controls">
+        <input type="search" id="qaSearch" placeholder="Найти по слову: патент, увольнение, неустойка…"
+               oninput="QA.debounced()">
+        <div class="qa-topics" id="qaTopics"></div>
+      </div>
+
+      <div id="qaList"><p class="hint">Загружаем…</p></div>
+      <div id="qaMore" style="text-align:center;margin-top:24px"></div>
+
+      <div class="card" style="margin-top:36px">
+        <h3>Здесь может быть ваш вопрос</h3>
+        <p style="color:var(--muted)">
+          Задайте вопрос консультанту — и, если захотите, разрешите опубликовать разбор.
+          Имя и почта не показываются никогда, а вопрос перед публикацией проверяется вручную.
+        </p>
+        <p style="margin-top:12px">
+          <a class="btn" href="dashboard.html">Задать вопрос</a>
+          <a class="btn secondary" href="knowledge.html">База знаний</a>
+        </p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="js/themes.js?v=61"></script>
+<script src="js/api.js?v=61"></script>
+<script src="js/app.js?v=61"></script>
+<script>
+initPage("answers.html");
+
+/* Лента вопросов. Открыта всем, в том числе поисковикам: в этом её
+   смысл — один разбор отвечает многим и приводит новых людей. */
+const QA = {
+  topic: "",
+  offset: 0,
+  timer: null,
+
+  debounced() {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => { this.offset = 0; this.load(true); }, 350);
+  },
+
+  pick(t) {
+    this.topic = this.topic === t ? "" : t;
+    this.offset = 0;
+    this.load(true);
+  },
+
+  async load(reset) {
+    const box = document.getElementById("qaList");
+    if (reset) box.innerHTML = `<p class="hint">Загружаем…</p>`;
+
+    const q = document.getElementById("qaSearch").value.trim();
+    const params = new URLSearchParams({ limit: "20", offset: String(this.offset) });
+    if (this.topic) params.set("topic", this.topic);
+    if (q) params.set("q", q);
+
+    let d;
+    try { d = await API.request("/api/qa?" + params); }
+    catch { box.innerHTML = `<p class="hint">Не удалось загрузить. Обновите страницу.</p>`; return; }
+
+    this.renderTopics(d.topics || []);
+
+    if (reset) box.innerHTML = "";
+    if (!d.items.length && reset) {
+      box.innerHTML = q || this.topic
+        ? `<p class="hint">По этому запросу пока ничего нет. Попробуйте другое слово или снимите фильтр.</p>`
+        : `<p class="hint">Лента только начинается. Первые разборы появятся совсем скоро.</p>`;
+      document.getElementById("qaMore").innerHTML = "";
+      return;
+    }
+
+    d.items.forEach(it => box.appendChild(this.card(it)));
+    this.offset += d.items.length;
+
+    document.getElementById("qaMore").innerHTML =
+      this.offset < d.total
+        ? `<button class="btn secondary" onclick="QA.load(false)">Показать ещё</button>`
+        : "";
+  },
+
+  renderTopics(topics) {
+    const box = document.getElementById("qaTopics");
+    if (box.dataset.filled) return;
+    box.dataset.filled = "1";
+    box.innerHTML = topics.map(t =>
+      `<button class="qa-chip" data-t="${escapeHtml(t)}" onclick="QA.pick('${escapeHtml(t)}')">${escapeHtml(t)}</button>`
+    ).join("");
+  },
+
+  card(it) {
+    const el = document.createElement("details");
+    el.className = "qa-item";
+    el.innerHTML = `
+      <summary>
+        <span class="qa-q">${escapeHtml(it.question)}</span>
+        <span class="qa-meta">${escapeHtml(it.topic)}${it.useful ? ` · помогло ${it.useful}` : ""}</span>
+      </summary>
+      <div class="qa-a">${escapeHtml(it.answer).replace(/\n/g, "<br>")}</div>
+      <div class="qa-actions">
+        <button class="btn small secondary" onclick="QA.useful(${it.id}, this)">Помогло</button>
+        <span class="hint">Справка, не юридическая консультация.</span>
+      </div>`;
+    return el;
+  },
+
+  async useful(id, btn) {
+    if (!PF.user()) return toast("Войдите, чтобы отметить ответ полезным");
+    btn.disabled = true;
+    try {
+      await API.request("/api/qa/useful", { method: "POST", body: { id } });
+      btn.textContent = "Спасибо";
+    } catch { btn.disabled = false; }
+  },
+};
+
+/* Фильтр по теме подсвечивается после выбора. */
+document.addEventListener("click", e => {
+  if (!e.target.classList?.contains("qa-chip")) return;
+  document.querySelectorAll(".qa-chip").forEach(c =>
+    c.classList.toggle("on", c.dataset.t === QA.topic));
+});
+
+QA.load(true);
+</script>

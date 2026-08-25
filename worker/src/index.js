@@ -10,6 +10,7 @@ import { checkLimits, checkOnly, sweep as sweepLimits } from "./ratelimit.js";
 import * as referral from "./referral.js";
 import * as reminders from "./reminders.js";
 import * as aijobs from "./aijobs.js";
+import * as qa from "./qa.js";
 import * as points from "./points.js";
 import * as courses from "./courses.js";
 import * as telegram from "./telegram.js";
@@ -42,6 +43,14 @@ const ROUTES = [
   ["POST", "/api/reminders/delete", reminders.remove, "user"],
   ["POST", "/api/reminders/preset", reminders.addPreset, "user"],
   /* Фоновые задачи ИИ: вопрос переживает переход на другую страницу. */
+  /* Публичная лента: читают все, предлагают вошедшие, решает владелец. */
+  ["GET", "/api/qa", qa.list, "public"],
+  ["GET", "/api/qa/one", qa.one, "public"],
+  ["POST", "/api/qa/offer", qa.offer, "user"],
+  ["POST", "/api/qa/useful", qa.useful, "user"],
+  ["GET", "/api/admin/qa", qa.pending, "admin"],
+  ["POST", "/api/admin/qa", qa.decide, "admin"],
+
   ["POST", "/api/ai/ask", aijobs.ask, "user"],
   ["GET", "/api/ai/job", aijobs.status, "user"],
   ["GET", "/api/ai/jobs", aijobs.list, "user"],

@@ -173,6 +173,11 @@ const API = {
       return API.request("/api/admin/grant", { method: "POST", body: { email, plan, days, tier } });
     },
     revoke(email) { return API.request("/api/admin/revoke", { method: "POST", body: { email } }); },
+    /* Очередь публичной ленты: что ждёт проверки и решение по вопросу. */
+    qaPending() { return API.request("/api/admin/qa"); },
+    qaDecide(id, action, question, topic) {
+      return API.request("/api/admin/qa", { method: "POST", body: { id, action, question, topic } });
+    },
     resetTrial(email) { return API.request("/api/admin/reset-trial", { method: "POST", body: { email } }); },
     deleteUser(email) { return API.request("/api/admin/delete-user", { method: "POST", body: { email } }); },
     setRole(email, role) { return API.request("/api/admin/set-role", { method: "POST", body: { email, role } }); },
