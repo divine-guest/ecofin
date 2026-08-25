@@ -168,6 +168,16 @@ async function prepareAvatarPhoto(file) {
   throw new Error("Не удалось сжать фото — попробуйте другое");
 }
 
+/* Склонение при числе: «1 месяц», «3 месяца», «5 месяцев».
+   Без него подарочные месяцы читались бы как «3 месяц». */
+function plural(n, one, few, many) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  if (b === 1) return one;
+  return many;
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -591,6 +601,50 @@ const QAOFFER = {
   },
 };
 
+/* ============ Пробный период ============
+   Три дня «Про» без карты. Самый сильный довод в продаже: человек,
+   который три дня пользовался безлимитом, платит охотнее того, кому
+   показали список возможностей. */
+const TRIAL = {
+  state: null,
+
+  async check() {
+    if (!PF.user()) return null;
+    if (this.state) return this.state;
+    try { this.state = await API.billing.trialStatus(); }
+    catch { this.state = { available: false }; }
+    return this.state;
+  },
+
+  /* Плашка предложения. Возвращает пустую строку, если пробный уже был, —
+     удобно вставлять куда угодно без лишних проверок. */
+  banner() {
+    if (!this.state || !this.state.available) return "";
+    return `
+      <div class="trial-banner">
+        <div>
+          <b>Попробуйте «Про» ${this.state.days} дня бесплатно</b>
+          <span>Карта не нужна. Разбор документов без лимита, напоминания в Telegram,
+            все курсы. По окончании тариф сам вернётся на «Старт» — ничего не спишется.</span>
+        </div>
+        <button class="btn" onclick="TRIAL.start(this)">Включить бесплатно</button>
+      </div>`;
+  },
+
+  async start(btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Включаем…"; }
+    try {
+      const d = await API.billing.trial();
+      trackEvent("trial_start");
+      toast(`Готово! «Про» на ${d.days} дня — до ${new Date(d.until).toLocaleDateString("ru-RU")}`);
+      setTimeout(() => location.reload(), 1300);
+    } catch (e) {
+      toast(e.message, "error");
+      if (btn) { btn.disabled = false; btn.textContent = "Включить бесплатно"; }
+    }
+  },
+};
+
 /* ============ Тарифы и оплата ============
    Три уровня вместо одного. Смысл именно в среднем: рядом с «Базовым»
    за 290 старший тариф выглядит выбором, а не преградой, и человек
@@ -624,6 +678,9 @@ const PAY = {
       bd.innerHTML = `<div class="modal"><p>${escapeHtml(e.message)}</p></div>`;
       return;
     }
+    /* Пробный показываем над ценами: попробовать проще, чем решиться
+       заплатить, а после трёх дней безлимита разговор о цене другой. */
+    await TRIAL.check();
     this.render();
   },
 
@@ -640,6 +697,7 @@ const PAY = {
     if (!bd || !this.data) return;
     const paid = this.data.plans.filter(p => p.price.month > 0);
     const current = PF.user()?.tier || "free";
+    const trialHtml = TRIAL.banner();
 
     bd.innerHTML = `
       <div class="modal pay-modal">
@@ -647,6 +705,8 @@ const PAY = {
           <h3>Тарифы</h3>
           <button class="btn small secondary" onclick="PAY.close()">Закрыть</button>
         </div>
+
+        ${trialHtml}
 
         <div class="period-switch" role="tablist">
           <button role="tab" class="${this.period === "month" ? "on" : ""}" onclick="PAY.setPeriod('month')">На месяц</button>
@@ -658,6 +718,15 @@ const PAY = {
         <div class="tier-grid">
           ${paid.map(p => this.card(p, current)).join("")}
         </div>
+
+        ${(this.data.promises || []).length ? `
+          <div class="promises">
+            ${this.data.promises.map(pr => `
+              <div class="promise">
+                <b>${escapeHtml(pr.title)}</b>
+                <span>${escapeHtml(pr.text)}</span>
+              </div>`).join("")}
+          </div>` : ""}
 
         ${this.balance > 0 ? `
           <p class="hint points-note">
@@ -701,9 +770,11 @@ const PAY = {
           <span class="tier-per">в месяц</span>
         </div>
         ${this.period === "year"
-          ? `<span class="tier-year">${price.toLocaleString("ru-RU")} ₽ за год · экономия ${p.yearDiscount}%</span>`
-          : `<span class="tier-year">списывается раз в месяц</span>`}
+          ? `<span class="tier-year">${price.toLocaleString("ru-RU")} ₽ за год —
+               <b>${p.freeMonths} ${plural(p.freeMonths, "месяц", "месяца", "месяцев")} в подарок</b></span>`
+          : `<span class="tier-year">списывается раз в месяц, отменить можно сразу</span>`}
         <ul class="tier-perks">${p.perks.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
+        ${p.worth ? `<p class="tier-worth">${escapeHtml(p.worth)}</p>` : ""}
         ${isCurrent
           ? '<span class="badge ok tier-current">Ваш тариф</span>'
           : `<button class="btn ${best ? "gold" : "secondary"} wide" onclick="event.stopPropagation();PAY.submit('${p.id}')">Выбрать</button>`}

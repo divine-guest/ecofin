@@ -1,7 +1,7 @@
 /* ПравоФин — оплата подписки через ЮKassa.
    Pro включается ТОЛЬКО после того, как статус платежа подтверждён запросом
    к API ЮKassa. Ответ браузера и тело вебхука сами по себе ничего не активируют. */
-import { CFG, json, fail, now, normEmail, publicUser } from "./lib.js";
+import { CFG, json, fail, now, normEmail, publicUser, isPaid } from "./lib.js";
 import { PLANS, PERIOD_DAYS, publicPlans, yearlyDiscount } from "./plans.js";
 import { extendUntil } from "./quota.js";
 import { logAction } from "./auth.js";
@@ -200,6 +200,61 @@ export async function check(request, env, origin, user) {
 
 /* POST /api/billing/promo {code} — промокоды задаются переменной PROMO_CODES
    в формате «КОД:дней,КОД2:дней». Один код — один раз на аккаунт. */
+/* POST /api/billing/trial — три дня «Про» без карты.
+
+   Один раз на аккаунт. Факт выдачи пишем в payments с нулевой суммой:
+   отдельная таблица не нужна, а в выручку ноль не попадёт. */
+export const TRIAL_DAYS = 3;
+
+export async function trial(request, env, origin, user) {
+  const used = await env.DB.prepare(
+    "SELECT id FROM payments WHERE email = ? AND source = 'trial'"
+  ).bind(user.email).first();
+  if (used) {
+    return fail(env, origin, "Пробный период уже был. Оформить подписку можно в кабинете", 409);
+  }
+
+  /* Тем, у кого подписка уже есть, пробный не нужен — он бы её укоротил
+     или запутал со сроками. */
+  if (isPaid(user)) {
+    return fail(env, origin, "У вас уже есть подписка", 409);
+  }
+
+  const until = now() + TRIAL_DAYS * 86400000;
+  await env.DB.prepare("UPDATE users SET plan = 'pro', pro_until = ? WHERE email = ?")
+    .bind(until, user.email).run();
+  await env.DB.prepare(
+    `INSERT INTO payments (id, email, amount, plan, source, status, created_at, completed_at)
+     VALUES (?, ?, 0, 'trial', 'trial', 'succeeded', ?, ?)`
+  ).bind(`trial-${now()}-${user.email}`, user.email, now(), now()).run();
+  await logAction(env, user.email, `Начат пробный период «Про» на ${TRIAL_DAYS} дн.`);
+
+  /* Напоминание за день до конца: без него человек просто не заметит,
+     что доступ кончился, и уйдёт молча. */
+  await env.DB.prepare(
+    `INSERT INTO notifications (email, title, body, kind, link, created_at)
+     VALUES (?, ?, ?, 'info', 'dashboard.html?pay=1', ?)`
+  ).bind(user.email, "Пробный «Про» активен",
+         `Три дня всё без ограничений: разбор документов, напоминания в Telegram, курсы. ` +
+         `Заканчивается ${new Date(until).toLocaleDateString("ru-RU")}.`, now()).run();
+
+  const row = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(user.email).first();
+  return json(env, origin, { user: publicUser(row), until, days: TRIAL_DAYS });
+}
+
+/* GET /api/billing/trial — доступен ли пробный этому человеку.
+   Нужно, чтобы не показывать кнопку тем, кто уже воспользовался. */
+export async function trialStatus(request, env, origin, user) {
+  const used = await env.DB.prepare(
+    "SELECT created_at FROM payments WHERE email = ? AND source = 'trial'"
+  ).bind(user.email).first();
+  return json(env, origin, {
+    available: !used && !isPaid(user),
+    used: Boolean(used),
+    days: TRIAL_DAYS,
+  });
+}
+
 export async function promo(request, env, origin, user) {
   const b = await request.json().catch(() => ({}));
   const code = String(b.code || "").trim().toUpperCase().slice(0, 40);

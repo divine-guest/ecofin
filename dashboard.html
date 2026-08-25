@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=61">
+<link rel="stylesheet" href="css/style.css?v=63">
 </head>
 <body>
 <main class="section">
@@ -33,12 +33,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=61"></script>
-<script src="js/api.js?v=61"></script>
-<script src="js/app.js?v=61"></script>
-<script src="js/ai.js?v=61"></script>
-<script src="js/competencies.js?v=61"></script>
-<script src="js/courses.js?v=61"></script>
+<script src="js/themes.js?v=63"></script>
+<script src="js/api.js?v=63"></script>
+<script src="js/app.js?v=63"></script>
+<script src="js/ai.js?v=63"></script>
+<script src="js/competencies.js?v=63"></script>
+<script src="js/courses.js?v=63"></script>
 <script>
 initPage("dashboard.html");
 
@@ -217,6 +217,8 @@ function renderCabinet() {
         <button class="btn danger" onclick="PF.logout()">Выйти</button>
       </div>
     </div>
+
+    <div id="trialSlot" data-tab="overview"></div>
 
     <div class="card today" data-tab="overview" id="todayCard">
       <h3>Что сейчас</h3>
@@ -843,6 +845,13 @@ renderCabinet();
 document.addEventListener("pf:ready", ({ detail }) => {
   if (!detail.user) { location.href = "auth.html"; return; }
   renderCabinet();
+});
+
+/* Пробный период показываем первым делом: это единственное место, где
+   бесплатный человек видит, чего именно он не получает. */
+TRIAL.check().then(() => {
+  const slot = document.getElementById("trialSlot");
+  if (slot) slot.innerHTML = TRIAL.banner();
 });
 </script>
 </body>

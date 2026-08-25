@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=61">
+<link rel="stylesheet" href="css/style.css?v=63">
 </head>
 <body>
 <main>
@@ -165,6 +165,34 @@
   <section class="section tint-gold">
     <div class="container">
       <div class="section-title">
+        <h2>Сколько стоит не знать</h2>
+        <div class="line"></div>
+        <p class="subtitle">Цены подписки проще сравнивать не с нулём, а с тем, во что обходятся ошибки.</p>
+      </div>
+
+      <!-- Цифры из НК РФ и ТК РФ, не придуманные. Это главный довод для
+           этого продукта: платят не за возможности, а за то, чтобы не
+           попасть на штраф и не переплатить налог. -->
+      <div class="cost-block">
+        <div class="cost-item">
+          <b>от 1 000 ₽</b>
+          <span>штраф за декларацию, сданную с опозданием, плюс 5% от налога за каждый месяц</span>
+        </div>
+        <div class="cost-item">
+          <b>20–40%</b>
+          <span>от неуплаченной суммы — штраф, если налог занижен (ст. 122 НК РФ)</span>
+        </div>
+        <div class="cost-item">
+          <b>блокировка счёта</b>
+          <span>если декларация не сдана в течение 20 дней после срока</span>
+        </div>
+        <div class="cost-item">
+          <b>2 000–5 000 ₽</b>
+          <span>час консультации бухгалтера или юриста — и это за один вопрос</span>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:56px">
         <h2>Тарифы</h2>
         <div class="line"></div>
         <p class="subtitle">Калькуляторы и база знаний бесплатны всегда. Платите только за ИИ и разбор документов.</p>
@@ -174,6 +202,8 @@
       <div id="homePlans" class="grid cols-3">
         <div class="card"><p class="hint">Загружаем тарифы…</p></div>
       </div>
+
+      <div class="promises" id="homePromises"></div>
     </div>
   </section>
 
@@ -189,10 +219,10 @@
   </section>
 </main>
 
-<script src="js/themes.js?v=61"></script>
-<script src="js/api.js?v=61"></script>
-<script src="js/app.js?v=61"></script>
-<script src="js/ai.js?v=61"></script>
+<script src="js/themes.js?v=63"></script>
+<script src="js/api.js?v=63"></script>
+<script src="js/app.js?v=63"></script>
+<script src="js/ai.js?v=63"></script>
 <script>
 initPage("index.html");
 
@@ -212,8 +242,10 @@ initPage("index.html");
           ${best ? '<span class="tier-flag">Чаще всего выбирают</span>' : ""}
           <h3>${escapeHtml(p.title)}</h3>
           <p class="stat-value">${free ? "0 ₽" : money(p.price.month) + " ₽"}${free ? "" : '<span class="stat-label">/мес</span>'}</p>
-          ${free ? "" : `<p class="tier-year">или ${money(p.price.year)} ₽ за год — дешевле на ${p.yearDiscount}%</p>`}
+          ${free ? "" : `<p class="tier-year">или ${money(p.price.year)} ₽ за год —
+            <b>${p.freeMonths} ${plural(p.freeMonths, "месяц", "месяца", "месяцев")} в подарок</b></p>`}
           <ul class="tier-perks">${p.perks.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
+          ${p.worth ? `<p class="tier-worth">${escapeHtml(p.worth)}</p>` : ""}
           <a href="auth.html" class="btn ${best ? "gold" : "secondary"}">${free ? "Начать бесплатно" : "Выбрать"}</a>
         </div>`;
     }).join("") + (d.enterprise ? `
@@ -223,6 +255,14 @@ initPage("index.html");
         <ul class="tier-perks">${d.enterprise.perks.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
         <a href="about.html#contact" class="btn secondary">Обсудить</a>
       </div>` : "");
+    /* Обещания снимают страх перед первой оплатой сильнее, чем любой
+       список возможностей: «а вдруг не подойдёт» и «потом не отпишешься». */
+    const pr = document.getElementById("homePromises");
+    if (pr && (d.promises || []).length) {
+      pr.innerHTML = d.promises.map(x => `
+        <div class="promise"><b>${escapeHtml(x.title)}</b><span>${escapeHtml(x.text)}</span></div>
+      `).join("");
+    }
   } catch {
     box.innerHTML = `<div class="card"><p class="hint">Тарифы временно недоступны.
       <a href="auth.html">Зарегистрируйтесь</a> — начать можно бесплатно.</p></div>`;

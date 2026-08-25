@@ -151,6 +151,13 @@ const API = {
     plans() { return API.request("/api/billing/plans"); },
     create(plan, period) { return API.request("/api/billing/create", { method: "POST", body: { plan, period } }); },
     check() { return API.request("/api/billing/check", { method: "POST" }); },
+    /* Пробный «Про»: три дня без карты, один раз на аккаунт. */
+    async trial() {
+      const d = await API.request("/api/billing/trial", { method: "POST" });
+      API.setSession(null, d.user);
+      return d;
+    },
+    trialStatus() { return API.request("/api/billing/trial"); },
     async promo(code) {
       const d = await API.request("/api/billing/promo", { method: "POST", body: { code } });
       API.setSession(null, d.user);

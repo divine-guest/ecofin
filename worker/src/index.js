@@ -67,6 +67,9 @@ const ROUTES = [
   ["POST", "/api/billing/create", billing.createPayment, "user"],
   ["POST", "/api/billing/check", billing.check, "user"],
   ["POST", "/api/billing/promo", billing.promo, "user"],
+  /* Пробный «Про»: три дня без карты, один раз на аккаунт. */
+  ["POST", "/api/billing/trial", billing.trial, "user"],
+  ["GET", "/api/billing/trial", billing.trialStatus, "user"],
   ["POST", "/api/billing/webhook", billing.webhook, "webhook"],
 
   ["GET", "/api/admin/users", admin.listUsers, "admin"],
@@ -98,6 +101,7 @@ const THROTTLED = {
   "/api/auth/login": "login",
   "/api/auth/register": "register",
   "/api/billing/promo": "promo",
+  "/api/billing/trial": "promo",
   "/api/admin/reset-password": "reset",
 };
 

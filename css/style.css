@@ -1555,3 +1555,61 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
   background: var(--surface-2); font-size: var(--t-sm); line-height: 1.6;
   max-height: 260px; overflow-y: auto;
 }
+
+
+/* ===== Предложение пробного периода =====
+   Заметное, но не крикливое: это честное предложение попробовать
+   без карты, а не баннер-ловушка. */
+.trial-banner {
+  display: flex; gap: 18px; align-items: center; justify-content: space-between;
+  flex-wrap: wrap;
+  border: 1.5px solid var(--primary); border-radius: 16px;
+  padding: 18px 22px; margin-bottom: 22px;
+  background: var(--surface);
+}
+.trial-banner > div { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 240px; }
+.trial-banner b { font-size: 1.05rem; }
+.trial-banner span { color: var(--muted); font-size: var(--t-sm); line-height: 1.55; }
+.trial-banner .btn { flex: none; }
+
+
+/* ===== Обещания под ценами =====
+   Страх «а вдруг не подойдёт» и «потом не отпишешься» держит от первой
+   оплаты сильнее самой цены. Отвечаем на него прямо у кнопки. */
+.promises {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+  margin: 20px 0 4px;
+}
+.promise {
+  background: var(--surface); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.promise b { font-size: var(--t-sm); }
+.promise span { font-size: var(--t-xs); color: var(--muted); line-height: 1.5; }
+
+/* Во что обходится не иметь тариф — самый весомый довод в карточке. */
+.tier-worth {
+  margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);
+  font-size: var(--t-xs); color: var(--muted); line-height: 1.55;
+}
+.tier-year b { color: var(--primary); }
+
+
+/* ===== Сколько стоит не знать =====
+   Цену подписки человек сравнивает не с нулём, а с ценой ошибки.
+   Красным не красим: это не запугивание, а арифметика. */
+.cost-block {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.cost-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px; display: flex; flex-direction: column; gap: 7px;
+}
+.cost-item b {
+  font-family: "Onest", Georgia, serif; font-size: 1.5rem; line-height: 1.15;
+  color: var(--text);
+}
+.cost-item span { font-size: var(--t-sm); color: var(--muted); line-height: 1.55; }
