@@ -126,6 +126,31 @@ const name = (await db.prepare("SELECT name FROM users WHERE email = ?").bind("a
 ok(threw, "ошибка в пачке пробрасывается наверх");
 eq(name, "Анна", "при ошибке в пачке откатывается и то, что успело выполниться");
 
+/* Отдельно: пачка ПОСЛЕ обычных запросов. Именно в таком порядке
+   вылезла ошибка «cannot commit transaction - SQL statements in
+   progress»: кэш подготовленных выражений оставлял одно из них
+   незакрытым, и COMMIT не проходил. Обычная проверка batch этого не
+   ловила, потому что шла первой. Так выглядит удаление аккаунта. */
+await db.prepare("SELECT * FROM users WHERE email = ?").bind("a@test.ru").first();
+await db.prepare("SELECT * FROM actions WHERE email = ?").bind("a@test.ru").all();
+await db.prepare("UPDATE users SET last_login_at = ? WHERE email = ?").bind(Date.now(), "a@test.ru").run();
+
+let batchAfterOk = true;
+try {
+  await db.batch([
+    db.prepare("DELETE FROM reminders     WHERE email = ?").bind("a@test.ru"),
+    db.prepare("DELETE FROM point_ops     WHERE email = ?").bind("a@test.ru"),
+    db.prepare("DELETE FROM sessions      WHERE email = ?").bind("a@test.ru"),
+    db.prepare("DELETE FROM usage         WHERE email = ?").bind("a@test.ru"),
+    db.prepare("DELETE FROM actions       WHERE email = ?").bind("a@test.ru"),
+    db.prepare("DELETE FROM payments      WHERE email = ?").bind("a@test.ru"),
+    db.prepare("DELETE FROM notifications WHERE email = ?").bind("a@test.ru"),
+  ]);
+} catch (e) { batchAfterOk = false; console.log("      причина:", e.message); }
+ok(batchAfterOk, "пачка проходит и после обычных запросов (так удаляется аккаунт)");
+const leftovers = (await db.prepare("SELECT COUNT(*) AS n FROM actions WHERE email = ?").bind("a@test.ru").first()).n;
+eq(leftovers, 0, "пачка действительно удалила данные");
+
 console.log("\n— Значения, которые ходят через API —");
 
 const json = JSON.stringify({ tax: 40, contracts: 15 });

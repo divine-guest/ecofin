@@ -4,7 +4,10 @@
    важнее обычного: один раз на аккаунт, не поверх действующей подписки,
    и на время действия открывает ровно то же, что платный тариф. */
 
-const API = "https://pravofin-api.pravofin.workers.dev";
+/* Адрес сервера можно подменить: так один и тот же набор проверок
+   гоняется и по боевому Cloudflare, и по новому серверу до переезда.
+   API_URL=http://127.0.0.1:8080 node tests/run-all.mjs */
+const API = process.env.API_URL || "https://pravofin-api.pravofin.workers.dev";
 const O = "https://divine-guest.github.io";
 import { makeAdmin, cleanup, sql } from "./_admin.mjs";
 

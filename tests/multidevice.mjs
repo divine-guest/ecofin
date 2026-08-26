@@ -1,6 +1,9 @@
 /* Проверяем ровно ту проблему, из-за которой раньше приходилось
    заводить новый аккаунт: вход в один аккаунт с нескольких устройств. */
-const API = "https://pravofin-api.pravofin.workers.dev";
+/* Адрес сервера можно подменить: так один и тот же набор проверок
+   гоняется и по боевому Cloudflare, и по новому серверу до переезда.
+   API_URL=http://127.0.0.1:8080 node tests/run-all.mjs */
+const API = process.env.API_URL || "https://pravofin-api.pravofin.workers.dev";
 const ORIGIN = "https://divine-guest.github.io";
 
 const rawFetch = globalThis.fetch;

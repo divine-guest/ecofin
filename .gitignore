@@ -8,3 +8,7 @@ worker/.env
 .env
 
 # номер версии ресурсов ведётся скриптом bump-version.py
+
+# Готовая настройка машины: содержит ключи из worker/.env
+pravofin/worker/node/cloud-init.ready.yaml
+worker/node/cloud-init.ready.yaml

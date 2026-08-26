@@ -3,7 +3,10 @@
    Обе вещи хранят личное, поэтому границы важнее функций: чужой расчёт
    не открыть и не удалить, чужие вопросы не прочитать. */
 
-const API = "https://pravofin-api.pravofin.workers.dev";
+/* Адрес сервера можно подменить: так один и тот же набор проверок
+   гоняется и по боевому Cloudflare, и по новому серверу до переезда.
+   API_URL=http://127.0.0.1:8080 node tests/run-all.mjs */
+const API = process.env.API_URL || "https://pravofin-api.pravofin.workers.dev";
 const O = "https://divine-guest.github.io";
 import { sql } from "./_admin.mjs";
 

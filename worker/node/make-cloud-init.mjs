@@ -1,0 +1,63 @@
+/* Готовит файл, который владелец вставляет при создании машины.
+
+   Зачем отдельный скрипт: в настройку надо положить секреты — ключ ИИ,
+   токен Telegram, ключи ЮKassa. В репозиторий их класть нельзя, а
+   просить человека вписывать вручную — значит гарантированно получить
+   опечатку в ключе и полдня поисков.
+
+   Поэтому: образец лежит в репозитории открыто, а этот скрипт
+   подставляет в него содержимое worker/.env и кладёт результат рядом,
+   в файл, который в git не попадает.
+
+   Запуск:
+       node worker/node/make-cloud-init.mjs
+   Результат:
+       worker/node/cloud-init.ready.yaml   — открыть, скопировать целиком
+                                             и вставить в поле метаданных   */
+
+import { readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const WORKER = join(HERE, "..");
+
+const template = await readFile(join(HERE, "cloud-init.yaml"), "utf8");
+
+let env;
+try {
+  env = await readFile(join(WORKER, ".env"), "utf8");
+} catch {
+  console.error("Не нашёл worker/.env — без него сервер запустится без ключей.");
+  process.exit(1);
+}
+
+/* Переменные уходят внутрь блока YAML с отступом: без выравнивания
+   файл настройки просто не разберётся, и машина поднимется пустой. */
+const lines = env
+  .replace(/\r\n?/g, "\n")
+  .split("\n")
+  .map(l => l.trimEnd())
+  .filter(l => l && !l.startsWith("#"));
+
+const indented = lines.map(l => "      " + l).join("\n").trimStart();
+
+const out = template
+  .replace("      __WORKER_ENV__", "      " + indented)
+  /* Адрес сайта в переменных ещё указывает на GitHub Pages. Пока домена
+     нет, так и оставляем: поменяется одной строкой при переключении. */
+  ;
+
+const file = join(HERE, "cloud-init.ready.yaml");
+await writeFile(file, out, "utf8");
+
+const names = lines.map(l => l.split("=")[0]);
+console.log("Готово:", file);
+console.log("Переменных внутри:", names.length);
+console.log("  " + names.join(", "));
+console.log("\nЧто дальше:");
+console.log("  1. Откройте этот файл и скопируйте его целиком.");
+console.log("  2. При создании машины в Yandex Cloud раскройте «Метаданные».");
+console.log("  3. Вставьте в поле user-data и создайте машину.");
+console.log("\nФайл содержит ключи — не пересылайте его и не кладите в репозиторий.");
+console.log("В .gitignore он уже закрыт.");

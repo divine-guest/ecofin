@@ -61,32 +61,58 @@ async function wasmDriver(file) {
   const Database = mod.Database || mod.default?.Database;
   if (!Database) throw new Error("node-sqlite3-wasm: не нашёл Database");
   const db = new Database(file);
-  const cache = new Map();
-  const stmt = sql => {
-    let s = cache.get(sql);
-    if (!s) { s = db.prepare(sql); cache.set(sql, s); }
-    return s;
+
+  /* Здесь выражения НЕ кэшируются, в отличие от native-драйвера.
+
+     Причина: у этого драйвера незакрытое выражение остаётся «в работе»
+     с точки зрения SQLite, и следующий COMMIT падает с «cannot commit
+     transaction - SQL statements in progress». Проявлялось это только
+     в пачке выражений — то есть при удалении аккаунта, где семь
+     удалений идут одной транзакцией.
+
+     Готовить выражение каждый раз чуть дороже, но этот драйвер и так
+     запасной: на сервере работает native, где кэш безопасен. */
+  const use = (sql, fn) => {
+    const s = db.prepare(sql);
+    try { return fn(s); }
+    finally { try { s.finalize(); } catch {} }
   };
+
   return {
     name: "node-sqlite3-wasm",
-    get: (sql, p) => stmt(sql).get(p),
-    all: (sql, p) => stmt(sql).all(p),
-    run: (sql, p) => stmt(sql).run(p),
+    get: (sql, p) => use(sql, s => s.get(p)),
+    all: (sql, p) => use(sql, s => s.all(p)),
+    run: (sql, p) => use(sql, s => s.run(p)),
     exec: sql => db.exec(sql),
-    close: () => {
-      for (const s of cache.values()) { try { s.finalize(); } catch {} }
-      cache.clear();
-      db.close();
-    },
+    close: () => db.close(),
   };
 }
 
+/* DB_DRIVER=native — запретить запасной путь.
+
+   На боевом сервере это обязательно. Запасной драйвер держит файл базы
+   монопольно: второй процесс не может даже прочитать её. Значит молча
+   перестанут работать бэкап и любые служебные скрипты — а узнаем мы
+   об этом в тот день, когда бэкап понадобится.
+
+   Лучше не запуститься с понятной причиной, чем работать в режиме,
+   про который никто не знает. */
 async function pickDriver(file) {
-  try { return await nativeDriver(file); }
-  catch (e) {
-    /* Не ошибка, а нормальный запасной путь: на машине без компилятора
-       native-модуль не соберётся, и это не повод не запускаться. */
-    console.warn("better-sqlite3 недоступен (" + e.message.split("\n")[0] + "), беру node-sqlite3-wasm");
+  const required = (process.env.DB_DRIVER || "").toLowerCase();
+  try {
+    return await nativeDriver(file);
+  } catch (e) {
+    const why = e.message.split("\n")[0];
+    if (required === "native") {
+      throw new Error(
+        "Нужен драйвер better-sqlite3, но он не загрузился: " + why +
+        "\nНа сервере это чинится так: apt-get install -y build-essential" +
+        " && cd worker && npm install better-sqlite3" +
+        "\nЗапасной драйвер здесь не годится: он держит базу монопольно," +
+        " и бэкап работать не будет."
+      );
+    }
+    console.warn("better-sqlite3 недоступен (" + why + "), беру node-sqlite3-wasm");
     return await wasmDriver(file);
   }
 }

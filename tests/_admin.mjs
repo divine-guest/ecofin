@@ -7,7 +7,29 @@
    зависят от живого пароля и не трогают рабочий аккаунт. */
 const CF = "https://api.cloudflare.com/client/v4/accounts/04620413cc9a8d415f85febe903d7e60/d1/database/00a64f5f-477b-4eb4-98a0-7bd1385556e5/query";
 
+/* Проверкам нужно выполнять сырой SQL: чтобы повысить одноразовый
+   аккаунт до админа и убрать за собой. На Cloudflare для этого есть
+   REST API базы, на своём сервере — сам файл базы.
+
+   Куда обращаться, определяет переменная DB_FILE. Она же указывает
+   серверу, где лежит база, поэтому промахнуться мимо не выйдет:
+   DB_FILE=... API_URL=http://127.0.0.1:8080 node tests/run-all.mjs   */
+let localDb = null;
+
+async function localSql(statement) {
+  if (!localDb) {
+    const { openDatabase } = await import("../worker/node/db.mjs");
+    localDb = await openDatabase(process.env.DB_FILE);
+  }
+  const s = statement.trim();
+  if (/^select/i.test(s)) return (await localDb.prepare(s).all()).results;
+  await localDb.prepare(s).run();
+  return [];
+}
+
 export async function sql(statement) {
+  if (process.env.DB_FILE) return localSql(statement);
+
   const r = await fetch(CF, {
     method: "POST",
     headers: {

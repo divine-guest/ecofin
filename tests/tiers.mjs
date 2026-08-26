@@ -1,4 +1,4 @@
-const API="https://pravofin-api.pravofin.workers.dev", O="https://divine-guest.github.io";
+const API = process.env.API_URL || "https://pravofin-api.pravofin.workers.dev", O = "https://divine-guest.github.io";
 import io from "node:fs";
 const THEMES_JS = new URL("../js/themes.js", import.meta.url);
 import { makeAdmin, cleanup, sql } from "./_admin.mjs";

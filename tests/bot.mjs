@@ -5,7 +5,10 @@
    что бот отвечает. Проверяем и границы: чужой аккаунт не тронуть,
    промокод второй раз не сработает, лимиты те же, что на сайте. */
 
-const API = "https://pravofin-api.pravofin.workers.dev";
+/* Адрес сервера можно подменить: так один и тот же набор проверок
+   гоняется и по боевому Cloudflare, и по новому серверу до переезда.
+   API_URL=http://127.0.0.1:8080 node tests/run-all.mjs */
+const API = process.env.API_URL || "https://pravofin-api.pravofin.workers.dev";
 const O = "https://divine-guest.github.io";
 import { sql, cleanup } from "./_admin.mjs";
 

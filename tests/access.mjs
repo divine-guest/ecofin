@@ -1,6 +1,9 @@
 /* Полная проверка доступов: что закрыто бесплатному тарифу,
    что открывается на «Базовом», что только на «Про». */
-const API = "https://pravofin-api.pravofin.workers.dev";
+/* Адрес сервера можно подменить: так один и тот же набор проверок
+   гоняется и по боевому Cloudflare, и по новому серверу до переезда.
+   API_URL=http://127.0.0.1:8080 node tests/run-all.mjs */
+const API = process.env.API_URL || "https://pravofin-api.pravofin.workers.dev";
 import { makeAdmin, cleanup } from "./_admin.mjs";
 const O = "https://divine-guest.github.io";
 const rf = globalThis.fetch;

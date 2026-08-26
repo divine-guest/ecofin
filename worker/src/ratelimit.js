@@ -40,8 +40,24 @@ export async function hit(env, bucket, limit, windowSec) {
   }
 }
 
+/* Адрес посетителя. Порядок важен и завязан на то, где мы работаем.
+
+   На Cloudflare адрес приходит в CF-Connecting-IP. На своём сервере за
+   nginx этого заголовка нет, и раньше все запросы получали бы «unknown»,
+   то есть один общий счётчик на всех: любой перебор пароля закрывал бы
+   вход всему сайту разом.
+
+   X-Real-IP ставит наш nginx и обязательно перезаписывает то, что
+   прислал браузер, — иначе адрес можно было бы подделать и обойти
+   ограничение. X-Forwarded-For оставлен запасным вариантом, из него
+   берём первый адрес: он ближе всего к настоящему посетителю. */
 export function clientIp(request) {
-  return request.headers.get("CF-Connecting-IP") || "unknown";
+  const h = request.headers;
+  const forwarded = h.get("X-Forwarded-For");
+  return h.get("CF-Connecting-IP")
+      || h.get("X-Real-IP")
+      || (forwarded ? forwarded.split(",")[0].trim() : "")
+      || "unknown";
 }
 
 /* Настройки на каждое защищаемое действие.
