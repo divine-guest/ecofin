@@ -162,6 +162,12 @@ write_files:
       git fetch --quiet origin main
       git reset --hard --quiet origin/main
       AFTER=$(git rev-parse HEAD)
+
+      # Домен вписывается в репозиторий обычным коммитом — это не секрет.
+      # Как только он появится и начнёт показывать на этот адрес, машина
+      # сама включит HTTPS. Заходить на сервер руками не нужно.
+      /opt/pravofin/check-domain.sh || true
+
       [ "$BEFORE" = "$AFTER" ] && exit 0
 
       cd pravofin/worker
@@ -173,6 +179,33 @@ write_files:
       fi
       systemctl restart pravofin
       echo "обновлено до $AFTER"
+
+  # -------- Сертификат сам собой --------
+  # Читает домен из репозитория и, когда тот начнёт показывать на нас,
+  # выпускает сертификат. Пока домена нет или он показывает не сюда —
+  # тихо ничего не делает и пробует снова через пять минут.
+  - path: /opt/pravofin/check-domain.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -e
+      FILE=/opt/pravofin/repo/pravofin/worker/node/domain.txt
+      [ -f "$FILE" ] || exit 0
+      DOMAIN=$(grep -vE '^\s*(#|$)' "$FILE" | head -1 | tr -d '[:space:]')
+      [ -z "$DOMAIN" ] && exit 0
+
+      # Уже выпущен — выходим: certbot сам продлевает по расписанию.
+      [ -d "/etc/letsencrypt/live/$DOMAIN" ] && exit 0
+
+      MY_IP=$(curl -s --max-time 5 https://api.ipify.org || true)
+      DOMAIN_IP=$(getent hosts "$DOMAIN" | awk '{print $1}' | head -1 || true)
+      if [ -z "$DOMAIN_IP" ] || [ "$MY_IP" != "$DOMAIN_IP" ]; then
+        echo "домен $DOMAIN пока показывает на '$DOMAIN_IP', а мы '$MY_IP' — жду"
+        exit 0
+      fi
+
+      echo "домен $DOMAIN показывает на нас, выпускаю сертификат"
+      /opt/pravofin/enable-tls.sh "$DOMAIN"
 
   # -------- Сертификат --------
   # Запускается вручную, когда домен уже показывает на этот адрес:
