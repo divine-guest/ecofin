@@ -53,7 +53,7 @@ write_files:
       [Service]
       Type=simple
       User=pravofin
-      WorkingDirectory=/opt/pravofin/repo/pravofin
+      WorkingDirectory=/opt/pravofin/repo
       Environment=NODE_ENV=production
       Environment=PORT=8080
       Environment=HOST=127.0.0.1
@@ -90,7 +90,7 @@ write_files:
         listen [::]:80 default_server;
         server_name _;
 
-        root /opt/pravofin/repo/pravofin;
+        root /opt/pravofin/repo;
         index index.html;
         charset utf-8;
 
@@ -170,7 +170,7 @@ write_files:
 
       [ "$BEFORE" = "$AFTER" ] && exit 0
 
-      cd pravofin/worker
+      cd worker
       npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund
       if ! node --check node/server.mjs; then
         echo "новый код не разбирается — оставляю работать старый"
@@ -189,7 +189,7 @@ write_files:
     content: |
       #!/bin/bash
       set -e
-      FILE=/opt/pravofin/repo/pravofin/worker/node/domain.txt
+      FILE=/opt/pravofin/repo/worker/node/domain.txt
       [ -f "$FILE" ] || exit 0
       DOMAIN=$(grep -vE '^\s*(#|$)' "$FILE" | head -1 | tr -d '[:space:]')
       [ -z "$DOMAIN" ] && exit 0
@@ -233,12 +233,12 @@ runcmd:
   - apt-get install -y nodejs
 
   - git clone --depth 1 https://github.com/divine-guest/ecofin.git /opt/pravofin/repo
-  - cp /opt/pravofin/env /opt/pravofin/repo/pravofin/worker/.env
-  - chmod 600 /opt/pravofin/repo/pravofin/worker/.env
+  - cp /opt/pravofin/env /opt/pravofin/repo/worker/.env
+  - chmod 600 /opt/pravofin/repo/worker/.env
 
   # Зависимости сервера. better-sqlite3 собирается здесь из исходников —
   # для этого и стоит build-essential.
-  - cd /opt/pravofin/repo/pravofin/worker && npm install --omit=dev --no-audit --no-fund
+  - cd /opt/pravofin/repo/worker && npm install --omit=dev --no-audit --no-fund
 
   - chown -R pravofin:pravofin /opt/pravofin
 
