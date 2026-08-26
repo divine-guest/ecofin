@@ -12,3 +12,7 @@ worker/.env
 # Готовая настройка машины: содержит ключи из worker/.env
 pravofin/worker/node/cloud-init.ready.yaml
 worker/node/cloud-init.ready.yaml
+
+# Однострочная команда с ключами для Cloud Shell
+worker/node/oneliner.txt
+pravofin/worker/node/oneliner.txt
