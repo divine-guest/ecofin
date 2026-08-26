@@ -38,6 +38,34 @@ RAW="https://raw.githubusercontent.com/divine-guest/ecofin/main/worker/node/clou
 say()  { printf '%s\n' "$*"; }
 fail() { printf '\n  ОШИБКА: %s\n\n' "$*" >&2; exit 1; }
 
+# Разбираем обычные таблицы yc, а не JSON: столбцы находим по заголовку,
+# поэтому порядок колонок может меняться — ничего не сломается. Разбор
+# JSON построчным grep-ом выглядел короче, но ломался от любой перемены
+# в форматировании вывода.
+
+pick_column() {   # $1 — имя колонки для поиска, $2 — имя колонки-значения, $3 — что ищем
+  awk -F'|' -v want="$3" -v keycol="$1" -v valcol="$2" '
+    !ki && $0 ~ keycol {
+      for (i = 1; i <= NF; i++) { c = $i; gsub(/^ +| +$/, "", c)
+        if (c == keycol) ki = i; if (c == valcol) vi = i }
+      next
+    }
+    ki && vi {
+      k = $ki; gsub(/^ +| +$/, "", k)
+      v = $vi; gsub(/^ +| +$/, "", v)
+      if (k == want && v != "") { print v; exit }
+    }'
+}
+
+first_column() {  # $1 — имя колонки; отдаёт первое непустое значение
+  awk -F'|' -v col="$1" '
+    !ci && $0 ~ col {
+      for (i = 1; i <= NF; i++) { c = $i; gsub(/^ +| +$/, "", c); if (c == col) ci = i }
+      next
+    }
+    ci { v = $ci; gsub(/^ +| +$/, "", v); if (v != "") { print v; exit } }'
+}
+
 say ""
 say "=== Создание машины для ПравоФина ==="
 say ""
@@ -100,29 +128,50 @@ else
     3. Запустите этот скрипт снова:  bash create-vm.sh"
 fi
 
-FOLDER=$(yc config get folder-id 2>/dev/null || true)
-[ -n "$FOLDER" ] || fail "не понял, в каком каталоге работать: yc config get folder-id ничего не вернул"
+# Каталог, в котором создавать машину.
+#
+# В Cloud Shell он обычно уже прописан, но не всегда: у свежего облака
+# настройка бывает пустой. Тогда находим каталог сами и запоминаем —
+# иначе о то же самое споткнутся и все следующие команды yc.
+FOLDER="${VM_FOLDER_ID:-${YC_FOLDER_ID:-}}"
+[ -n "$FOLDER" ] || FOLDER=$(yc config get folder-id 2>/dev/null || true)
+
+if [ -z "$FOLDER" ]; then
+  say "Каталог в настройках не задан, ищу сам…"
+
+  CLOUDS=$(yc resource-manager cloud list 2>/dev/null || true)
+  CLOUD=$(printf '%s\n' "$CLOUDS" | first_column ID)
+  [ -n "$CLOUD" ] || fail "не вижу ни одного облака.
+
+  Обычно это значит одно из двух:
+    • облако ещё не создано — откройте console.yandex.cloud, оно
+      предложит создать его одной кнопкой;
+    • или Cloud Shell вошёл под другим аккаунтом — тогда выполните
+      yc init и выберите нужное облако.
+
+  Вот что вернул yc:
+$CLOUDS"
+
+  FOLDERS=$(yc resource-manager folder list --cloud-id "$CLOUD" 2>/dev/null || true)
+  # Каталог «default» создаётся вместе с облаком; если его переименовали
+  # или удалили — берём первый попавшийся, он там обычно один.
+  FOLDER=$(printf '%s\n' "$FOLDERS" | pick_column NAME ID default)
+  [ -n "$FOLDER" ] || FOLDER=$(printf '%s\n' "$FOLDERS" | first_column ID)
+  [ -n "$FOLDER" ] || fail "в облаке $CLOUD нет ни одного каталога.
+  Создайте каталог в консоли и запустите скрипт снова.
+
+  Вот что вернул yc:
+$FOLDERS"
+
+  FOLDER_NAME=$(printf '%s\n' "$FOLDERS" | pick_column ID NAME "$FOLDER")
+  say "Нашёл каталог: ${FOLDER_NAME:-без имени} ($FOLDER)"
+
+  # Запоминаем, чтобы дальше yc не переспрашивал.
+  yc config set cloud-id  "$CLOUD"  >/dev/null 2>&1 || true
+  yc config set folder-id "$FOLDER" >/dev/null 2>&1 || fail "не смог запомнить каталог: yc config set folder-id $FOLDER"
+fi
 
 # Подсеть в нужной зоне.
-#
-# Разбираем обычную таблицу, а не JSON: столбцы находим по заголовку,
-# поэтому порядок колонок может меняться — ничего не сломается.
-# Разбор JSON построчным grep-ом выглядел короче, но ломался от любой
-# перемены в форматировании вывода.
-pick_column() {   # $1 — имя колонки для поиска, $2 — имя колонки-значения, $3 — что ищем
-  awk -F'|' -v want="$3" -v keycol="$1" -v valcol="$2" '
-    !ki && $0 ~ keycol {
-      for (i = 1; i <= NF; i++) { c = $i; gsub(/^ +| +$/, "", c)
-        if (c == keycol) ki = i; if (c == valcol) vi = i }
-      next
-    }
-    ki && vi {
-      k = $ki; gsub(/^ +| +$/, "", k)
-      v = $vi; gsub(/^ +| +$/, "", v)
-      if (k == want && v != "") { print v; exit }
-    }'
-}
-
 SUBNETS=$(yc vpc subnet list 2>/dev/null || true)
 SUBNET=$(printf '%s\n' "$SUBNETS" | pick_column ZONE NAME "$ZONE")
 
