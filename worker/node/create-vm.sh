@@ -9,12 +9,9 @@
 #
 # Как пользоваться (в Cloud Shell консоли Yandex Cloud):
 #
-#   1. Создайте файл с ключами — откройте у себя worker/.env,
-#      скопируйте его целиком и вставьте между строками:
-#
-#          cat > ~/pravofin.env << 'PRAVOFIN'
-#          ...сюда вставить содержимое worker/.env...
-#          PRAVOFIN
+#   1. Загрузите в Cloud Shell файл cloud-init.ready.yaml — кнопкой «…»
+#      вверху справа или просто перетащив его в окно терминала.
+#      В нём ключи уже вписаны, руками ничего вставлять не нужно.
 #
 #   2. Запустите этот скрипт:
 #
@@ -22,6 +19,9 @@
 #          bash create-vm.sh
 #
 # Скрипт покажет, что собирается сделать, и спросит подтверждение.
+#
+# Запасной путь, если загрузка файла недоступна: положить рядом
+# ~/pravofin.env с содержимым worker/.env — скрипт соберёт настройку сам.
 
 set -euo pipefail
 
@@ -46,27 +46,105 @@ say ""
 
 command -v yc >/dev/null 2>&1 || fail "не нашёл команду yc — запускать нужно в Cloud Shell консоли Yandex Cloud"
 
-[ -f "$ENV_FILE" ] || fail "не нашёл файл $ENV_FILE
-  Сначала создайте его: скопируйте содержимое worker/.env и выполните
-      cat > ~/pravofin.env << 'PRAVOFIN'
-      ...вставить...
-      PRAVOFIN"
+# Два способа передать ключи, и оба заканчиваются одним и тем же.
+#
+#   1. Загрузить готовый файл cloud-init.ready.yaml прямо в Cloud Shell —
+#      в нём ключи уже вписаны. Ничего вставлять руками не нужно.
+#   2. Положить рядом pravofin.env с содержимым worker/.env — тогда
+#      скрипт соберёт настройку сам из образца в репозитории.
+#
+# Первый способ надёжнее: при вставке в терминал легко потерять часть
+# строк и не заметить этого.
+READY_IN="${READY_FILE:-$HOME/cloud-init.ready.yaml}"
+MODE=""
 
-# Пустой или подозрительно короткий файл ключей — почти наверняка
-# неудачная вставка. Лучше остановиться сейчас, чем поднять машину
-# без ключа ИИ и искать потом, почему консультант молчит.
-VARS=$(grep -cE '^[A-Z][A-Z0-9_]*=' "$ENV_FILE" || true)
-[ "$VARS" -ge 8 ] || fail "в $ENV_FILE только $VARS переменных — похоже, вставилось не всё"
-grep -q '^AI_API_KEY=' "$ENV_FILE" || fail "в $ENV_FILE нет AI_API_KEY — вставилось не всё"
+if [ -f "$READY_IN" ] && grep -q '^#cloud-config' "$READY_IN"; then
+  MODE="ready"
+  # Считаем строки только внутри блока с ключами. Простой поиск по всему
+  # файлу приписывал бы сюда и обычные переменные из вложенных скриптов
+  # (DIR=, STAMP=, DOMAIN=), и число выглядело бы больше настоящего.
+  VARS=$(awk '
+    /^  - path: \/opt\/pravofin\/env/ { inside = 1; next }
+    inside && /^  - path:/            { inside = 0 }
+    inside && /^      [A-Z][A-Z0-9_]*=/ { n++ }
+    END { print n + 0 }' "$READY_IN")
+  [ "$VARS" -ge 8 ] || fail "в $READY_IN только $VARS строк с ключами — файл загрузился не полностью"
+  grep -q 'AI_API_KEY=' "$READY_IN" || fail "в $READY_IN нет AI_API_KEY — файл загрузился не полностью"
+elif [ -f "$ENV_FILE" ]; then
+  MODE="env"
+  # Пустой или подозрительно короткий файл ключей — почти наверняка
+  # неудачная вставка. Лучше остановиться сейчас, чем поднять машину
+  # без ключа ИИ и искать потом, почему консультант молчит.
+  VARS=$(grep -cE '^[A-Z][A-Z0-9_]*=' "$ENV_FILE" || true)
+  [ "$VARS" -ge 8 ] || fail "в $ENV_FILE только $VARS переменных — вставилось не всё.
+
+  Проще всего не вставлять руками, а загрузить готовый файл:
+    1. В Cloud Shell вверху справа нажмите «…» и выберите загрузку файла
+       (или просто перетащите файл в окно терминала).
+    2. Загрузите cloud-init.ready.yaml — тот, что я присылал в чат.
+    3. Запустите этот скрипт снова.
+
+  Если всё же хотите вставкой — откройте редактор, он покажет,
+  что получилось:
+       nano ~/pravofin.env
+    вставить, затем Ctrl+O, Enter, Ctrl+X
+    проверить:  grep -c = ~/pravofin.env"
+  grep -q '^AI_API_KEY=' "$ENV_FILE" || fail "в $ENV_FILE нет AI_API_KEY — вставилось не всё"
+else
+  fail "не нашёл ни $READY_IN, ни $ENV_FILE
+
+  Самый простой путь:
+    1. В Cloud Shell вверху справа нажмите «…» → загрузить файл
+       (или перетащите файл в окно терминала).
+    2. Загрузите cloud-init.ready.yaml — тот, что я присылал в чат.
+    3. Запустите этот скрипт снова:  bash create-vm.sh"
+fi
 
 FOLDER=$(yc config get folder-id 2>/dev/null || true)
 [ -n "$FOLDER" ] || fail "не понял, в каком каталоге работать: yc config get folder-id ничего не вернул"
 
-# Подсеть в нужной зоне. Берём первую подходящую: в новом облаке она одна.
-SUBNET=$(yc vpc subnet list --format json 2>/dev/null \
-  | grep -B4 "\"zone_id\": \"$ZONE\"" \
-  | grep '"name"' | head -1 | cut -d'"' -f4 || true)
-[ -n "$SUBNET" ] || fail "не нашёл подсеть в зоне $ZONE — создайте сеть по умолчанию в разделе VPC"
+# Подсеть в нужной зоне.
+#
+# Разбираем обычную таблицу, а не JSON: столбцы находим по заголовку,
+# поэтому порядок колонок может меняться — ничего не сломается.
+# Разбор JSON построчным grep-ом выглядел короче, но ломался от любой
+# перемены в форматировании вывода.
+pick_column() {   # $1 — имя колонки для поиска, $2 — имя колонки-значения, $3 — что ищем
+  awk -F'|' -v want="$3" -v keycol="$1" -v valcol="$2" '
+    !ki && $0 ~ keycol {
+      for (i = 1; i <= NF; i++) { c = $i; gsub(/^ +| +$/, "", c)
+        if (c == keycol) ki = i; if (c == valcol) vi = i }
+      next
+    }
+    ki && vi {
+      k = $ki; gsub(/^ +| +$/, "", k)
+      v = $vi; gsub(/^ +| +$/, "", v)
+      if (k == want && v != "") { print v; exit }
+    }'
+}
+
+SUBNETS=$(yc vpc subnet list 2>/dev/null || true)
+SUBNET=$(printf '%s\n' "$SUBNETS" | pick_column ZONE NAME "$ZONE")
+
+if [ -z "$SUBNET" ]; then
+  # В облаке может не быть подсети именно в этой зоне — берём любую
+  # и переезжаем в её зону, вместо того чтобы останавливать человека.
+  OTHER_ZONE=$(printf '%s\n' "$SUBNETS" | awk -F'|' '
+    !zi && /ZONE/ { for (i=1;i<=NF;i++){c=$i; gsub(/^ +| +$/,"",c); if(c=="ZONE") zi=i} next }
+    zi { z=$zi; gsub(/^ +| +$/,"",z); if (z ~ /^ru-central1-/) { print z; exit } }')
+  if [ -n "$OTHER_ZONE" ]; then
+    say "В зоне $ZONE подсети нет, беру $OTHER_ZONE"
+    ZONE="$OTHER_ZONE"
+    SUBNET=$(printf '%s\n' "$SUBNETS" | pick_column ZONE NAME "$ZONE")
+  fi
+fi
+
+[ -n "$SUBNET" ] || fail "не нашёл ни одной подсети.
+  Откройте в консоли раздел «Virtual Private Cloud» и создайте сеть
+  по умолчанию — обычно это одна кнопка. Потом запустите скрипт снова.
+
+  Вот что вернул yc:
+$SUBNETS"
 
 if yc compute instance get --name "$NAME" >/dev/null 2>&1; then
   fail "машина с именем «$NAME» уже есть.
@@ -76,20 +154,28 @@ fi
 
 # ---------- Собираем настройку ----------
 
-say "Забираю образец настройки из репозитория…"
-TEMPLATE=$(mktemp)
-curl -fsSL "$RAW" -o "$TEMPLATE" || fail "не смог скачать $RAW"
-
 READY=$(mktemp)
-# Ключи уходят внутрь блока YAML с отступом в шесть пробелов —
-# без выравнивания файл не разберётся и машина поднимется пустой.
-INDENTED=$(grep -E '^[A-Z][A-Z0-9_]*=' "$ENV_FILE" | sed 's/^/      /')
-awk -v repl="$INDENTED" '
-  /__WORKER_ENV__/ { print repl; next }
-  { print }
-' "$TEMPLATE" > "$READY"
+
+if [ "$MODE" = "ready" ]; then
+  say "Беру готовую настройку: $READY_IN"
+  cp "$READY_IN" "$READY"
+else
+  say "Забираю образец настройки из репозитория…"
+  TEMPLATE=$(mktemp)
+  curl -fsSL "$RAW" -o "$TEMPLATE" || fail "не смог скачать $RAW"
+
+  # Ключи уходят внутрь блока YAML с отступом в шесть пробелов —
+  # без выравнивания файл не разберётся и машина поднимется пустой.
+  INDENTED=$(grep -E '^[A-Z][A-Z0-9_]*=' "$ENV_FILE" | sed 's/^/      /')
+  awk -v repl="$INDENTED" '
+    /__WORKER_ENV__/ { print repl; next }
+    { print }
+  ' "$TEMPLATE" > "$READY"
+  rm -f "$TEMPLATE"
+fi
 
 grep -q '__WORKER_ENV__' "$READY" && fail "не удалось подставить ключи в настройку"
+grep -q '^#cloud-config' "$READY" || fail "настройка не похожа на cloud-config — файл повреждён"
 
 # ---------- Показываем и спрашиваем ----------
 
@@ -135,10 +221,9 @@ yc compute instance create \
   --metadata enable-oslogin=true \
   --async=false
 
-rm -f "$TEMPLATE" "$READY"
+rm -f "$READY"
 
-IP=$(yc compute instance get --name "$NAME" --format json \
-  | grep -A3 one_to_one_nat | grep '"address"' | head -1 | cut -d'"' -f4 || true)
+IP=$(yc compute instance list 2>/dev/null | pick_column NAME "EXTERNAL IP" "$NAME" || true)
 
 say ""
 say "=== Машина создана ==="
