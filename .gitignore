@@ -16,3 +16,5 @@ worker/node/cloud-init.ready.yaml
 # Однострочная команда с ключами для Cloud Shell
 worker/node/oneliner.txt
 pravofin/worker/node/oneliner.txt
+worker/node/chunks.txt
+pravofin/worker/node/chunks.txt

@@ -50,13 +50,39 @@ const command =
 const file = join(HERE, "oneliner.txt");
 await writeFile(file, command + "\n", "utf8");
 
-console.log("Готово:", file);
+/* Запасной вариант: несколько коротких строк.
+
+   Длинную строку терминал может не переварить — сессия обрывается со
+   словом «exited», и понять причину со стороны невозможно. Короткие
+   строки проходят всегда: по ним же видно, на какой именно оборвалось,
+   если оборвётся.
+
+   Строки только дописывают файл, поэтому порядок важен, а повторить
+   одну и ту же дважды нельзя — отсюда чистка в первой строке. */
+const CHUNK = 160;
+const parts = packed.match(new RegExp(`.{1,${CHUNK}}`, "g")) || [];
+const chunked = [
+  "rm -f ~/b64.txt",
+  ...parts.map(p => `echo -n '${p}' >> ~/b64.txt`),
+  "base64 -d ~/b64.txt > ~/pravofin.env && rm -f ~/b64.txt",
+  'echo "ключей получилось: $(grep -c = ~/pravofin.env)"',
+];
+
+const chunkFile = join(HERE, "chunks.txt");
+await writeFile(chunkFile, chunked.join("\n") + "\n", "utf8");
+
+console.log("Готово:");
+console.log("  " + file, "— одна строка,", command.length, "символов");
+console.log("  " + chunkFile, "—", chunked.length, "коротких строк по", CHUNK);
+console.log("");
 console.log("Ключей упаковано:", lines.length);
-console.log("Длина строки:", command.length, "символов");
 console.log("");
 console.log("Что дальше:");
-console.log("  1. Откройте этот файл, выделите всё (Ctrl+A) и скопируйте.");
-console.log("  2. Вставьте в Cloud Shell одной строкой и нажмите Enter.");
+console.log("  1. Откройте oneliner.txt, выделите всё (Ctrl+A) и скопируйте.");
+console.log("  2. Вставьте в Cloud Shell и нажмите Enter.");
 console.log(`  3. Должно ответить: ключей получилось: ${lines.length}`);
 console.log("");
-console.log("Файл содержит ключи — не пересылайте его. В .gitignore он закрыт.");
+console.log("  Если сессия обрывается — берите chunks.txt и вставляйте");
+console.log("  его строки по одной, каждую с Enter. Порядок важен.");
+console.log("");
+console.log("Оба файла содержат ключи — не пересылайте. В .gitignore закрыты.");
