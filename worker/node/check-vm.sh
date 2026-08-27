@@ -48,8 +48,22 @@ fi
 head2 "3. Первичная настройка (последние строки журнала)"
 SERIAL=$(yc compute instance get-serial-port-output --name "$NAME" 2>&1)
 if printf '%s' "$SERIAL" | grep -q 'Cloud-init .* finished'; then
+  DONE_LINE=$(printf '%s\n' "$SERIAL" | grep 'Cloud-init .* finished' | tail -1)
   say "  ПЕРВИЧНАЯ НАСТРОЙКА ЗАВЕРШЕНА:"
-  printf '%s\n' "$SERIAL" | grep 'Cloud-init .* finished' | tail -1 | sed 's/^/    /'
+  printf '%s\n' "$DONE_LINE" | sed 's/^/    /'
+
+  # Сколько она заняла. Наша настройка ставит Node, nginx и собирает
+  # зависимости — быстрее чем за пару минут это невозможно. Если журнал
+  # говорит про секунды, значит файл настройки не был прочитан вовсе:
+  # машина поднялась чистой Ubuntu. Ошибки при этом нигде не будет.
+  UP=$(printf '%s\n' "$DONE_LINE" | grep -oE 'Up [0-9]+' | grep -oE '[0-9]+' | tail -1)
+  if [ -n "$UP" ] && [ "$UP" -lt 120 ]; then
+    say ""
+    say "  ВНИМАНИЕ: настройка заняла $UP секунд — этого не может быть."
+    say "  Наша настройка одну только сборку зависимостей делает минуты."
+    say "  Значит файл настройки не был прочитан, и машина пустая."
+    say "  Лечится пересозданием:  RECREATE=1 bash create-vm.sh"
+  fi
 elif printf '%s' "$SERIAL" | grep -q 'cloud-init'; then
   say "  ЕЩЁ ИДЁТ — машина ставит Node, nginx и собирает зависимости."
   say "  Это занимает 10-15 минут, дольше обычного из-за сборки better-sqlite3."
@@ -64,7 +78,9 @@ say "  Последние 40 строк:"
 printf '%s\n' "$SERIAL" | tail -40 | sed 's/^/    /'
 
 head2 "4. Служба на машине"
-yc compute ssh --name "$NAME" --command '
+# Команда для машины передаётся после двойного тире — отдельного флага
+# для этого у yc нет.
+yc compute ssh --name "$NAME" -- '
   echo "--- systemctl ---"
   systemctl is-active pravofin  2>&1
   systemctl is-active nginx     2>&1

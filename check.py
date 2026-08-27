@@ -174,6 +174,21 @@ def check_secrets():
             if re.search(pat, s):
                 err(f, f"В ФАЙЛЕ ДЛЯ БРАУЗЕРА ЛЕЖИТ {what}")
 
+def check_cloud_init():
+    """Первая строка настройки сервера обязана быть «#cloud-config».
+
+    cloud-init смотрит только на неё. Комментарий или пустая строка перед
+    ней — и весь файл молча пропускается: машина поднимается пустой, ошибки
+    нигде нет, а понять это можно лишь по времени в журнале. Один раз мы так
+    уже подняли машину без сервиса, поэтому проверяем на берегу."""
+    f = "worker/node/cloud-init.yaml"
+    if not os.path.exists(f):
+        return
+    first = io.open(f, encoding="utf-8").readline().strip()
+    if first != "#cloud-config":
+        err(f, f"первая строка «{first}», а должна быть «#cloud-config» — "
+               "иначе машина поднимется без сервиса")
+
 def main():
     pages = sorted(glob.glob("*.html"))
     names = set(pages)
@@ -187,6 +202,7 @@ def main():
         check_meta(page, html)
     check_tiers()
     check_secrets()
+    check_cloud_init()
 
     print(f"Проверено страниц: {len(pages)}\n")
     if errors:
