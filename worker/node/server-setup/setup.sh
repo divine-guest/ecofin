@@ -49,7 +49,56 @@ id pravofin >/dev/null 2>&1 || \
   useradd --system --create-home --home-dir "$DIR" --shell /usr/sbin/nologin pravofin
 mkdir -p "$DIR/data" "$DIR/backups"
 
-# ---------- 2. Системные пакеты ----------
+# ---------- 2. Код ----------
+
+if [ ! -d "$REPO/.git" ]; then
+  log "забираю код"
+  rm -rf "$REPO"
+  git clone --depth 1 "$GIT_URL" "$REPO" || die "не смог забрать код из $GIT_URL"
+  mark
+else
+  BEFORE=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+  git -C "$REPO" fetch --quiet origin main 2>/dev/null && \
+  git -C "$REPO" reset --hard --quiet origin/main 2>/dev/null
+  AFTER=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+  if [ "$BEFORE" != "$AFTER" ]; then
+    log "код обновлён до ${AFTER:0:12}"
+    mark
+  fi
+fi
+
+# ---------- 3. Расписание ----------
+#
+# Прописываем СРАЗУ, как только код оказался на диске, и до всякой
+# установки.
+#
+# Причина дорогая: раньше это стояло в самом конце, и упавшая установка
+# не повторялась никогда — машина просто оставалась мёртвой. Теперь даже
+# если дальше всё сорвётся, через пять минут будет новая попытка, и любое
+# исправление в репозитории доедет само.
+
+CRON=/etc/cron.d/pravofin
+NEW_CRON="SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+*/5 * * * * root $HERE/setup.sh >> /var/log/pravofin-setup.log 2>&1
+0 * * * * root $DIR/backup.sh >> /var/log/pravofin-backup.log 2>&1"
+if [ ! -f "$CRON" ] || [ "$(cat "$CRON")" != "$NEW_CRON" ]; then
+  printf '%s\n' "$NEW_CRON" > "$CRON"
+  chmod 644 "$CRON"
+  log "расписание обновлено"
+fi
+
+# ---------- 4. Системные пакеты ----------
+
+# Ставим по одному, а не списком.
+#
+# Списком одна неудачная строка обрушивает всю команду, и следом не
+# ставится ничего — включая nginx, без которого сайт просто не отвечает.
+# По одному видно, что именно не встало, и остальное всё равно встаёт.
+#
+# Обязательны только git и nginx: без них сайта нет. Без certbot не будет
+# HTTPS, без ufw — firewall, и это неприятно, но переживаемо: лучше
+# работающий сайт с недоделками, чем мёртвая машина.
 
 MISSING=""
 for pair in "git:git" "nginx:nginx" "cc:build-essential" "sqlite3:sqlite3" "ufw:ufw" "certbot:python3-certbot-nginx"; do
@@ -61,11 +110,16 @@ if [ -n "$MISSING" ]; then
   log "ставлю пакеты:$MISSING"
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -qq || log "apt-get update не удался, пробую ставить всё равно"
-  # shellcheck disable=SC2086
-  apt-get install -y -qq $MISSING || die "не смог поставить пакеты:$MISSING"
+  for pkg in $MISSING; do
+    apt-get install -y -qq "$pkg" >/dev/null 2>&1 || log "не встал пакет $pkg"
+  done
 fi
 
-# ---------- 3. Node и npm ----------
+for need in git nginx; do
+  command -v "$need" >/dev/null 2>&1 || die "нет $need — без него сайт работать не сможет"
+done
+
+# ---------- 5. Node и npm ----------
 #
 # Сначала пробуем NodeSource — там свежий Node 22. Но из российского
 # облака этот адрес может не открываться (мы на этом уже спотыкались:
@@ -105,25 +159,7 @@ if ! node_ok; then
 fi
 log "node $(node -v), npm $(npm -v)"
 
-# ---------- 4. Код ----------
-
-if [ ! -d "$REPO/.git" ]; then
-  log "забираю код"
-  rm -rf "$REPO"
-  git clone --depth 1 "$GIT_URL" "$REPO" || die "не смог забрать код из $GIT_URL"
-  mark
-else
-  BEFORE=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
-  git -C "$REPO" fetch --quiet origin main 2>/dev/null && \
-  git -C "$REPO" reset --hard --quiet origin/main 2>/dev/null
-  AFTER=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
-  if [ "$BEFORE" != "$AFTER" ]; then
-    log "код обновлён до ${AFTER:0:12}"
-    mark
-  fi
-fi
-
-# ---------- 5. Секреты ----------
+# ---------- 6. Секреты ----------
 
 [ -f "$DIR/env" ] || die "нет файла $DIR/env — машину нужно создавать заново"
 if ! cmp -s "$DIR/env" "$REPO/worker/.env"; then
@@ -132,7 +168,7 @@ if ! cmp -s "$DIR/env" "$REPO/worker/.env"; then
   mark
 fi
 
-# ---------- 6. Зависимости ----------
+# ---------- 7. Зависимости ----------
 #
 # Ставим, если их нет или если изменился список. Отдельная проверка на
 # better-sqlite3: он собирается из исходников и может не собраться —
@@ -168,7 +204,7 @@ if [ ! -f "$DIR/driver.env" ] || [ "$(cat "$DIR/driver.env")" != "$NEW_DRIVER" ]
   mark
 fi
 
-# ---------- 7. Служба и nginx ----------
+# ---------- 8. Служба и nginx ----------
 
 install_if_changed "$HERE/pravofin.service" /etc/systemd/system/pravofin.service 644
 install_if_changed "$HERE/backup.sh"        "$DIR/backup.sh"        755
@@ -209,7 +245,7 @@ if [ ! -f "$NGINX_LIVE" ] || ! cmp -s "$HERE/nginx.conf" "$NGINX_LIVE"; then
   fi
 fi
 
-# ---------- 8. Запуск ----------
+# ---------- 9. Запуск ----------
 
 systemctl daemon-reload
 
@@ -227,23 +263,6 @@ if [ -n "$CHANGED" ] || ! systemctl is-active pravofin >/dev/null 2>&1; then
   else
     log "новый код не разбирается — оставляю работать прежний"
   fi
-fi
-
-# ---------- 9. Расписание ----------
-#
-# Сам себя и запускает: раз в пять минут машина приводит себя в порядок
-# по репозиторию. Благодаря этому исправления доезжают обычным git push,
-# и заходить на сервер не нужно.
-
-CRON=/etc/cron.d/pravofin
-NEW_CRON="SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-*/5 * * * * root $HERE/setup.sh >> /var/log/pravofin-setup.log 2>&1
-0 * * * * root $DIR/backup.sh >> /var/log/pravofin-backup.log 2>&1"
-if [ ! -f "$CRON" ] || [ "$(cat "$CRON")" != "$NEW_CRON" ]; then
-  printf '%s\n' "$NEW_CRON" > "$CRON"
-  chmod 644 "$CRON"
-  log "расписание обновлено"
 fi
 
 # ---------- 10. Firewall ----------

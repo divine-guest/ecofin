@@ -71,6 +71,15 @@ else
   say "  журнала пока нет — машина только включается"
 fi
 say ""
+say "  Что говорил установщик:"
+SETUP_LINES=$(printf '%s\n' "$SERIAL" | grep -a '\[setup\]' | tail -30)
+if [ -n "$SETUP_LINES" ]; then
+  printf '%s\n' "$SETUP_LINES" | sed 's/.*\[setup\]/    [setup]/'
+else
+  say "    ни одной строки — установщик даже не начинал работу."
+  say "    Значит cloud-init не дошёл до него: смотрите ошибки ниже."
+fi
+say ""
 say "  Ошибки, если были:"
 printf '%s\n' "$SERIAL" | grep -iE 'error|failed|fatal|E: ' | grep -viE 'no error|error_|failed to connect to lvmetad' | tail -15 | sed 's/^/    /'
 say ""
