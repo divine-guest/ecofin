@@ -71,14 +71,22 @@ else
   say "  журнала пока нет — машина только включается"
 fi
 say ""
-say "  Что говорил установщик:"
-SETUP_LINES=$(printf '%s\n' "$SERIAL" | grep -a '\[setup\]' | tail -30)
+say "  Что говорили наши скрипты:"
+SETUP_LINES=$(printf '%s\n' "$SERIAL" | grep -aE '\[setup\]|\[bootstrap\]' | tail -40)
 if [ -n "$SETUP_LINES" ]; then
-  printf '%s\n' "$SETUP_LINES" | sed 's/.*\[setup\]/    [setup]/'
+  printf '%s\n' "$SETUP_LINES" | sed 's/.*\(\[setup\]\|\[bootstrap\]\)/    \1/'
 else
-  say "    ни одной строки — установщик даже не начинал работу."
-  say "    Значит cloud-init не дошёл до него: смотрите ошибки ниже."
+  say "    ни одной строки — до наших скриптов дело не дошло вовсе."
+  say "    Значит cloud-init споткнулся раньше: смотрите ошибки ниже."
 fi
+
+# Отдельно — как машина ходит наружу. Именно здесь ломалось дважды:
+# сначала не открылся NodeSource, потом сам GitHub.
+say ""
+say "  Куда машина не смогла достучаться:"
+printf '%s\n' "$SERIAL" \
+  | grep -aiE 'failed to connect|could not resolve|couldn.t connect|unable to access|timed out' \
+  | tail -10 | sed 's/^/    /' || true
 say ""
 say "  Ошибки, если были:"
 printf '%s\n' "$SERIAL" | grep -iE 'error|failed|fatal|E: ' | grep -viE 'no error|error_|failed to connect to lvmetad' | tail -15 | sed 's/^/    /'
