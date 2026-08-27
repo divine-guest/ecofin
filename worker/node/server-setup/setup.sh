@@ -1,0 +1,271 @@
+#!/bin/bash
+# ============ Установка и починка сервера ПравоФина ============
+#
+# Запускается два раза в жизни машины и потом ещё раз в пять минут:
+#   1. при первом включении — из cloud-init;
+#   2. по расписанию — чтобы подтянуть новый код и починить то, что
+#      отвалилось.
+#
+# Поэтому он написан так, чтобы его можно было запускать сколько угодно
+# раз подряд: всё, что уже сделано, пропускается. Это не «скрипт первой
+# установки», а «привести машину в нужное состояние».
+#
+# Почему настройки лежат отдельными файлами рядом, а не внутри cloud-init:
+# один раз мы уже потеряли вечер на том, что из конфигурации nginx по
+# дороге пропала переменная $uri. Файл из репозитория попадает на диск
+# байт в байт — что в git, то и на сервере.
+#
+# Руками:  sudo /opt/pravofin/repo/worker/node/server-setup/setup.sh
+
+set -uo pipefail
+
+DIR=/opt/pravofin
+REPO=$DIR/repo
+HERE=$REPO/worker/node/server-setup
+GIT_URL=https://github.com/divine-guest/ecofin.git
+
+log() { printf '[setup] %s\n' "$*"; }
+die() { printf '[setup] ОШИБКА: %s\n' "$*" >&2; exit 1; }
+
+[ "$(id -u)" = "0" ] || die "запускать нужно от root: sudo $0"
+
+CHANGED=""            # что-то поменялось и службу надо перезапустить
+mark() { CHANGED="да"; }
+
+# Кладёт файл на место, только если он отличается. Так перезапуск
+# случается по делу, а не каждые пять минут просто так.
+install_if_changed() {  # $1 — откуда, $2 — куда, $3 — права
+  [ -f "$1" ] || die "нет файла $1"
+  if [ ! -f "$2" ] || ! cmp -s "$1" "$2"; then
+    install -m "$3" "$1" "$2"
+    log "обновлён $2"
+    mark
+  fi
+}
+
+# ---------- 1. Пользователь и папки ----------
+
+id pravofin >/dev/null 2>&1 || \
+  useradd --system --create-home --home-dir "$DIR" --shell /usr/sbin/nologin pravofin
+mkdir -p "$DIR/data" "$DIR/backups"
+
+# ---------- 2. Системные пакеты ----------
+
+MISSING=""
+for pair in "git:git" "nginx:nginx" "cc:build-essential" "sqlite3:sqlite3" "ufw:ufw" "certbot:python3-certbot-nginx"; do
+  cmd=${pair%%:*}; pkg=${pair#*:}
+  command -v "$cmd" >/dev/null 2>&1 || MISSING="$MISSING $pkg"
+done
+
+if [ -n "$MISSING" ]; then
+  log "ставлю пакеты:$MISSING"
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -qq || log "apt-get update не удался, пробую ставить всё равно"
+  # shellcheck disable=SC2086
+  apt-get install -y -qq $MISSING || die "не смог поставить пакеты:$MISSING"
+fi
+
+# ---------- 3. Node и npm ----------
+#
+# Сначала пробуем NodeSource — там свежий Node 22. Но из российского
+# облака этот адрес может не открываться (мы на этом уже спотыкались:
+# curl висел четыре минуты и сдавался). Тогда берём Node из обычного
+# репозитория Ubuntu: там 18-я версия, её нам достаточно — весь проект
+# на ней и проверялся.
+#
+# Главное — не остаться без npm. Пакет nodejs из Ubuntu ставит только
+# node, npm идёт отдельным пакетом, и из-за этого в прошлый раз молча
+# не установились зависимости.
+
+node_ok() {
+  command -v node >/dev/null 2>&1 || return 1
+  command -v npm  >/dev/null 2>&1 || return 1
+  local major
+  major=$(node -v 2>/dev/null | sed 's/^v//' | cut -d. -f1)
+  [ -n "$major" ] && [ "$major" -ge 18 ]
+}
+
+if ! node_ok; then
+  log "ставлю Node…"
+  export DEBIAN_FRONTEND=noninteractive
+
+  if curl -fsSL --max-time 25 https://deb.nodesource.com/setup_22.x -o /tmp/nodesource.sh 2>/dev/null; then
+    log "беру Node 22 из NodeSource"
+    bash /tmp/nodesource.sh >/dev/null 2>&1 || log "NodeSource не подключился"
+    rm -f /tmp/nodesource.sh
+    apt-get install -y -qq nodejs || true
+  else
+    log "NodeSource недоступен — беру Node из репозитория Ubuntu"
+  fi
+
+  # Если после NodeSource всё равно чего-то не хватает — добираем из Ubuntu.
+  node_ok || apt-get install -y -qq nodejs npm || true
+  node_ok || die "не удалось поставить Node с npm"
+  mark
+fi
+log "node $(node -v), npm $(npm -v)"
+
+# ---------- 4. Код ----------
+
+if [ ! -d "$REPO/.git" ]; then
+  log "забираю код"
+  rm -rf "$REPO"
+  git clone --depth 1 "$GIT_URL" "$REPO" || die "не смог забрать код из $GIT_URL"
+  mark
+else
+  BEFORE=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+  git -C "$REPO" fetch --quiet origin main 2>/dev/null && \
+  git -C "$REPO" reset --hard --quiet origin/main 2>/dev/null
+  AFTER=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+  if [ "$BEFORE" != "$AFTER" ]; then
+    log "код обновлён до ${AFTER:0:12}"
+    mark
+  fi
+fi
+
+# ---------- 5. Секреты ----------
+
+[ -f "$DIR/env" ] || die "нет файла $DIR/env — машину нужно создавать заново"
+if ! cmp -s "$DIR/env" "$REPO/worker/.env"; then
+  install -m 600 -o pravofin -g pravofin "$DIR/env" "$REPO/worker/.env"
+  log "секреты обновлены"
+  mark
+fi
+
+# ---------- 6. Зависимости ----------
+#
+# Ставим, если их нет или если изменился список. Отдельная проверка на
+# better-sqlite3: он собирается из исходников и может не собраться —
+# это не повод останавливать установку, но знать об этом надо.
+
+NEED_NPM=""
+[ -d "$REPO/worker/node_modules" ] || NEED_NPM="да"
+[ -n "$CHANGED" ] && NEED_NPM="да"
+
+if [ -n "$NEED_NPM" ]; then
+  log "ставлю зависимости…"
+  ( cd "$REPO/worker" && npm install --omit=dev --no-audit --no-fund ) \
+    || log "npm install прошёл с ошибками — смотрим, что получилось"
+fi
+
+# Права правим только когда что-то менялось: пробегать по всему дереву
+# каждые пять минут незачем.
+[ -n "$CHANGED" ] && chown -R pravofin:pravofin "$DIR"
+
+# Какой драйвер базы требовать. Родной быстрее и, главное, не держит файл
+# базы монопольно — с ним работают почасовые копии. Но если он не собрался,
+# требовать его нельзя: сервер не запустится вовсе.
+if ( cd "$REPO/worker" && node -e "require('better-sqlite3')" >/dev/null 2>&1 ); then
+  NEW_DRIVER="DB_DRIVER=native"
+  log "драйвер базы: родной (better-sqlite3)"
+else
+  NEW_DRIVER="# better-sqlite3 не собрался, работаем на запасном драйвере"
+  log "ВНИМАНИЕ: better-sqlite3 не собрался — идём на запасном драйвере."
+  log "         Он держит файл базы монопольно, почасовые копии работать не будут."
+fi
+if [ ! -f "$DIR/driver.env" ] || [ "$(cat "$DIR/driver.env")" != "$NEW_DRIVER" ]; then
+  printf '%s\n' "$NEW_DRIVER" > "$DIR/driver.env"
+  mark
+fi
+
+# ---------- 7. Служба и nginx ----------
+
+install_if_changed "$HERE/pravofin.service" /etc/systemd/system/pravofin.service 644
+install_if_changed "$HERE/backup.sh"        "$DIR/backup.sh"        755
+install_if_changed "$HERE/check-domain.sh"  "$DIR/check-domain.sh"  755
+install_if_changed "$HERE/enable-tls.sh"    "$DIR/enable-tls.sh"    755
+
+# Настройка nginx. Новую кладём, проверяем и, если она не прошла проверку,
+# возвращаем прежнюю. Иначе сломанный файл остался бы лежать на месте: сам
+# по себе он ничего не уронит, но при следующем перезапуске nginx просто
+# не поднимется — и причина будет уже забыта.
+NGINX_LIVE=/etc/nginx/sites-available/pravofin
+if [ ! -f "$NGINX_LIVE" ] || ! cmp -s "$HERE/nginx.conf" "$NGINX_LIVE"; then
+  NGINX_OLD=""
+  if [ -f "$NGINX_LIVE" ]; then
+    NGINX_OLD=$(mktemp)
+    cp "$NGINX_LIVE" "$NGINX_OLD"
+  fi
+
+  install -m 644 "$HERE/nginx.conf" "$NGINX_LIVE"
+  ln -sf "$NGINX_LIVE" /etc/nginx/sites-enabled/pravofin
+  rm -f /etc/nginx/sites-enabled/default
+
+  if nginx -t >/dev/null 2>&1; then
+    systemctl reload nginx 2>/dev/null || systemctl restart nginx
+    log "nginx обновлён"
+    [ -n "$NGINX_OLD" ] && rm -f "$NGINX_OLD"
+  else
+    log "НАСТРОЙКА NGINX НЕ ПРОШЛА ПРОВЕРКУ:"
+    nginx -t 2>&1 | sed 's/^/       /'
+    if [ -n "$NGINX_OLD" ]; then
+      cp "$NGINX_OLD" "$NGINX_LIVE"
+      rm -f "$NGINX_OLD"
+      log "вернул прежнюю настройку nginx"
+    else
+      rm -f /etc/nginx/sites-enabled/pravofin
+      log "убрал сломанную настройку из включённых"
+    fi
+  fi
+fi
+
+# ---------- 8. Запуск ----------
+
+systemctl daemon-reload
+
+if ! systemctl is-enabled pravofin >/dev/null 2>&1; then
+  systemctl enable pravofin >/dev/null 2>&1
+  mark
+fi
+
+if [ -n "$CHANGED" ] || ! systemctl is-active pravofin >/dev/null 2>&1; then
+  # Перед перезапуском проверяем, что код хотя бы разбирается: сломанный
+  # синтаксис не должен уронить работающий сервис.
+  if node --check "$REPO/worker/node/server.mjs" >/dev/null 2>&1; then
+    systemctl restart pravofin
+    log "служба перезапущена"
+  else
+    log "новый код не разбирается — оставляю работать прежний"
+  fi
+fi
+
+# ---------- 9. Расписание ----------
+#
+# Сам себя и запускает: раз в пять минут машина приводит себя в порядок
+# по репозиторию. Благодаря этому исправления доезжают обычным git push,
+# и заходить на сервер не нужно.
+
+CRON=/etc/cron.d/pravofin
+NEW_CRON="SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+*/5 * * * * root $HERE/setup.sh >> /var/log/pravofin-setup.log 2>&1
+0 * * * * root $DIR/backup.sh >> /var/log/pravofin-backup.log 2>&1"
+if [ ! -f "$CRON" ] || [ "$(cat "$CRON")" != "$NEW_CRON" ]; then
+  printf '%s\n' "$NEW_CRON" > "$CRON"
+  chmod 644 "$CRON"
+  log "расписание обновлено"
+fi
+
+# ---------- 10. Firewall ----------
+
+if ! ufw status 2>/dev/null | grep -q "Status: active"; then
+  ufw allow 22/tcp  >/dev/null 2>&1
+  ufw allow 80/tcp  >/dev/null 2>&1
+  ufw allow 443/tcp >/dev/null 2>&1
+  ufw --force enable >/dev/null 2>&1
+  log "firewall включён"
+fi
+
+# ---------- 11. Домен ----------
+
+"$DIR/check-domain.sh" || true
+
+# ---------- Итог ----------
+
+sleep 2
+if curl -fsS -m 10 http://127.0.0.1:8080/api/health >/dev/null 2>&1; then
+  log "ГОТОВО: сервис отвечает"
+else
+  log "сервис пока не отвечает. Последние строки журнала:"
+  journalctl -u pravofin -n 20 --no-pager 2>&1 | sed 's/^/       /'
+fi

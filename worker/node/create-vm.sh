@@ -90,16 +90,14 @@ MODE=""
 
 if [ -f "$READY_IN" ] && grep -q '^#cloud-config' "$READY_IN"; then
   MODE="ready"
-  # Считаем строки только внутри блока с ключами. Простой поиск по всему
-  # файлу приписывал бы сюда и обычные переменные из вложенных скриптов
-  # (DIR=, STAMP=, DOMAIN=), и число выглядело бы больше настоящего.
+  # Ключи внутри лежат в base64, поэтому считаем их расшифровкой,
+  # а не поиском по тексту. Заодно это и проверка целостности: если файл
+  # загрузился не полностью, base64 просто не развернётся.
   VARS=$(awk '
     /^  - path: \/opt\/pravofin\/env/ { inside = 1; next }
-    inside && /^  - path:/            { inside = 0 }
-    inside && /^      [A-Z][A-Z0-9_]*=/ { n++ }
-    END { print n + 0 }' "$READY_IN")
-  [ "$VARS" -ge 8 ] || fail "в $READY_IN только $VARS строк с ключами — файл загрузился не полностью"
-  grep -q 'AI_API_KEY=' "$READY_IN" || fail "в $READY_IN нет AI_API_KEY — файл загрузился не полностью"
+    inside && /^  - path:/ { inside = 0 }
+    inside && /^      [A-Za-z0-9+\/=]+$/ { print substr($0, 7) }' "$READY_IN"     | base64 -d 2>/dev/null | grep -cE '^[A-Z][A-Z0-9_]*=' || true)
+  [ "$VARS" -ge 8 ] || fail "в $READY_IN расшифровалось только $VARS ключей — файл загрузился не полностью"
 elif [ -f "$ENV_FILE" ]; then
   MODE="env"
   # Пустой или подозрительно короткий файл ключей — почти наверняка
@@ -236,17 +234,26 @@ else
     curl -fsSL "$RAW" -o "$TEMPLATE" || fail "не смог скачать $RAW"
   fi
 
-  # Ключи уходят внутрь блока YAML с отступом в шесть пробелов —
-  # без выравнивания файл не разберётся и машина поднимется пустой.
-  INDENTED=$(grep -E '^[A-Z][A-Z0-9_]*=' "$ENV_FILE" | sed 's/^/      /')
-  awk -v repl="$INDENTED" '
-    /__WORKER_ENV__/ { print repl; next }
+  # Ключи уходят в base64 и с отступом в шесть пробелов.
+  #
+  # base64 — чтобы значения не пострадали по дороге: в них может быть
+  # доллар или обратная косая, а через YAML и cloud-init такое уже
+  # терялось — так пропала переменная $uri из настройки nginx.
+  # Отступ — потому что это содержимое блока YAML: без выравнивания
+  # файл не разберётся и машина поднимется пустой.
+  #
+  # Замену читаем из файла, а не передаём через awk -v: awk разбирает
+  # в таком значении обратные косые как escape-последовательности.
+  PACKED=$(mktemp)
+  grep -E '^[A-Z][A-Z0-9_]*=' "$ENV_FILE" | base64 -w 76 | sed 's/^/      /' > "$PACKED"
+  awk -v f="$PACKED" '
+    /__WORKER_ENV_B64__/ { while ((getline line < f) > 0) print line; next }
     { print }
   ' "$TEMPLATE" > "$READY"
-  rm -f "$TEMPLATE"
+  rm -f "$TEMPLATE" "$PACKED"
 fi
 
-grep -q '__WORKER_ENV__' "$READY" && fail "не удалось подставить ключи в настройку"
+grep -q '__WORKER_ENV_B64__' "$READY" && fail "не удалось подставить ключи в настройку"
 
 # Первая строка обязана быть ровно «#cloud-config».
 #

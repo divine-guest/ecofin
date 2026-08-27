@@ -1,0 +1,34 @@
+[Unit]
+Description=ПравоФин API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pravofin
+WorkingDirectory=/opt/pravofin/repo
+Environment=NODE_ENV=production
+Environment=PORT=8080
+Environment=HOST=127.0.0.1
+Environment=DB_FILE=/opt/pravofin/data/pravofin.db
+# Какой драйвер базы использовать, решает setup.sh: он проверяет, собрался
+# ли better-sqlite3, и только тогда требует его. Требовать вслепую нельзя —
+# сервер просто не запустится, и сайт будет лежать вместо того, чтобы
+# работать на запасном драйвере. Минус тире перед путём: файла может не быть.
+EnvironmentFile=-/opt/pravofin/driver.env
+ExecStart=/usr/bin/node worker/node/server.mjs
+Restart=always
+RestartSec=3
+# Сначала мягкий сигнал: сервер даёт договорить фоновым задачам ИИ,
+# чтобы перезапуск не обрывал ответ на середине.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/pravofin/data
+
+[Install]
+WantedBy=multi-user.target

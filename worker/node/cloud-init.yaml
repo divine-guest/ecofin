@@ -2,272 +2,47 @@
 # ============ Первичная настройка машины в Yandex Cloud ============
 #
 # СТРОКА ВЫШЕ ОБЯЗАНА БЫТЬ ПЕРВОЙ В ФАЙЛЕ. Не второй, не после
-# комментариев — именно первой. cloud-init смотрит только на неё:
-# если там что-то другое, он молча пропускает весь файл. Машина при
-# этом поднимается чистой Ubuntu, ошибки нигде не появляется, и понять
-# это можно лишь по времени в журнале — настройка «заканчивается» за
-# пятнадцать секунд вместо десяти минут. Один раз мы на этом уже
-# потеряли вечер: пояснение вроде этого стояло сверху.
+# комментариев — именно первой. cloud-init смотрит только на неё: если там
+# что-то другое, он молча пропускает весь файл. Машина при этом поднимается
+# чистой Ubuntu, ошибки нигде не появляется, и понять это можно лишь по
+# времени в журнале — настройка «заканчивается» за пятнадцать секунд вместо
+# десяти минут. Один раз мы на этом уже потеряли вечер.
 #
-# Это «инструкция для новой виртуалки»: при первом включении она сама
-# ставит всё нужное и поднимает сервис. Вставляется в поле метаданных
-# при создании машины — больше на сервер заходить не нужно.
+# Здесь нарочно почти ничего нет. Вся установка живёт отдельными файлами
+# в репозитории — worker/node/server-setup/ — и оттуда копируется на диск
+# байт в байт. Причина: в прошлой версии настройка nginx была вписана
+# сюда, и по дороге из строки try_files пропала переменная $uri. nginx
+# отказался запускаться, сайт отдавал заглушку, а по файлу было не понять
+# ничего — в нём всё было правильно.
 #
-# Готовый к вставке файл со вписанными секретами делает соседний скрипт:
-#     node worker/node/make-cloud-init.mjs
-# Здесь — образец без секретов, он лежит в репозитории открыто.
+# Отсюда же два следствия, ради которых всё и затевалось:
+#   • любое исправление доезжает до сервера обычным git push — машина
+#     раз в пять минут сама приводит себя в порядок по репозиторию;
+#   • чинить сломанное можно, не пересоздавая машину.
 #
-# Что делает машина при первом включении:
-#   1. ставит Node 22, nginx, git и средства для сборки;
-#   2. забирает код из репозитория;
-#   3. кладёт секреты в worker/.env;
-#   4. запускает сервис и настраивает автозапуск;
-#   5. включает почасовой бэкап базы и автообновление кода;
-#   6. закрывает всё, кроме 22, 80 и 443.
-#
-# Домена на этом шаге может ещё не быть: сервис поднимается по HTTP.
-# Сертификат ставится потом одной командой — enable-tls.sh.
-
-package_update: true
-package_upgrade: true
+# Секреты передаются в base64. Не ради скрытности — файл всё равно лежит
+# только на самой машине с правами 600, — а чтобы их не испортила никакая
+# подстановка по дороге. В base64 нет ни долларов, ни кавычек, ни обратных
+# косых, ни кириллицы.
 
 packages:
   - git
-  - nginx
-  - build-essential
-  - python3-certbot-nginx
-  - ufw
-  - unattended-upgrades
-  - sqlite3
+  - curl
+  - ca-certificates
 
 write_files:
-  # -------- Секреты сервиса --------
-  # Права 600 и владелец pravofin: читать может только сам сервис.
-  - path: /opt/pravofin/env
+  - path: /opt/pravofin/env.b64
     permissions: "0600"
     owner: root:root
     content: |
-      __WORKER_ENV__
-
-  # -------- Служба --------
-  - path: /etc/systemd/system/pravofin.service
-    permissions: "0644"
-    content: |
-      [Unit]
-      Description=ПравоФин API
-      After=network-online.target
-      Wants=network-online.target
-
-      [Service]
-      Type=simple
-      User=pravofin
-      WorkingDirectory=/opt/pravofin/repo
-      Environment=NODE_ENV=production
-      Environment=PORT=8080
-      Environment=HOST=127.0.0.1
-      Environment=DB_FILE=/opt/pravofin/data/pravofin.db
-      # Драйвер обязателен именно native: запасной wasm держит файл базы
-      # монопольно, и тогда не сработают ни бэкап, ни служебные скрипты.
-      # Лучше не запуститься с понятной причиной, чем тихо деградировать.
-      Environment=DB_DRIVER=native
-      ExecStart=/usr/bin/node worker/node/server.mjs
-      Restart=always
-      RestartSec=3
-      # Сначала мягкий сигнал: сервер даёт договорить фоновым задачам ИИ,
-      # чтобы перезапуск не обрывал ответ на середине.
-      KillSignal=SIGTERM
-      TimeoutStopSec=30
-      StandardOutput=journal
-      StandardError=journal
-      NoNewPrivileges=true
-      PrivateTmp=true
-      ProtectSystem=strict
-      ReadWritePaths=/opt/pravofin/data
-
-      [Install]
-      WantedBy=multi-user.target
-
-  # -------- nginx --------
-  # Один домен на всё: статика отдаётся с диска, /api уходит в Node.
-  # Это заодно убирает CORS: браузер и сервер на одном origin.
-  - path: /etc/nginx/sites-available/pravofin
-    permissions: "0644"
-    content: |
-      server {
-        listen 80 default_server;
-        listen [::]:80 default_server;
-        server_name _;
-
-        root /opt/pravofin/repo;
-        index index.html;
-        charset utf-8;
-
-        client_max_body_size 25m;
-
-        gzip on;
-        gzip_types text/css application/javascript application/json image/svg+xml text/plain;
-        gzip_min_length 1024;
-
-        # Ресурсы подключаются с ?v=НОМЕР, поэтому их можно кэшировать
-        # надолго: смена версии сама делает адрес новым.
-        location ~* \.(css|js|png|svg|webmanifest|woff2)$ {
-          expires 30d;
-          add_header Cache-Control "public, immutable";
-          try_files $uri =404;
-        }
-
-        location / {
-          try_files $uri $uri/ /404.html;
-        }
-
-        location /api/ {
-          proxy_pass http://127.0.0.1:8080;
-          proxy_http_version 1.1;
-
-          # Адрес посетителя. Перезаписываем обязательно: если пропустить
-          # то, что прислал браузер, ограничение по частоте обходится
-          # подделкой заголовка.
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $remote_addr;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header Host $host;
-
-          # Ответ ИИ готовится до полутора минут — обычных 60 секунд мало.
-          proxy_read_timeout 200s;
-          proxy_send_timeout 200s;
-          proxy_buffering off;
-        }
-      }
-
-  # -------- Бэкап базы --------
-  # VACUUM INTO делает целостную копию на работающей базе, в отличие от
-  # обычного копирования файла: при копировании можно поймать середину
-  # записи и получить битый файл.
-  - path: /opt/pravofin/backup.sh
-    permissions: "0755"
-    content: |
-      #!/bin/bash
-      set -e
-      DIR=/opt/pravofin/backups
-      mkdir -p "$DIR"
-      STAMP=$(date +%Y%m%d-%H%M)
-      sqlite3 /opt/pravofin/data/pravofin.db "VACUUM INTO '$DIR/pravofin-$STAMP.db'"
-      gzip -f "$DIR/pravofin-$STAMP.db"
-      # Держим двое суток почасовых копий.
-      ls -1t "$DIR"/pravofin-*.db.gz | tail -n +49 | xargs -r rm --
-
-  # -------- Автообновление кода --------
-  # Выкатка = обычный git push. Машина сама подтягивает изменения.
-  # Перед перезапуском проверяем синтаксис: сломанный код не должен
-  # уронить работающий сервис.
-  - path: /opt/pravofin/update.sh
-    permissions: "0755"
-    content: |
-      #!/bin/bash
-      set -e
-      cd /opt/pravofin/repo
-      BEFORE=$(git rev-parse HEAD)
-      git fetch --quiet origin main
-      git reset --hard --quiet origin/main
-      AFTER=$(git rev-parse HEAD)
-
-      # Домен вписывается в репозиторий обычным коммитом — это не секрет.
-      # Как только он появится и начнёт показывать на этот адрес, машина
-      # сама включит HTTPS. Заходить на сервер руками не нужно.
-      /opt/pravofin/check-domain.sh || true
-
-      [ "$BEFORE" = "$AFTER" ] && exit 0
-
-      cd worker
-      npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund
-      if ! node --check node/server.mjs; then
-        echo "новый код не разбирается — оставляю работать старый"
-        cd /opt/pravofin/repo && git reset --hard --quiet "$BEFORE"
-        exit 1
-      fi
-      systemctl restart pravofin
-      echo "обновлено до $AFTER"
-
-  # -------- Сертификат сам собой --------
-  # Читает домен из репозитория и, когда тот начнёт показывать на нас,
-  # выпускает сертификат. Пока домена нет или он показывает не сюда —
-  # тихо ничего не делает и пробует снова через пять минут.
-  - path: /opt/pravofin/check-domain.sh
-    permissions: "0755"
-    content: |
-      #!/bin/bash
-      set -e
-      FILE=/opt/pravofin/repo/worker/node/domain.txt
-      [ -f "$FILE" ] || exit 0
-      DOMAIN=$(grep -vE '^\s*(#|$)' "$FILE" | head -1 | tr -d '[:space:]')
-      [ -z "$DOMAIN" ] && exit 0
-
-      # Уже выпущен — выходим: certbot сам продлевает по расписанию.
-      [ -d "/etc/letsencrypt/live/$DOMAIN" ] && exit 0
-
-      MY_IP=$(curl -s --max-time 5 https://api.ipify.org || true)
-      DOMAIN_IP=$(getent hosts "$DOMAIN" | awk '{print $1}' | head -1 || true)
-      if [ -z "$DOMAIN_IP" ] || [ "$MY_IP" != "$DOMAIN_IP" ]; then
-        echo "домен $DOMAIN пока показывает на '$DOMAIN_IP', а мы '$MY_IP' — жду"
-        exit 0
-      fi
-
-      echo "домен $DOMAIN показывает на нас, выпускаю сертификат"
-      /opt/pravofin/enable-tls.sh "$DOMAIN"
-
-  # -------- Сертификат --------
-  # Запускается вручную, когда домен уже показывает на этот адрес:
-  #     sudo /opt/pravofin/enable-tls.sh домен.ru
-  - path: /opt/pravofin/enable-tls.sh
-    permissions: "0755"
-    content: |
-      #!/bin/bash
-      set -e
-      DOMAIN="$1"
-      [ -z "$DOMAIN" ] && { echo "укажите домен: enable-tls.sh пример.ru"; exit 1; }
-      sed -i "s/server_name _;/server_name $DOMAIN;/" /etc/nginx/sites-available/pravofin
-      nginx -t && systemctl reload nginx
-      certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email --redirect
-      systemctl reload nginx
-      echo "HTTPS включён для $DOMAIN, продление сертификата настроится само"
+      __WORKER_ENV_B64__
 
 runcmd:
-  # Пользователь без прав администратора: сервис не должен работать от root.
-  - useradd --system --create-home --home-dir /opt/pravofin --shell /usr/sbin/nologin pravofin || true
-  - mkdir -p /opt/pravofin/data /opt/pravofin/backups
-
-  # Node 22 из официального репозитория NodeSource.
-  - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-  - apt-get install -y nodejs
-
+  - mkdir -p /opt/pravofin
+  - base64 -d /opt/pravofin/env.b64 > /opt/pravofin/env
+  - chmod 600 /opt/pravofin/env
+  - rm -f /opt/pravofin/env.b64
   - git clone --depth 1 https://github.com/divine-guest/ecofin.git /opt/pravofin/repo
-  - cp /opt/pravofin/env /opt/pravofin/repo/worker/.env
-  - chmod 600 /opt/pravofin/repo/worker/.env
+  - bash /opt/pravofin/repo/worker/node/server-setup/setup.sh
 
-  # Зависимости сервера. better-sqlite3 собирается здесь из исходников —
-  # для этого и стоит build-essential.
-  - cd /opt/pravofin/repo/worker && npm install --omit=dev --no-audit --no-fund
-
-  - chown -R pravofin:pravofin /opt/pravofin
-
-  - ln -sf /etc/nginx/sites-available/pravofin /etc/nginx/sites-enabled/pravofin
-  - rm -f /etc/nginx/sites-enabled/default
-  - nginx -t && systemctl reload nginx
-
-  - systemctl daemon-reload
-  - systemctl enable --now pravofin
-
-  # Почасовой бэкап и проверка обновлений каждые пять минут.
-  - (crontab -l 2>/dev/null; echo "0 * * * * /opt/pravofin/backup.sh >> /var/log/pravofin-backup.log 2>&1") | crontab -
-  - (crontab -l 2>/dev/null; echo "*/5 * * * * /opt/pravofin/update.sh >> /var/log/pravofin-update.log 2>&1") | crontab -
-
-  # Firewall: наружу только вход по SSH и веб.
-  - ufw allow 22/tcp
-  - ufw allow 80/tcp
-  - ufw allow 443/tcp
-  - ufw --force enable
-
-  # Обновления безопасности ставятся сами.
-  - dpkg-reconfigure -f noninteractive unattended-upgrades
-
-final_message: "ПравоФин поднят за $UPTIME секунд. Проверьте: curl http://АДРЕС/api/health"
+final_message: "ПравоФин поднят. Проверьте: curl http://АДРЕС/api/health"

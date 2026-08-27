@@ -32,21 +32,28 @@ try {
   process.exit(1);
 }
 
-/* Переменные уходят внутрь блока YAML с отступом: без выравнивания
-   файл настройки просто не разберётся, и машина поднимется пустой. */
 const lines = env
   .replace(/\r\n?/g, "\n")
   .split("\n")
   .map(l => l.trimEnd())
-  .filter(l => l && !l.startsWith("#"));
+  .filter(l => l && !l.startsWith("#") && /^[A-Z][A-Z0-9_]*=/.test(l));
 
-const indented = lines.map(l => "      " + l).join("\n").trimStart();
+/* Ключи уходят в base64, а не текстом.
 
-const out = template
-  .replace("      __WORKER_ENV__", "      " + indented)
-  /* Адрес сайта в переменных ещё указывает на GitHub Pages. Пока домена
-     нет, так и оставляем: поменяется одной строкой при переключении. */
-  ;
+   Не ради скрытности — файл всё равно лежит только на самой машине с
+   правами 600. Ради сохранности: по дороге через YAML и cloud-init текст
+   может пострадать. Мы это уже видели — из настройки nginx исчезла
+   переменная $uri, и сервер не запустился. В значении ключа доллар или
+   обратная косая вполне могут встретиться, и тогда сломался бы вход
+   в кабинет, а понять почему было бы почти невозможно.
+
+   В base64 нет ни долларов, ни кавычек, ни кириллицы — портить нечего.
+   Разворачивает обратно сама машина, первой же командой. */
+const packed = Buffer.from(lines.join("\n") + "\n", "utf8").toString("base64");
+const wrapped = (packed.match(/.{1,76}/g) || [])
+  .map(l => "      " + l).join("\n").trimStart();
+
+const out = template.replace("      __WORKER_ENV_B64__", "      " + wrapped);
 
 const file = join(HERE, "cloud-init.ready.yaml");
 await writeFile(file, out, "utf8");
