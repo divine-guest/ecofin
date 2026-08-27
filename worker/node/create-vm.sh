@@ -33,7 +33,9 @@ MEMORY="${VM_MEMORY:-4}"
 DISK="${VM_DISK:-40}"
 PLATFORM="${VM_PLATFORM:-standard-v3}"
 ENV_FILE="${ENV_FILE:-$HOME/pravofin.env}"
-RAW="https://raw.githubusercontent.com/divine-guest/ecofin/main/worker/node/cloud-init.yaml"
+BASE="https://raw.githubusercontent.com/divine-guest/ecofin"
+RAW="$BASE/main/worker/node/cloud-init.yaml"
+API="https://api.github.com/repos/divine-guest/ecofin/commits/main"
 
 say()  { printf '%s\n' "$*"; }
 fail() { printf '\n  ОШИБКА: %s\n\n' "$*" >&2; exit 1; }
@@ -218,13 +220,21 @@ if [ "$MODE" = "ready" ]; then
 else
   say "Забираю образец настройки из репозитория…"
   TEMPLATE=$(mktemp)
-  # raw.githubusercontent раздаёт файлы через кеш и после исправления
-  # ещё несколько минут отдаёт прежнюю копию. Добавляем к адресу метку
-  # времени: для кеша это новый адрес, и он идёт за файлом заново.
-  curl -fsSL -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' \
-       "$RAW?nocache=$(date +%s)" -o "$TEMPLATE" \
-    || curl -fsSL "$RAW" -o "$TEMPLATE" \
-    || fail "не смог скачать $RAW"
+
+  # Через обычный адрес с «main» кеш GitHub ещё несколько минут отдаёт
+  # прежнюю копию — и мы взяли бы ровно тот файл, из-за которого машина
+  # уже поднялась пустой. Метка времени в адресе не спасает: кеш считает
+  # по пути. Поэтому сначала спрашиваем номер последней версии, а файл
+  # берём по нему — такой адрес свежий всегда.
+  SHA=$(curl -fsSL --max-time 20 "$API" 2>/dev/null | grep -m1 '"sha"' | cut -d'"' -f4)
+  if [ -n "$SHA" ]; then
+    say "  версия ${SHA:0:12}"
+    curl -fsSL "$BASE/$SHA/worker/node/cloud-init.yaml" -o "$TEMPLATE" \
+      || fail "не смог скачать настройку версии $SHA"
+  else
+    say "  номер версии не узнал, беру обычным адресом"
+    curl -fsSL "$RAW" -o "$TEMPLATE" || fail "не смог скачать $RAW"
+  fi
 
   # Ключи уходят внутрь блока YAML с отступом в шесть пробелов —
   # без выравнивания файл не разберётся и машина поднимется пустой.
