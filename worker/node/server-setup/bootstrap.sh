@@ -39,7 +39,14 @@ have_repo() { [ -f "$SETUP" ]; }
 swap_in() {
   [ -f "$REPO.new/worker/node/server-setup/setup.sh" ] || return 1
   rm -rf "$REPO.old"
-  [ -d "$REPO" ] && mv "$REPO" "$REPO.old"
+  if [ -d "$REPO" ]; then
+    mv "$REPO" "$REPO.old"
+    # Зависимости переносим, а не скачиваем заново: их установка занимает
+    # две минуты и требует сборки из исходников. Список зависимостей меняется
+    # раз в полгода, а обновления приходят каждые пять минут.
+    [ -d "$REPO.old/worker/node_modules" ] && \
+      mv "$REPO.old/worker/node_modules" "$REPO.new/worker/node_modules"
+  fi
   mv "$REPO.new" "$REPO"
   rm -rf "$REPO.old"
 }
@@ -70,6 +77,49 @@ fetch() {
   return 1
 }
 
+# Свежий ли код на машине.
+#
+# Спрашиваем у GitHub номер последней версии и сравниваем со своим. Это
+# один короткий запрос, его можно делать хоть каждые пять минут. И, что
+# важнее, он идёт на другой адрес, чем git: бывает, что git не проходит,
+# а этот отвечает.
+remote_sha() {
+  curl -fsSL --max-time 20 "https://api.github.com/repos/$OWNER/$NAME/commits/$BRANCH" 2>/dev/null \
+    | grep -m1 '"sha"' | cut -d'"' -f4
+}
+
+local_sha() {
+  if [ -d "$REPO/.git" ]; then git -C "$REPO" rev-parse HEAD 2>/dev/null
+  else cat "$REPO/.version" 2>/dev/null; fi
+}
+
+# Обновление. Сначала git — он быстрый и качает только разницу. Не вышло —
+# идём архивом.
+#
+# Раньше здесь был только git, и это оказалось дырой: когда github.com
+# переставал открываться, обновления замирали молча. Машина продолжала
+# работать на старом коде, а мы пятнадцать минут ждали изменений, которые
+# никогда бы не приехали.
+refresh() {
+  if [ -d "$REPO/.git" ]; then
+    if timeout 60 git -C "$REPO" fetch --quiet origin "$BRANCH" 2>/dev/null &&
+       git -C "$REPO" reset --hard --quiet "origin/$BRANCH" 2>/dev/null; then
+      return 0
+    fi
+    log "git не прошёл, пробую архивом"
+  fi
+
+  local sha; sha=$(remote_sha)
+  [ -n "$sha" ] || { log "номер версии узнать не удалось, оставляю как есть"; return 1; }
+
+  try_tar "https://codeload.github.com/$OWNER/$NAME/tar.gz/$sha" \
+    || try_tar "https://api.github.com/repos/$OWNER/$NAME/tarball/$sha" \
+    || { log "архив скачать не удалось, оставляю как есть"; return 1; }
+
+  printf '%s\n' "$sha" > "$REPO/.version"
+  log "обновлено архивом до ${sha:0:12}"
+}
+
 if ! have_repo; then
   log "кода на машине нет, добываю"
   for i in 1 2 3; do
@@ -77,10 +127,18 @@ if ! have_repo; then
     log "попытка $i не удалась"
     [ "$i" -lt 3 ] && sleep 20
   done
-elif [ ! -d "$REPO/.git" ]; then
-  # Код приехал архивом — обновляться он не умеет. Как только github.com
-  # начнёт открываться, тихо переходим на git и живём обычной жизнью.
-  try_git && log "перешёл на git, обновления теперь быстрые"
+else
+  BEFORE=$(local_sha)
+  REMOTE=$(remote_sha)
+  # Сверяем до скачивания: обычно версия та же, и тратить на это трафик
+  # каждые пять минут незачем.
+  if [ -n "$REMOTE" ] && [ "$REMOTE" != "$BEFORE" ]; then
+    log "есть версия свежее (${REMOTE:0:12}), обновляюсь"
+    refresh || true
+  elif [ -z "$REMOTE" ]; then
+    # GitHub не ответил вовсе — пробуем обновиться вслепую, вдруг git пройдёт.
+    refresh >/dev/null 2>&1 || true
+  fi
 fi
 
 if ! have_repo; then
