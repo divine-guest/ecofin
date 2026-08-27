@@ -228,14 +228,13 @@ else
   # GitHub не ответил, ограничил частоту запросов — роняет весь скрипт
   # молча, без единой строки объяснения: так работает set -e с pipefail.
   SHA=$(curl -fsSL --max-time 20 "$API" 2>/dev/null | grep -m1 '"sha"' | cut -d'"' -f4 || true)
-  if [ -n "$SHA" ]; then
-    say "  версия ${SHA:0:12}"
-    curl -fsSL "$BASE/$SHA/worker/node/cloud-init.yaml" -o "$TEMPLATE" \
-      || fail "не смог скачать настройку версии $SHA"
-  else
-    say "  номер версии не узнал, беру обычным адресом"
-    curl -fsSL "$RAW" -o "$TEMPLATE" || fail "не смог скачать $RAW"
-  fi
+  BOOT=$(mktemp)
+  REF="${SHA:-main}"
+  [ -n "$SHA" ] && say "  версия ${SHA:0:12}" || say "  номер версии не узнал, беру ветку main"
+  curl -fsSL "$BASE/$REF/worker/node/cloud-init.yaml" -o "$TEMPLATE" \
+    || fail "не смог скачать настройку ($REF)"
+  curl -fsSL "$BASE/$REF/worker/node/server-setup/bootstrap.sh" -o "$BOOT" \
+    || fail "не смог скачать bootstrap.sh ($REF)"
 
   # Ключи уходят в base64 и с отступом в шесть пробелов.
   #
@@ -249,14 +248,22 @@ else
   # в таком значении обратные косые как escape-последовательности.
   PACKED=$(mktemp)
   grep -E '^[A-Z][A-Z0-9_]*=' "$ENV_FILE" | base64 -w 76 | sed 's/^/      /' > "$PACKED"
-  awk -v f="$PACKED" '
+
+  # bootstrap.sh кладём внутрь тем же способом. На машине его взять
+  # неоткуда: именно он и умеет добывать код, а без кода его нет.
+  BOOTB64=$(mktemp)
+  base64 -w 76 < "$BOOT" | sed 's/^/      /' > "$BOOTB64"
+
+  awk -v f="$PACKED" -v b="$BOOTB64" '
     /__WORKER_ENV_B64__/ { while ((getline line < f) > 0) print line; next }
+    /__BOOTSTRAP_B64__/  { while ((getline line < b) > 0) print line; next }
     { print }
   ' "$TEMPLATE" > "$READY"
-  rm -f "$TEMPLATE" "$PACKED"
+  rm -f "$TEMPLATE" "$PACKED" "$BOOT" "$BOOTB64"
 fi
 
 grep -q '__WORKER_ENV_B64__' "$READY" && fail "не удалось подставить ключи в настройку"
+grep -q '__BOOTSTRAP_B64__' "$READY" && fail "не удалось подставить bootstrap.sh в настройку"
 
 # Первая строка обязана быть ровно «#cloud-config».
 #

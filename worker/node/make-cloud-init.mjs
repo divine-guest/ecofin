@@ -53,7 +53,19 @@ const packed = Buffer.from(lines.join("\n") + "\n", "utf8").toString("base64");
 const wrapped = (packed.match(/.{1,76}/g) || [])
   .map(l => "      " + l).join("\n").trimStart();
 
-const out = template.replace("      __WORKER_ENV_B64__", "      " + wrapped);
+/* bootstrap.sh едет внутрь настройки — он единственный файл, который
+   попадает на машину не из репозитория. Иначе получается замкнутый круг:
+   чтобы скачать код, нужен скрипт, который лежит в коде. */
+const bootstrap = await readFile(join(HERE, "server-setup", "bootstrap.sh"), "utf8");
+const bootPacked = Buffer
+  .from(bootstrap.replace(/\r\n?/g, "\n"), "utf8")
+  .toString("base64");
+const bootWrapped = (bootPacked.match(/.{1,76}/g) || [])
+  .map(l => "      " + l).join("\n").trimStart();
+
+const out = template
+  .replace("      __WORKER_ENV_B64__", "      " + wrapped)
+  .replace("      __BOOTSTRAP_B64__", "      " + bootWrapped);
 
 const file = join(HERE, "cloud-init.ready.yaml");
 await writeFile(file, out, "utf8");

@@ -22,7 +22,6 @@ set -uo pipefail
 DIR=/opt/pravofin
 REPO=$DIR/repo
 HERE=$REPO/worker/node/server-setup
-GIT_URL=https://github.com/divine-guest/ecofin.git
 
 log() { printf '[setup] %s\n' "$*"; }
 die() { printf '[setup] ОШИБКА: %s\n' "$*" >&2; exit 1; }
@@ -51,11 +50,12 @@ mkdir -p "$DIR/data" "$DIR/backups"
 
 # ---------- 2. Код ----------
 
+# Забирать код — не наша забота: этим занимается bootstrap.sh, у которого
+# на такой случай три разных способа. Мы только подтягиваем свежее, если
+# код лежит git-репозиторием. Приехал архивом — обновит его снова
+# bootstrap, когда github.com откроется.
 if [ ! -d "$REPO/.git" ]; then
-  log "забираю код"
-  rm -rf "$REPO"
-  git clone --depth 1 "$GIT_URL" "$REPO" || die "не смог забрать код из $GIT_URL"
-  mark
+  log "код лежит без git — обновлениями займётся bootstrap"
 else
   BEFORE=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
   git -C "$REPO" fetch --quiet origin main 2>/dev/null && \
@@ -80,7 +80,7 @@ fi
 CRON=/etc/cron.d/pravofin
 NEW_CRON="SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-*/5 * * * * root $HERE/setup.sh >> /var/log/pravofin-setup.log 2>&1
+*/5 * * * * root flock -n /var/lock/pravofin.lock $DIR/bootstrap.sh >> /var/log/pravofin-setup.log 2>&1
 0 * * * * root $DIR/backup.sh >> /var/log/pravofin-backup.log 2>&1"
 if [ ! -f "$CRON" ] || [ "$(cat "$CRON")" != "$NEW_CRON" ]; then
   printf '%s\n' "$NEW_CRON" > "$CRON"
@@ -206,6 +206,7 @@ fi
 
 # ---------- 8. Служба и nginx ----------
 
+install_if_changed "$HERE/bootstrap.sh"     "$DIR/bootstrap.sh"     755
 install_if_changed "$HERE/pravofin.service" /etc/systemd/system/pravofin.service 644
 install_if_changed "$HERE/backup.sh"        "$DIR/backup.sh"        755
 install_if_changed "$HERE/check-domain.sh"  "$DIR/check-domain.sh"  755
