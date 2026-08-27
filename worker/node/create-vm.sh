@@ -218,7 +218,13 @@ if [ "$MODE" = "ready" ]; then
 else
   say "Забираю образец настройки из репозитория…"
   TEMPLATE=$(mktemp)
-  curl -fsSL "$RAW" -o "$TEMPLATE" || fail "не смог скачать $RAW"
+  # raw.githubusercontent раздаёт файлы через кеш и после исправления
+  # ещё несколько минут отдаёт прежнюю копию. Добавляем к адресу метку
+  # времени: для кеша это новый адрес, и он идёт за файлом заново.
+  curl -fsSL -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' \
+       "$RAW?nocache=$(date +%s)" -o "$TEMPLATE" \
+    || curl -fsSL "$RAW" -o "$TEMPLATE" \
+    || fail "не смог скачать $RAW"
 
   # Ключи уходят внутрь блока YAML с отступом в шесть пробелов —
   # без выравнивания файл не разберётся и машина поднимется пустой.
