@@ -71,12 +71,38 @@ if [ "$NEW_IP" = "$OLD_IP" ]; then
 else
   say ""
   say "Перевожу машину на него…"
-  yc compute instance update-network-interface "$NAME" \
-    --network-interface-index 0 \
-    --nat-address "$NEW_IP" \
-    >/dev/null 2>&1 || fail "не смог перевести машину на адрес $NEW_IP.
-  Руками: Compute Cloud → $NAME → Редактировать → Сетевые интерфейсы →
-  Публичный адрес → Список → $ADDR_NAME"
+
+  # Сначала пробуем заменить адрес одной командой. Она работает не всегда:
+  # у интерфейса уже есть публичный адрес, и облако может отказаться менять
+  # его на ходу. Тогда идём длинным путём — снять старый, поставить новый.
+  ERR=$(yc compute instance update-network-interface "$NAME" \
+          --network-interface-index 0 \
+          --nat-address "$NEW_IP" 2>&1)
+
+  if [ $? -ne 0 ]; then
+    say "  одной командой не вышло:"
+    printf '%s\n' "$ERR" | head -3 | sed 's/^/    /'
+    say ""
+    say "  Пробую иначе: снимаю старый адрес и ставлю новый."
+
+    ERR=$(yc compute instance remove-one-to-one-nat "$NAME" \
+            --network-interface-index 0 2>&1) \
+      || fail "не смог снять старый адрес:
+$(printf '%s' "$ERR" | head -3)"
+
+    say "    старый адрес снят"
+
+    ERR=$(yc compute instance add-one-to-one-nat "$NAME" \
+            --network-interface-index 0 \
+            --nat-address "$NEW_IP" 2>&1) \
+      || fail "старый адрес снят, а новый поставить не удалось:
+$(printf '%s' "$ERR" | head -3)
+
+  Машина сейчас без публичного адреса. Поставить его можно так:
+      yc compute instance add-one-to-one-nat $NAME --network-interface-index 0 --nat-address $NEW_IP"
+
+    say "    новый адрес поставлен"
+  fi
 fi
 
 say ""
