@@ -195,6 +195,22 @@ fi
   Вот что вернул yc:
 $SUBNETS"
 
+# Закреплённый адрес и группа безопасности, если они уже есть.
+#
+# Ставим их сразу при создании, а не потом отдельными командами. Иначе
+# машина сначала поднимется на случайном адресе — а мы уже знаем, чем это
+# кончается: из сорока точек мира отвечают три, и всё приходится делать
+# заново. Да и группа безопасности нужна с первой секунды, иначе снаружи
+# закрыто всё.
+NAT=$(yc vpc address list 2>/dev/null \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+SG_ID=$(yc vpc security-group get --name "${SG_NAME:-pravofin-web}" 2>/dev/null \
+        | awk -F': *' '/^id:/ {print $2; exit}')
+
+IFACE="subnet-name=$SUBNET"
+if [ -n "$NAT" ]; then IFACE="$IFACE,nat-address=$NAT"; else IFACE="$IFACE,nat-ip-version=ipv4"; fi
+[ -n "$SG_ID" ] && IFACE="$IFACE,security-group-ids=$SG_ID"
+
 EXISTS=""
 if yc compute instance get --name "$NAME" >/dev/null 2>&1; then
   EXISTS="да"
@@ -284,6 +300,8 @@ say "  имя машины     $NAME"
 say "  каталог        $FOLDER"
 say "  зона           $ZONE"
 say "  подсеть        $SUBNET"
+say "  адрес          ${NAT:-новый, из общего котла}"
+say "  замок          ${SG_ID:-НЕТ — снаружи будет закрыто всё}"
 say "  платформа      $PLATFORM   (обычная, БЕЗ видеокарты)"
 say "  ядра           $CORES, гарантированная доля ${FRACTION}%"
 say "  память         $MEMORY ГБ"
@@ -325,7 +343,7 @@ yc compute instance create \
   --core-fraction "$FRACTION" \
   --memory "${MEMORY}GB" \
   --create-boot-disk type=network-ssd,size="${DISK}GB",image-folder-id=standard-images,image-family=ubuntu-2404-lts \
-  --network-interface subnet-name="$SUBNET",nat-ip-version=ipv4 \
+  --network-interface "$IFACE" \
   --metadata-from-file user-data="$READY" \
   --metadata enable-oslogin=true \
   --async=false
