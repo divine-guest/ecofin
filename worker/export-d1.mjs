@@ -54,12 +54,18 @@ out.push("-- существующих: повторный запуск ниче�
 out.push("BEGIN;");
 
 let total = 0;
+const failed = [];
+
 for (const t of TABLES) {
   let rows;
   try {
     rows = await sql(`SELECT * FROM ${t}`);
   } catch (e) {
-    console.error(`  таблица ${t} не прочиталась: ${e.message.slice(0, 100)}`);
+    /* Не пропускаем молча. Пропущенная таблица даёт пустую выгрузку,
+       а она внешне неотличима от честного «данных нет» — и переносом
+       такого файла можно спокойно отчитаться, ничего не перенеся. */
+    console.error(`  ${t}: НЕ ПРОЧИТАЛАСЬ — ${e.message.slice(0, 120)}`);
+    failed.push(t);
     continue;
   }
   console.error(`  ${t}: ${rows.length}`);
@@ -78,4 +84,20 @@ for (const t of TABLES) {
 
 out.push("COMMIT;");
 console.error(`  всего строк: ${total}`);
+
+if (failed.length) {
+  console.error("");
+  console.error(`ОШИБКА: не прочитались таблицы: ${failed.join(", ")}`);
+  console.error("Чаще всего это значит, что токен недействителен или у него");
+  console.error("нет права D1 → Read. Проверьте секрет D1_API_TOKEN.");
+  process.exit(1);
+}
+
+if (total === 0) {
+  console.error("");
+  console.error("ОШИБКА: выгрузка пустая — ни одной строки.");
+  console.error("Переносить нечего, а пустой файл легко принять за удачный перенос.");
+  process.exit(1);
+}
+
 process.stdout.write(out.join("\n") + "\n");

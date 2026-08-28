@@ -54,7 +54,15 @@ jobs:
           # одинаковый шифртекст, и по нему видно, менялось ли что-то.
           PASS="$KEY" openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
             -pass env:PASS -in /tmp/dump.sql -out worker/node/import.sql.enc
-          echo "зашифровано, размер: $(wc -c < worker/node/import.sql.enc) байт"
+          SIZE=$(wc -c < worker/node/import.sql.enc)
+          echo "зашифровано, размер: $SIZE байт"
+          # Пустая выгрузка весит около двухсот байт и внешне неотличима
+          # от удачной. Один раз мы так и «перенесли» ноль строк, ничего
+          # не заметив, — поэтому порог.
+          if [ "$SIZE" -lt 600 ]; then
+            echo "Выгрузка подозрительно мала — похоже, данные не прочитались."
+            exit 1
+          fi
           # Метка запуска: по ней машина понимает, что перенос новый.
           date -u +%Y%m%d-%H%M%S > worker/node/IMPORT-DATA
 
