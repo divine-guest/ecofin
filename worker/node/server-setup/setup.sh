@@ -371,8 +371,22 @@ DIAG="$REPO/diag-8f3a2c.txt"
   echo "--- адреса машины ---"
   ip -4 addr show 2>/dev/null | grep -E 'inet ' | sed 's/^ *//'
   echo
-  echo "--- последние обращения к сайту ---"
-  tail -20 /var/log/nginx/access.log 2>/dev/null || echo "журнала нет"
+  echo "--- сколько записей в базе ---"
+  for t in users payments usage actions point_ops; do
+    printf "  %-10s %s
+" "$t" "$(sqlite3 "$DIR/data/pravofin.db" "SELECT COUNT(*) FROM $t" 2>&1)"
+  done
+  echo
+  echo "--- есть ли владелец ---"
+  sqlite3 "$DIR/data/pravofin.db" "SELECT role, plan FROM users" 2>&1 | sed 's/^/  /'
+  echo
+  echo "--- что говорила установка (последние строки) ---"
+  tail -40 /var/log/pravofin-setup.log 2>/dev/null | sed 's/^/  /' || echo "  журнала нет"
+  echo
+  echo "--- состояние переноса ---"
+  echo "  метка в репозитории: $(cat "$REPO/worker/node/IMPORT-DATA" 2>/dev/null || echo нет)"
+  echo "  метка применённого:  $(cat "$DIR/import.done" 2>/dev/null || echo нет)"
+  echo "  файл выгрузки:       $(wc -c < "$REPO/worker/node/import.sql.enc" 2>/dev/null || echo нет) байт"
 } > "$DIAG" 2>&1
 chmod 644 "$DIAG"
 
