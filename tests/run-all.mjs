@@ -66,8 +66,16 @@ if (!process.env.TELEGRAM_WEBHOOK_SECRET) {
   } catch {}
 }
 
-if (!process.env.D1_API_TOKEN) {
-  console.error("Нужна переменная D1_API_TOKEN — без неё не завести временного админа.");
+/* Сюитам нужен прямой доступ к базе — завести одноразового админа и
+   убрать за собой. На Cloudflare это REST API базы и токен, на своём
+   сервере — сам файл базы, и тогда токен не нужен вовсе.
+
+   Раньше здесь требовался только токен, и проверки на своём сервере
+   отказывались запускаться, хотя всё для них было. */
+if (!process.env.D1_API_TOKEN && !process.env.DB_FILE) {
+  console.error("Нужен доступ к базе — без него не завести временного админа.");
+  console.error("  на Cloudflare:   D1_API_TOKEN=<токен>");
+  console.error("  на своём сервере: DB_FILE=<путь к файлу базы>");
   process.exit(2);
 }
 
