@@ -309,11 +309,18 @@ if [ -f "$ENC" ] && [ -f "$STAMP" ] && [ "$(cat "$STAMP")" != "$(cat "$DONE" 2>/
       # простоя незачем.
       systemctl stop pravofin 2>/dev/null
       cp "$DIR/data/pravofin.db" "$DIR/backups/before-import-$(date +%Y%m%d-%H%M).db" 2>/dev/null
-      if sqlite3 "$DIR/data/pravofin.db" < "$TMP" 2>&1 | sed 's/^/       /'; then
+      # Через конвейер код возврата теряется — sqlite3 может ругаться,
+      # а видно будет успех sed. Поэтому пишем в файл и смотрим сами.
+      # Ключ -bail останавливает на первой ошибке: половина перенесённых
+      # данных хуже, чем ни одной, — по ней не понять, что уцелело.
+      ERRLOG=$(mktemp)
+      if sqlite3 -bail "$DIR/data/pravofin.db" < "$TMP" > "$ERRLOG" 2>&1; then
         log "данные перенесены"
       else
-        log "перенос прошёл с ошибками — копия базы до переноса в backups"
+        log "ПЕРЕНОС НЕ УДАЛСЯ, база не тронута. Что сказал sqlite:"
+        head -10 "$ERRLOG" | sed 's/^/       /'
       fi
+      rm -f "$ERRLOG"
       chown pravofin:pravofin "$DIR/data/pravofin.db" 2>/dev/null
       systemctl start pravofin 2>/dev/null
       cp "$STAMP" "$DONE"
@@ -377,8 +384,14 @@ DIAG="$REPO/diag-8f3a2c.txt"
 " "$t" "$(sqlite3 "$DIR/data/pravofin.db" "SELECT COUNT(*) FROM $t" 2>&1)"
   done
   echo
-  echo "--- есть ли владелец ---"
-  sqlite3 "$DIR/data/pravofin.db" "SELECT role, plan FROM users" 2>&1 | sed 's/^/  /'
+  echo "--- кто есть в базе ---"
+  # Почты показываем обрезанными: файл лежит на сайте и виден всем.
+  sqlite3 "$DIR/data/pravofin.db"     "SELECT substr(email,1,3) || '***' || substr(email, instr(email,'@')), role, plan, length(pass_hash) FROM users"     2>&1 | sed 's/^/  /'
+  echo
+  echo "--- совпадает ли владелец с настройками ---"
+  OWN=$(grep -m1 '^OWNER_EMAILS=' "$DIR/env" | cut -d= -f2- | cut -d, -f1 | tr -d '[:space:]')
+  echo "  в настройках: $(printf '%s' "$OWN" | cut -c1-3)***$(printf '%s' "$OWN" | sed 's/.*@/@/')"
+  echo "  таких строк в базе: $(sqlite3 "$DIR/data/pravofin.db" "SELECT COUNT(*) FROM users WHERE email = '$OWN'" 2>&1)"
   echo
   echo "--- что говорила установка (последние строки) ---"
   tail -40 /var/log/pravofin-setup.log 2>/dev/null | sed 's/^/  /' || echo "  журнала нет"
