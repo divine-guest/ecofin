@@ -75,23 +75,43 @@ keep_it() {   # $1 — адрес
   say "  Адрес: $ip"
   say ""
 
-  if yc vpc address list 2>/dev/null | grep -q "$ip"; then
-    say "  Он уже закреплён за вами."
-  else
-    local nm="pravofin-ip"
-    yc vpc address get --name "$nm" >/dev/null 2>&1 && nm="pravofin-ip-$(date +%m%d%H%M)"
-    if yc vpc address create --name "$nm" --external-ipv4 "address=$ip,zone=$ZONE" >/dev/null 2>&1; then
-      say "  Закрепил за вами под именем $nm — при перезапуске машины не изменится."
-    else
-      say "  ЗАКРЕПИТЬ НЕ УДАЛОСЬ. Сделайте вручную, иначе адрес однажды пропадёт:"
-      say "  Compute Cloud → $NAME → Сеть → у публичного адреса «Сделать статическим»."
-    fi
-  fi
-
-  say ""
   say "  Откройте в браузере:"
   say ""
   say "      http://$ip/"
+  say ""
+
+  if yc vpc address list 2>/dev/null | grep -q "$ip"; then
+    say "  Он уже закреплён за вами и при перезапуске машины не изменится."
+    say ""
+    return
+  fi
+
+  local nm="pravofin-ip"
+  yc vpc address get --name "$nm" >/dev/null 2>&1 && nm="pravofin-ip-$(date +%m%d%H%M)"
+  if yc vpc address create --name "$nm" --external-ipv4 "address=$ip,zone=$ZONE" >/dev/null 2>&1; then
+    say "  Закрепил за вами под именем $nm — при перезапуске машины не изменится."
+    say ""
+    return
+  fi
+
+  # Закрепить из командной строки удаётся не всегда, а незакреплённый
+  # адрес пропадает при первом же перезапуске машины — и весь перебор
+  # начинается заново. Поэтому не одна строчка в общем потоке, а рамка:
+  # прошлый раз такое предупреждение потерялось в выводе, и адрес ушёл.
+  say "  ┌───────────────────────────────────────────────────────────┐"
+  say "  │  ВНИМАНИЕ: ЗАКРЕПИТЬ АДРЕС НЕ УДАЛОСЬ                     │"
+  say "  └───────────────────────────────────────────────────────────┘"
+  say ""
+  say "  Сейчас адрес временный. Машина перезапустится — он пропадёт,"
+  say "  и адрес придётся искать заново, с нуля."
+  say ""
+  say "  Закрепите руками, это три клика:"
+  say ""
+  say "    Compute Cloud → $NAME → раздел «Сеть» →"
+  say "    у публичного адреса «…» → «Сделать статическим»"
+  say ""
+  say "  Проверить, что получилось:   yc vpc address list"
+  say "  В списке должен появиться    $ip"
   say ""
 }
 
