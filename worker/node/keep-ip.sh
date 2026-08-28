@@ -25,6 +25,27 @@ say()  { printf '%s\n' "$*"; }
 fail() { printf '\n  ОШИБКА: %s\n\n' "$*" >&2; exit 1; }
 field() { awk -F': *' -v k="$1" '$0 ~ "^ *" k ":" { print $2; exit }'; }
 
+# Закреплён ли адрес.
+#
+# Найти его в списке недостаточно: yc показывает там и временные адреса
+# тоже, отличая их колонкой RESERVED. На этом мы обожглись дважды —
+# скрипт рапортовал «закреплён» про динамический адрес, и тот пропадал
+# при следующем пересоздании машины вместе со всем перебором.
+is_reserved() {   # $1 — адрес
+  yc vpc address list 2>/dev/null | awk -F'|' -v ip="$1" '
+    !ai && /ADDRESS/ {
+      for (i = 1; i <= NF; i++) { c = $i; gsub(/^ +| +$/, "", c)
+        if (c == "ADDRESS") ai = i; if (c == "RESERVED") ri = i }
+      next
+    }
+    ai && ri {
+      a = $ai; gsub(/^ +| +$/, "", a)
+      r = $ri; gsub(/^ +| +$/, "", r)
+      if (a == ip && r == "true") found = 1
+    }
+    END { exit(found ? 0 : 1) }'
+}
+
 say ""
 say "=== Закрепляю адрес ==="
 say ""
@@ -61,7 +82,7 @@ if [ -n "$WANT" ] && [ "$WANT" != "$IP" ]; then
 fi
 
 # Уже закреплён — второй раз не надо, да и не выйдет.
-if yc vpc address list 2>/dev/null | grep -q "$IP"; then
+if is_reserved "$IP"; then
   say "Этот адрес уже закреплён, делать нечего."
   say ""
   exit 0
