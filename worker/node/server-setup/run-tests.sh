@@ -26,8 +26,27 @@ DB=$DIR/data/pravofin.db
   echo "версия кода: $(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || cat "$REPO/.version" 2>/dev/null | cut -c1-12)"
   echo
 
-  if ! curl -fsS -m 10 http://127.0.0.1:8080/api/health >/dev/null 2>&1; then
-    echo "СЕРВИС НЕ ОТВЕЧАЕТ — проверять нечего."
+  # Ждём службу, а не проверяем однократно.
+  #
+  # Проверки запускаются сразу после установки, а та могла только что
+  # перезапустить службу — и в этот момент она ещё поднимается. Первый
+  # прогон на этом и споткнулся: «сервис не отвечает» при полностью
+  # работающем сайте.
+  UP=""
+  for i in $(seq 1 30); do
+    if curl -fsS -m 5 http://127.0.0.1:8080/api/health >/dev/null 2>&1; then
+      UP="да"
+      [ "$i" -gt 1 ] && echo "служба поднялась через $((i * 2)) секунд"
+      break
+    fi
+    sleep 2
+  done
+
+  if [ -z "$UP" ]; then
+    echo "СЛУЖБА НЕ ПОДНЯЛАСЬ ЗА МИНУТУ — проверять нечего."
+    echo
+    echo "Последние строки её журнала:"
+    journalctl -u pravofin -n 25 --no-pager 2>&1 | sed 's/^/  /'
     exit 0
   fi
 
