@@ -81,7 +81,8 @@ CRON=/etc/cron.d/pravofin
 NEW_CRON="SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 */5 * * * * root flock -n /var/lock/pravofin.lock $DIR/bootstrap.sh >> /var/log/pravofin-setup.log 2>&1
-0 * * * * root $DIR/backup.sh >> /var/log/pravofin-backup.log 2>&1"
+0 * * * * root $DIR/backup.sh >> /var/log/pravofin-backup.log 2>&1
+17 * * * * root $DIR/watch-outside.sh >> /var/log/pravofin-outside.log 2>&1"
 if [ ! -f "$CRON" ] || [ "$(cat "$CRON")" != "$NEW_CRON" ]; then
   printf '%s\n' "$NEW_CRON" > "$CRON"
   chmod 644 "$CRON"
@@ -210,6 +211,7 @@ install_if_changed "$HERE/bootstrap.sh"     "$DIR/bootstrap.sh"     755
 install_if_changed "$HERE/pravofin.service" /etc/systemd/system/pravofin.service 644
 install_if_changed "$HERE/backup.sh"        "$DIR/backup.sh"        755
 install_if_changed "$HERE/check-domain.sh"  "$DIR/check-domain.sh"  755
+install_if_changed "$HERE/watch-outside.sh" "$DIR/watch-outside.sh" 755
 install_if_changed "$HERE/enable-tls.sh"    "$DIR/enable-tls.sh"    755
 
 # Настройка nginx. Новую кладём, проверяем и, если она не прошла проверку,
