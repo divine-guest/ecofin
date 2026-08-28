@@ -212,6 +212,7 @@ install_if_changed "$HERE/pravofin.service" /etc/systemd/system/pravofin.service
 install_if_changed "$HERE/backup.sh"        "$DIR/backup.sh"        755
 install_if_changed "$HERE/check-domain.sh"  "$DIR/check-domain.sh"  755
 install_if_changed "$HERE/watch-outside.sh" "$DIR/watch-outside.sh" 755
+install_if_changed "$HERE/run-tests.sh"     "$DIR/run-tests.sh"     755
 install_if_changed "$HERE/enable-tls.sh"    "$DIR/enable-tls.sh"    755
 
 # Настройка nginx. Новую кладём, проверяем и, если она не прошла проверку,
@@ -281,6 +282,25 @@ fi
 # ---------- 11. Домен ----------
 
 "$DIR/check-domain.sh" || true
+
+# ---------- Проверки по требованию ----------
+#
+# Сюитам нужен и сервер, и файл базы, поэтому запускать их можно только
+# здесь. А зайти на машину нельзя — значит просить её об этом приходится
+# через репозиторий: изменился файл RUN-TESTS, значит просят прогнать.
+#
+# Результат ложится на сайт отдельным файлом: это единственный канал,
+# по которому с машины можно что-то прочитать.
+
+MARK=$DIR/tests.done
+WANT=$(cat "$REPO/worker/node/RUN-TESTS" 2>/dev/null)
+if [ -n "$WANT" ] && [ "$WANT" != "$(cat "$MARK" 2>/dev/null)" ]; then
+  log "просят прогнать проверки — запускаю, это займёт несколько минут"
+  bash "$HERE/run-tests.sh" || log "проверки завершились с ошибкой"
+  printf '%s
+' "$WANT" > "$MARK"
+  log "проверки закончены, результат в /tests-8f3a2c.txt"
+fi
 
 # ---------- Итог ----------
 
