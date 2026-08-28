@@ -48,8 +48,24 @@ say "  зона          $ZONE"
 say "  адрес сейчас  ${OLD_IP:-нет}"
 say ""
 
-# Адрес мог остаться от прошлого запуска — тогда берём его.
-NEW_IP=$(yc vpc address get --name "$ADDR_NAME" 2>/dev/null | field address)
+# Какой адрес ставить.
+#
+# Можно назвать явно:  bash ip.sh 51.250.31.80
+#
+# Это не прихоть. Закреплённых адресов может оказаться несколько — так
+# у нас и вышло: скрипт создания взял первый попавшийся, а им оказался
+# старый, который снаружи никто не видел. Когда адрес назван, гадать
+# не приходится.
+WANT="${1:-}"
+if [ -n "$WANT" ]; then
+  yc vpc address list 2>/dev/null | grep -q "$WANT" \
+    || fail "адрес $WANT не найден среди закреплённых.
+  Вот что закреплено за вами:
+$(yc vpc address list 2>/dev/null | grep -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')"
+  NEW_IP="$WANT"
+else
+  NEW_IP=$(yc vpc address get --name "$ADDR_NAME" 2>/dev/null | field address)
+fi
 
 if [ -n "$NEW_IP" ]; then
   say "Постоянный адрес уже выделен: $NEW_IP"
