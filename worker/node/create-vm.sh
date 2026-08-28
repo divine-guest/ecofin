@@ -333,22 +333,53 @@ if [ -n "$EXISTS" ]; then
   yc compute instance delete --name "$NAME" || fail "не смог удалить машину «$NAME»"
 fi
 
+create_with() {   # $1 — описание сетевого интерфейса
+  yc compute instance create \
+    --name "$NAME" \
+    --hostname "$NAME" \
+    --zone "$ZONE" \
+    --platform "$PLATFORM" \
+    --cores "$CORES" \
+    --core-fraction "$FRACTION" \
+    --memory "${MEMORY}GB" \
+    --create-boot-disk type=network-ssd,size="${DISK}GB",image-folder-id=standard-images,image-family=ubuntu-2404-lts \
+    --network-interface "$1" \
+    --metadata-from-file user-data="$READY" \
+    --metadata enable-oslogin=true \
+    --async=false 2>&1
+}
+
 say "Создаю машину…"
-yc compute instance create \
-  --name "$NAME" \
-  --hostname "$NAME" \
-  --zone "$ZONE" \
-  --platform "$PLATFORM" \
-  --cores "$CORES" \
-  --core-fraction "$FRACTION" \
-  --memory "${MEMORY}GB" \
-  --create-boot-disk type=network-ssd,size="${DISK}GB",image-folder-id=standard-images,image-family=ubuntu-2404-lts \
-  --network-interface "$IFACE" \
-  --metadata-from-file user-data="$READY" \
-  --metadata enable-oslogin=true \
-  --async=false
+if OUT=$(create_with "$IFACE"); then RC=0; else RC=$?; fi
+printf '%s\n' "$OUT"
+
+# Закреплённый адрес освобождается от удалённой машины не мгновенно, и
+# следом Яндекс отвечает «Address not found». Ждём и пробуем ещё раз.
+if [ $RC -ne 0 ] && [ -n "$NAT" ]; then
+  say ""
+  say "Не получилось с адресом $NAT. Жду полминуты и пробую снова…"
+  sleep 30
+  if OUT=$(create_with "$IFACE"); then RC=0; else RC=$?; fi
+  printf '%s\n' "$OUT"
+fi
+
+# Не вышло и со второй попытки — поднимаем машину на любом адресе.
+# Сайт без адреса не работает вовсе, а нужный можно переставить потом:
+# лучше работающая машина на случайном адресе, чем никакой.
+if [ $RC -ne 0 ] && [ -n "$NAT" ]; then
+  say ""
+  say "Адрес $NAT занять не удалось. Поднимаю машину на временном —"
+  say "закреплённый переставим отдельно, когда он освободится."
+  FALLBACK="subnet-name=$SUBNET,nat-ip-version=ipv4"
+  [ -n "$SG_ID" ] && FALLBACK="$FALLBACK,security-group-ids=$SG_ID"
+  if OUT=$(create_with "$FALLBACK"); then RC=0; else RC=$?; fi
+  printf '%s\n' "$OUT"
+fi
 
 rm -f "$READY"
+
+[ $RC -eq 0 ] || fail "машину создать не удалось. Последний ответ облака:
+$(printf '%s' "$OUT" | head -4)"
 
 IP=$(yc compute instance list 2>/dev/null | pick_column NAME "EXTERNAL IP" "$NAME" || true)
 
