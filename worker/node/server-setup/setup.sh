@@ -283,6 +283,47 @@ fi
 
 "$DIR/check-domain.sh" || true
 
+# ---------- Перенос данных со старой базы ----------
+#
+# В репозитории лежит зашифрованная выгрузка с Cloudflare. Расшифровать её
+# может только эта машина: ключ — RECOVERY_SECRET из её же настроек, и он
+# нигде больше не встречается. В репозитории только нечитаемые байты.
+#
+# Переносим один раз: метка IMPORT-DATA меняется вместе с выгрузкой,
+# и по ней видно, была ли эта уже применена.
+
+ENC=$REPO/worker/node/import.sql.enc
+STAMP=$REPO/worker/node/IMPORT-DATA
+DONE=$DIR/import.done
+
+if [ -f "$ENC" ] && [ -f "$STAMP" ] && [ "$(cat "$STAMP")" != "$(cat "$DONE" 2>/dev/null)" ]; then
+  log "есть перенос данных, применяю"
+  KEY=$(grep -m1 '^RECOVERY_SECRET=' "$DIR/env" | cut -d= -f2-)
+  if [ -z "$KEY" ]; then
+    log "в настройках нет RECOVERY_SECRET — расшифровать нечем"
+  else
+    TMP=$(mktemp)
+    if PASS="$KEY" openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000          -pass env:PASS -in "$ENC" -out "$TMP" 2>/dev/null; then
+      # Останавливаем службу: писать в базу, пока её держит сервер,
+      # можно, но рисковать целостностью данных ради двадцати секунд
+      # простоя незачем.
+      systemctl stop pravofin 2>/dev/null
+      cp "$DIR/data/pravofin.db" "$DIR/backups/before-import-$(date +%Y%m%d-%H%M).db" 2>/dev/null
+      if sqlite3 "$DIR/data/pravofin.db" < "$TMP" 2>&1 | sed 's/^/       /'; then
+        log "данные перенесены"
+      else
+        log "перенос прошёл с ошибками — копия базы до переноса в backups"
+      fi
+      chown pravofin:pravofin "$DIR/data/pravofin.db" 2>/dev/null
+      systemctl start pravofin 2>/dev/null
+      cp "$STAMP" "$DONE"
+    else
+      log "расшифровать выгрузку не удалось — ключ не подошёл"
+    fi
+    rm -f "$TMP"
+  fi
+fi
+
 # ---------- Проверки по требованию ----------
 #
 # Сюитам нужен и сервер, и файл базы, поэтому запускать их можно только

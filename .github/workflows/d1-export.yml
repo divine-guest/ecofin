@@ -1,0 +1,67 @@
+# Перенос данных со старой базы на новый сервер.
+#
+# Задача с двумя запертыми дверями. Прочитать D1 может только тот, у кого
+# есть токен Cloudflare. Записать в новую базу — только сама машина,
+# зайти на неё нельзя. А единственный канал между ними — этот репозиторий,
+# и он открыт всему миру: класть туда почты и хэши паролей нельзя.
+#
+# Поэтому выгрузка шифруется аварийным ключом сервиса. Он уже лежит на
+# машине, в её настройках, — значит она расшифрует сама, а в репозитории
+# окажется только нечитаемый набор байтов. Ключ нигде не печатается
+# и не передаётся.
+#
+# Нужны два секрета репозитория:
+#   D1_API_TOKEN — токен Cloudflare с правом читать базу (создать в панели
+#                  Cloudflare, сюда вставить, после переноса удалить);
+#   WORKER_ENV   — содержимое worker/.env, оттуда берётся RECOVERY_SECRET.
+#
+# Вкладка Actions → «Перенос данных» → Run workflow.
+# Дальше машина заберёт файл сама, в течение пяти минут.
+
+name: Перенос данных
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Выгружаю данные из D1
+        env:
+          D1_API_TOKEN: ${{ secrets.D1_API_TOKEN }}
+        run: node worker/export-d1.mjs > /tmp/dump.sql
+
+      - name: Шифрую аварийным ключом
+        env:
+          WORKER_ENV: ${{ secrets.WORKER_ENV }}
+        run: |
+          KEY=$(printf '%s\n' "$WORKER_ENV" | grep -m1 '^RECOVERY_SECRET=' | cut -d= -f2-)
+          if [ -z "$KEY" ]; then
+            echo "В секрете WORKER_ENV нет RECOVERY_SECRET — шифровать нечем."
+            exit 1
+          fi
+          # Соль и PBKDF2 обязательны: без них одинаковые данные дают
+          # одинаковый шифртекст, и по нему видно, менялось ли что-то.
+          PASS="$KEY" openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+            -pass env:PASS -in /tmp/dump.sql -out worker/node/import.sql.enc
+          echo "зашифровано, размер: $(wc -c < worker/node/import.sql.enc) байт"
+          # Метка запуска: по ней машина понимает, что перенос новый.
+          date -u +%Y%m%d-%H%M%S > worker/node/IMPORT-DATA
+
+      - name: Кладу в репозиторий
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add worker/node/import.sql.enc worker/node/IMPORT-DATA
+          git commit -m "Перенос данных: зашифрованная выгрузка со старой базы" || exit 0
+          git push
