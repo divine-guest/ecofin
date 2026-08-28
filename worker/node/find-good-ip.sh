@@ -62,6 +62,39 @@ check_outside() {   # $1 — адрес; печатает «сколько_от�
   echo "$ok $total"
 }
 
+# Закрепить найденный адрес за облаком и рассказать, что получилось.
+#
+# Закрепляем сразу, не спрашивая: искать пригодный адрес заново из-за
+# того, что машина однажды перезапустилась, — худшее, что может случиться
+# после такого перебора.
+keep_it() {   # $1 — адрес
+  local ip="$1"
+  say ""
+  say "=== НАШЁЛ ==="
+  say ""
+  say "  Адрес: $ip"
+  say ""
+
+  if yc vpc address list 2>/dev/null | grep -q "$ip"; then
+    say "  Он уже закреплён за вами."
+  else
+    local nm="pravofin-ip"
+    yc vpc address get --name "$nm" >/dev/null 2>&1 && nm="pravofin-ip-$(date +%m%d%H%M)"
+    if yc vpc address create --name "$nm" --external-ipv4 "address=$ip,zone=$ZONE" >/dev/null 2>&1; then
+      say "  Закрепил за вами под именем $nm — при перезапуске машины не изменится."
+    else
+      say "  ЗАКРЕПИТЬ НЕ УДАЛОСЬ. Сделайте вручную, иначе адрес однажды пропадёт:"
+      say "  Compute Cloud → $NAME → Сеть → у публичного адреса «Сделать статическим»."
+    fi
+  fi
+
+  say ""
+  say "  Откройте в браузере:"
+  say ""
+  say "      http://$ip/"
+  say ""
+}
+
 say ""
 say "=== Ищу адрес, который видно снаружи ==="
 say ""
@@ -69,33 +102,57 @@ say ""
 command -v yc >/dev/null 2>&1 || fail "не нашёл команду yc — запускать нужно в Cloud Shell"
 yc compute instance get --name "$NAME" >/dev/null 2>&1 || fail "не нашёл машину «$NAME»"
 
+ZONE=$(yc compute instance get --name "$NAME" 2>/dev/null | field zone_id)
+
+# Выдать машине новый публичный адрес.
+#
+# Если адреса нет вовсе — просто выдаём. Снимать в этом случае нечего,
+# а попытка снять несуществующий уронила бы скрипт на ровном месте.
+new_ip() {
+  if [ -n "$(current_ip)" ]; then
+    yc compute instance remove-one-to-one-nat "$NAME" --network-interface-index 0 >/dev/null 2>&1 \
+      || return 1
+  fi
+  yc compute instance add-one-to-one-nat "$NAME" --network-interface-index 0 >/dev/null 2>&1
+}
+
 START_IP=$(current_ip)
-say "  сейчас у машины адрес: ${START_IP:-нет}"
+say "  сейчас у машины адрес: ${START_IP:-нет, публичного адреса нет}"
 say "  проверять буду из $NODES точек мира, принимаю адрес от $NEED ответивших"
 say ""
 
-# Заодно проверим нынешний — вдруг он уже хороший.
-say "Проверяю нынешний адрес…"
-read -r OK TOTAL <<< "$(check_outside "$START_IP")"
-say "  $START_IP — ответили $OK из $TOTAL"
-if [ "$OK" -ge "$NEED" ]; then
-  say ""
-  say "=== Этот адрес уже виден снаружи, менять нечего ==="
-  say "    http://$START_IP/"
-  exit 0
+TRIED=""
+
+if [ -z "$START_IP" ]; then
+  # Без публичного адреса сайт недоступен вообще ниоткуда. Сначала вернём
+  # машине адрес, а годится он или нет — выяснится проверкой, как обычно.
+  say "У машины нет публичного адреса — выдаю…"
+  new_ip || fail "не смог выдать машине публичный адрес"
+  START_IP=$(current_ip)
+  [ -n "$START_IP" ] || fail "адрес выдан, но определить его не удалось"
+  say "  выдан: $START_IP"
+  sleep 15
 fi
 
+# Проверим нынешний — вдруг он уже хороший.
+say ""
+say "Проверяю адрес $START_IP…"
+read -r OK TOTAL <<< "$(check_outside "$START_IP")"
+say "  ответили $OK из $TOTAL"
 TRIED="$START_IP:$OK"
+
+if [ "$OK" -ge "$NEED" ]; then
+  keep_it "$START_IP"
+  exit 0
+fi
 
 for i in $(seq 1 "$TRIES"); do
   say ""
   say "--- попытка $i из $TRIES ---"
 
-  yc compute instance remove-one-to-one-nat "$NAME" --network-interface-index 0 >/dev/null 2>&1 \
-    || fail "не смог снять адрес с машины"
-  yc compute instance add-one-to-one-nat "$NAME" --network-interface-index 0 >/dev/null 2>&1 \
-    || fail "снял старый адрес, а новый выдать не удалось.
-  Поставить обратно:  yc compute instance add-one-to-one-nat $NAME --network-interface-index 0"
+  new_ip || fail "не смог сменить адрес машины.
+  Если адрес пропал совсем, вернуть его можно так:
+      yc compute instance add-one-to-one-nat $NAME --network-interface-index 0"
 
   IP=$(current_ip)
   [ -n "$IP" ] || fail "адрес выдан, но определить его не удалось"
@@ -109,18 +166,8 @@ for i in $(seq 1 "$TRIES"); do
   TRIED="$TRIED $IP:$OK"
 
   if [ "$OK" -ge "$NEED" ]; then
-    say ""
-    say "=== НАШЁЛ ==="
-    say ""
-    say "  Адрес: $IP"
+    keep_it "$IP"
     say "  Видят его $OK точек из $TOTAL."
-    say ""
-    say "  Откройте в браузере:"
-    say ""
-    say "      http://$IP/"
-    say ""
-    say "  Если открылось — закрепите адрес за собой, чтобы он не менялся:"
-    say "  Compute Cloud → $NAME → Сеть → у публичного адреса «Сделать статическим»."
     say ""
     exit 0
   fi
