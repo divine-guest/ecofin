@@ -305,7 +305,13 @@ function renderMobileNav(active, u) {
   document.querySelector(".tabbar")?.remove();
   document.querySelector(".sheet-backdrop")?.remove();
 
-  const isMore = !MOBILE_TABS.some(([h]) => h === active) && active !== "index.html";
+  /* «Ещё» подсвечиваем, только если открытая страница действительно
+     лежит в этом листе. Раньше подсвечивалось всё, чего нет среди
+     четырёх вкладок, — и на странице входа горело «Ещё», хотя входа
+     в листе нет. Подсветка, которая врёт, хуже её отсутствия: человек
+     открывает лист и не находит того, что якобы выбрано. */
+  const inSheet = MOBILE_MORE.some(([, items]) => items.some(([h]) => h === active))
+    || active === "admin.html";
 
   const tab = ([href, label, icon]) => `
     <a href="${PF.href(href)}" class="tabbar-item${active === href ? " active" : ""}">
@@ -316,7 +322,7 @@ function renderMobileNav(active, u) {
   bar.className = "tabbar";
   bar.setAttribute("aria-label", "Основные разделы");
   bar.innerHTML = MOBILE_TABS.map(tab).join("") + `
-    <button class="tabbar-item${isMore ? " active" : ""}" onclick="openMoreSheet()" aria-label="Ещё разделы">
+    <button class="tabbar-item${inSheet ? " active" : ""}" onclick="openMoreSheet()" aria-label="Ещё разделы">
       ${tabIcon("more")}<span>Ещё</span>
     </button>`;
   document.body.appendChild(bar);
@@ -1729,6 +1735,9 @@ function initRevealAnimations() {
     el.classList.add("reveal");
     el.style.transitionDelay = (i % 4) * 70 + "ms";
   });
+  /* threshold: 0 — показываем, как только виден первый пиксель.
+     Было 0.08, и высокие карточки на телефоне не набирали этих восьми
+     процентов площади до самого низа экрана. */
   const io = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (e.isIntersecting) {
@@ -1736,8 +1745,45 @@ function initRevealAnimations() {
         io.unobserve(e.target);
       }
     });
-  }, { threshold: 0.08 });
+  }, { threshold: 0, rootMargin: "0px 0px -4% 0px" });
   els.forEach(el => io.observe(el));
+
+  /* Страховка. Наблюдатель сообщает о пересечениях по кадрам, а быстрый
+     рывок пальцем на телефоне их пропускает: блок успевает проскочить
+     мимо экрана между двумя кадрами и остаётся прозрачным навсегда.
+     Так на главной десять блоков из тринадцати оставались невидимыми —
+     человек листал пустые экраны и решал, что сайт сломан.
+
+     Поэтому после каждой прокрутки досматриваем вручную: всё, что уже
+     побывало на экране или выше него, показываем безусловно. Проверка
+     дешёвая, идёт не чаще раза в кадр и только пока есть что показывать. */
+  let waiting = false;
+  const sweep = () => {
+    waiting = false;
+    const rest = els.filter(el => !el.classList.contains("visible"));
+    for (const el of rest) {
+      if (el.getBoundingClientRect().top < innerHeight) {
+        el.classList.add("visible");
+        io.unobserve(el);
+      }
+    }
+    if (!rest.length) removeEventListener("scroll", onScroll);
+  };
+  const onScroll = () => {
+    if (waiting) return;
+    waiting = true;
+    requestAnimationFrame(sweep);
+  };
+  /* Слушаем и окно, и документ с перехватом: если страница прокручивается
+     не окном, а внутренним блоком, событие до окна не доходит вовсе —
+     а перехват на документе видит и такие. Ещё поворот экрана: при нём
+     меняется высота, и то, что было ниже края, оказывается на виду. */
+  addEventListener("scroll", onScroll, { passive: true });
+  document.addEventListener("scroll", onScroll, { passive: true, capture: true });
+  addEventListener("resize", onScroll, { passive: true });
+  addEventListener("orientationchange", onScroll, { passive: true });
+  addEventListener("load", sweep);
+  sweep();
 }
 
 /* Золотые частицы в герое (восходящие «искры») */

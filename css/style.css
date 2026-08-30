@@ -374,7 +374,13 @@ a.card:hover h3 { color: var(--primary); }
 /* ============ Формы ============ */
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; font-weight: 700; margin-bottom: 6px; font-size: .88rem; }
-input[type="text"], input[type="email"], input[type="password"], input[type="number"],
+/* Типы полей перечислялись поимённо, и «search» в список не попал:
+   браузер рисовал его по-своему — белый прямоугольник посреди тёмной
+   темы. Так выглядели поиск по базе знаний, по ленте вопросов и по
+   кабинету. Перечисляем через :is и добавляем остальные текстовые типы
+   разом, чтобы это не повторилось со следующим полем. */
+input:is([type="text"], [type="email"], [type="password"], [type="number"],
+         [type="search"], [type="tel"], [type="url"], [type="date"], [type="time"]),
 select, textarea {
   width: 100%; padding: 12px 15px; border-radius: 12px;
   border: 1.5px solid var(--border); background: var(--surface);
@@ -583,8 +589,7 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
   /* чат-кнопка не перекрывает контент внизу */
   body { padding-bottom: 88px; }
   /* iOS не зумит поле при фокусе */
-  input[type="text"], input[type="email"], input[type="password"],
-  input[type="number"], input[type="date"], select, textarea { font-size: 16px; }
+  input, select, textarea { font-size: 16px; }
   /* бейдж квоты ИИ — отдельной строкой над табами */
   #quotaBadge { flex-basis: 100%; text-align: center; margin-bottom: 4px; }
   /* позиции счёта: без колонки суммы, компактно */
@@ -2273,4 +2278,31 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
   input, select, textarea { font-size: 16px; min-height: 46px; }
   textarea { min-height: 92px; }
   label { font-size: .9rem; }
+}
+
+/* ============ Телефон: мелочи, которые мешают ============ */
+
+@media (max-width: 860px) {
+  /* Кнопка чата закрывала последнюю строку карточки. Делаем меньше
+     и прижимаем к краю: она нужна, но не важнее содержимого. */
+  .chat-toggle { width: 48px; height: 48px; font-size: 1.2rem; }
+  .chat-widget { right: 10px; }
+  /* Пульсация вокруг кнопки на телефоне только отвлекает — она и так
+     на виду, а анимация ест заряд. */
+  .chat-toggle { animation: none; }
+
+  /* Таблицы прокручиваются вбок вместо того, чтобы сжиматься в кашу.
+     Сжатая таблица нечитаема, а прокрутка хотя бы понятна. */
+  table { display: block; overflow-x: auto; white-space: nowrap; }
+  table th, table td { padding: 9px 11px; font-size: .86rem; }
+
+  /* Заголовок статьи и метка закона вставали в одну строку и рвали
+     верстку: метку переносим под заголовок. */
+  .article-item h3 { display: block; }
+  .article-item .badge, .article-item .law-tag { display: inline-block; margin-top: 6px; }
+
+  /* Подвал: список ссылок в три строки мелким шрифтом читать невозможно,
+     а он и не нужен — всё то же есть в листе «Ещё». */
+  .footer-nav { display: none; }
+  .site-footer { padding: 22px 0 18px; font-size: .82rem; }
 }
