@@ -174,6 +174,31 @@ def check_secrets():
             if re.search(pat, s):
                 err(f, f"В ФАЙЛЕ ДЛЯ БРАУЗЕРА ЛЕЖИТ {what}")
 
+def check_public_env():
+    """В открытые настройки не должны попадать ключи.
+
+    worker/node/env-public.txt лежит в репозитории, а репозиторий открыт
+    всему интернету. Файл существует ради удобства — поменять адрес сайта
+    выкладкой, — и именно поэтому в него однажды положат токен «на минутку».
+    Проверяем на берегу: цена ошибки здесь — утёкший ключ ИИ или бота."""
+    f = "worker/node/env-public.txt"
+    if not os.path.exists(f):
+        return
+    text = io.open(f, encoding="utf-8").read()
+    patterns = [(r"sk-[a-zA-Z0-9-]{16,}", "ключ ИИ-провайдера"),
+                (r"cfut_[a-zA-Z0-9]{20,}", "токен Cloudflare"),
+                (r"ghp_[a-zA-Z0-9]{20,}", "токен GitHub"),
+                (r"\d{9,10}:AA[\w-]{30,}", "токен Telegram")]
+    for pat, what in patterns:
+        if re.search(pat, text):
+            err(f, f"В ОТКРЫТОМ ФАЙЛЕ ЛЕЖИТ {what}")
+
+    # Имена, которым здесь не место, даже если значение выглядит безобидно.
+    for line in text.splitlines():
+        name = line.split("=")[0].strip()
+        if re.search(r"(SECRET|TOKEN|KEY|PASSWORD)$", name):
+            err(f, f"переменной {name} место только на сервере, не в репозитории")
+
 def check_cloud_init():
     """Первая строка настройки сервера обязана быть «#cloud-config».
 
@@ -203,6 +228,7 @@ def main():
     check_tiers()
     check_secrets()
     check_cloud_init()
+    check_public_env()
 
     print(f"Проверено страниц: {len(pages)}\n")
     if errors:

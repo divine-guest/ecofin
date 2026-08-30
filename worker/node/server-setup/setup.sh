@@ -163,11 +163,44 @@ log "node $(node -v), npm $(npm -v)"
 # ---------- 6. Секреты ----------
 
 [ -f "$DIR/env" ] || die "нет файла $DIR/env — машину нужно создавать заново"
-if ! cmp -s "$DIR/env" "$REPO/worker/.env"; then
-  install -m 600 -o pravofin -g pravofin "$DIR/env" "$REPO/worker/.env"
-  log "секреты обновлены"
+
+# Настройки собираются из двух источников.
+#
+#   /opt/pravofin/env            — секреты, только на машине, в репозиторий
+#                                  не попадают никогда;
+#   worker/node/env-public.txt   — то, что секретом не является: адрес
+#                                  сайта, список разрешённых источников.
+#
+# Второй накладывается поверх первого. Смысл в том, чтобы поменять адрес
+# сайта можно было обычной выкладкой — не пересоздавая машину и не трогая
+# секреты. Бот шлёт людям ссылки, и если там старый адрес, человек попадёт
+# на страницу, которая стучится в заблокированный Cloudflare.
+#
+# Ключи и токены сюда класть нельзя: репозиторий открыт всему интернету.
+BUILT=$(mktemp)
+PUBLIC=$REPO/worker/node/env-public.txt
+
+if [ -f "$PUBLIC" ]; then
+  # Из машинных берём только те строки, которых нет в открытых:
+  # так открытое значение побеждает, а остальное остаётся как было.
+  OVERRIDE=$(grep -oE '^[A-Z][A-Z0-9_]*' "$PUBLIC" 2>/dev/null | sort -u)
+  if [ -n "$OVERRIDE" ]; then
+    grep -vE "^($(printf '%s' "$OVERRIDE" | tr '
+' '|' | sed 's/|$//'))=" "$DIR/env" > "$BUILT"
+  else
+    cp "$DIR/env" "$BUILT"
+  fi
+  grep -E '^[A-Z][A-Z0-9_]*=' "$PUBLIC" >> "$BUILT"
+else
+  cp "$DIR/env" "$BUILT"
+fi
+
+if ! cmp -s "$BUILT" "$REPO/worker/.env"; then
+  install -m 600 -o pravofin -g pravofin "$BUILT" "$REPO/worker/.env"
+  log "настройки обновлены"
   mark
 fi
+rm -f "$BUILT"
 
 # ---------- 7. Зависимости ----------
 #
