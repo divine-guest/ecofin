@@ -57,6 +57,11 @@ DB=$DIR/data/pravofin.db
   cd "$REPO" && API_URL=http://127.0.0.1:8080 DB_FILE="$DB" \
     timeout 900 node tests/run-all.mjs 2>&1
   echo "=== конец, код возврата: $? ==="
+
+  # Отдельно — что отвечает админка. Сюиты её открытие не покрывают,
+  # а владелец видит там «Не удалось загрузить данные» без объяснений.
+  cd "$REPO" && API_URL=http://127.0.0.1:8080 DB_FILE="$DB" \
+    timeout 120 node tests/admin-smoke.mjs 2>&1
 } > "$OUT" 2>&1
 
 chmod 644 "$OUT"
