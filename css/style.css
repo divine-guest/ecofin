@@ -2091,3 +2091,186 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 
 /* Блокнот: без кнопки «сохранить» — она лишний повод потерять запись. */
 #notesBox { width: 100%; resize: vertical; font-family: inherit; line-height: 1.6; }
+
+/* ============ Телефон: нижняя панель и лист «Ещё» ============
+
+   Что чинится. На телефоне было две навигации одновременно: шапка
+   разворачивалась в два ряда плиток, и вдобавок кнопка «Меню» открывала
+   список из тринадцати пунктов. Плюс плавающая кнопка чата поверх всего.
+   Ощущение — «налеплено», и это справедливо.
+
+   Что стало. Четыре главных раздела внизу, под большим пальцем: до верха
+   экрана на современном телефоне рукой не дотянуться, а низ доступен
+   всегда. Шапка ужимается до логотипа, поиска и входа. Остальное — в
+   листе «Ещё».
+
+   Граница 860px, а не 640: на планшете в книжной ориентации сверху уже
+   тесно, а места внизу столько же.                                     */
+
+.tabbar, .sheet-backdrop { display: none; }
+
+@media (max-width: 860px) {
+  /* -------- Шапка: одна строка вместо двух рядов плиток -------- */
+  .nav { height: auto; flex-wrap: nowrap; padding: 8px 0; gap: 8px; }
+  .logo { font-size: 1.05rem; }
+  .nav-links, .nav-burger, .mobile-menu, .site-header .theme-toggle { display: none !important; }
+  .header-pill { padding: 9px; margin: 0; }
+  .header-pill .pill-text { display: none; }
+  .nav > .btn { margin-left: auto; padding: 9px 14px; font-size: .82rem; }
+  .header-pill + .btn, .notif-btn + .header-pill { margin-left: 0; }
+
+  /* -------- Нижняя панель -------- */
+  .tabbar {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 120;
+    background: var(--header-bg, var(--surface));
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .tabbar-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; padding: 8px 2px 7px; min-height: 56px;
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font: inherit; font-size: .68rem; font-weight: 600;
+    text-decoration: none; line-height: 1.1; text-align: center;
+    /* Подсветка при касании только мешает: палец её всё равно закрывает. */
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tabbar-item .tabbar-icon { width: 23px; height: 23px; }
+  .tabbar-item.active { color: var(--primary); }
+  .tabbar-item.active .tabbar-icon { stroke-width: 2.1; }
+  .tabbar-item:active { background: var(--primary-soft, rgba(20, 160, 130, .1)); }
+
+  /* Место под панель. Без этого она накрывает последнюю строку текста,
+     и человек думает, что страница обрезана. */
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  .chat-widget { bottom: calc(74px + env(safe-area-inset-bottom, 0px)); right: 14px; }
+  .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .site-footer { margin-bottom: 0; }
+
+  /* -------- Лист «Ещё» -------- */
+  .sheet-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 200;
+    background: rgba(8, 20, 15, .55); backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none; transition: opacity .22s;
+  }
+  body.sheet-open .sheet-backdrop { opacity: 1; pointer-events: auto; }
+  /* Прокрутку фона под открытым листом останавливаем: иначе палец
+     листает страницу, а не список, и это выглядит поломкой. */
+  body.sheet-open { overflow: hidden; }
+
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    max-height: 86vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    background: var(--surface); border-radius: 20px 20px 0 0;
+    padding: 8px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(100%); transition: transform .26s cubic-bezier(.32, .72, 0, 1);
+    box-shadow: 0 -8px 40px rgba(0, 0, 0, .28);
+  }
+  body.sheet-open .sheet { transform: translateY(0); }
+
+  /* Полоска сверху: понятный знак «это можно закрыть». */
+  .sheet-grip {
+    width: 40px; height: 4px; border-radius: 99px; background: var(--border);
+    margin: 6px auto 14px; cursor: pointer;
+  }
+  .sheet-title {
+    font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); margin: 16px 4px 8px;
+  }
+  .sheet-title:first-of-type { margin-top: 4px; }
+  .sheet-group {
+    display: flex; flex-direction: column;
+    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+  }
+  .sheet-item {
+    display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+    /* 56 пикселей — нижняя граница удобного касания. Ниже начинаются
+       промахи, и человек винит себя, а не вёрстку. */
+    min-height: 56px; padding: 11px 14px; width: 100%;
+    background: none; border: none; border-bottom: 1px solid var(--border);
+    color: inherit; text-align: left; text-decoration: none; cursor: pointer;
+    font: inherit; -webkit-tap-highlight-color: transparent;
+  }
+  .sheet-item:last-child { border-bottom: none; }
+  .sheet-item:active { background: var(--primary-soft, rgba(20, 160, 130, .1)); }
+  .sheet-item.active .sheet-label { color: var(--primary); }
+  .sheet-label { font-size: .97rem; font-weight: 700; }
+  .sheet-hint { font-size: .78rem; color: var(--muted); line-height: 1.3; }
+  .sheet-close { width: 100%; margin-top: 18px; min-height: 48px; }
+}
+
+@media (max-width: 860px) and (prefers-reduced-motion: reduce) {
+  .sheet, .sheet-backdrop { transition: none; }
+}
+
+/* ============ Телефон: длинные ряды выбора ============
+
+   На calc.html девятнадцать калькуляторов, на knowledge.html — разделы,
+   на tools.html — инструменты. На широком экране они укладываются в два
+   ряда, а на телефоне встают столбиком: до самого расчёта приходилось
+   листать десять экранов, и человек не понимал, что страница вообще про
+   калькулятор.
+
+   Одна прокручиваемая строка возвращает содержимое на первый экран.
+   Полоски прокрутки нет — вместо неё край последней плитки, обрезанный
+   границей экрана: это понятнее любой подсказки, палец сам тянется вбок.
+
+   Отрицательные поля нужны, чтобы строка прокручивалась от края до края,
+   а не внутри отступов контейнера: иначе кажется, что она сломана.     */
+
+@media (max-width: 860px) {
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    margin-left: -18px; margin-right: -18px;
+    padding: 2px 18px 8px;
+    margin-bottom: 18px;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs .tab {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    padding: 9px 15px;
+    font-size: .84rem;
+    min-height: 40px;
+  }
+}
+
+/* ============ Телефон: плотность ============
+
+   На широком экране воздух вокруг блоков помогает: глаз отдыхает, взгляд
+   находит нужное. На телефоне тот же воздух означает лишний экран
+   прокрутки до каждого действия — 64 пикселя сверху и снизу у main
+   съедали треть первого экрана впустую.
+
+   Уменьшаем расстояния, но не сами элементы: кнопки и поля остаются
+   крупными, иначе в них перестанут попадать. Сжимаем пустоту, а не
+   содержимое.                                                          */
+
+@media (max-width: 860px) {
+  main { padding: 26px 0 34px; }
+  .container { padding-left: 16px; padding-right: 16px; }
+  .section-title { margin-bottom: 18px; }
+  .section-title h1, .section-title h2 { line-height: 1.15; }
+
+  h1 { font-size: clamp(1.6rem, 7vw, 2.1rem); }
+  h2 { font-size: clamp(1.35rem, 5.6vw, 1.7rem); }
+  h3 { font-size: 1.08rem; }
+
+  .card { padding: 18px 16px; border-radius: 16px; }
+  .grid { gap: 14px; }
+
+  /* Поля и кнопки — наоборот, крупнее: по ним попадают пальцем.
+     16px у поля обязателен, иначе iPhone приближает страницу при вводе
+     и человек оказывается на увеличенном экране, не понимая почему. */
+  .btn { min-height: 46px; padding: 12px 20px; }
+  .btn.small { min-height: 40px; }
+  input, select, textarea { font-size: 16px; min-height: 46px; }
+  textarea { min-height: 92px; }
+  label { font-size: .9rem; }
+}

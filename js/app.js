@@ -236,6 +236,159 @@ const SCALES_SVG = `<svg class="logo-mark" viewBox="0 0 24 24" aria-hidden="true
   <path d="M2 12.4a2.5 2.5 0 0 0 5 0M17 12.4a2.5 2.5 0 0 0 5 0"/>
 </svg>`;
 
+/* ============ Значки нижней панели ============
+
+   Своя горстка вместо готового набора: чужой набор — это лишний файл
+   на пол-мегабайта ради шести картинок, а на телефоне каждый килобайт
+   виден. Все нарисованы в одной сетке 24×24 одной толщиной линии,
+   иначе в ряду они выглядят разнокалиберными. */
+const TAB_ICONS = {
+  situations: `<path d="M12 3.6 4.2 7.1v5.2c0 4.4 3.2 7.2 7.8 8.1 4.6-.9 7.8-3.7 7.8-8.1V7.1z"/>
+    <path d="M12 9v4M12 16.2h.01"/>`,
+  calc: `<rect x="4.6" y="3.2" width="14.8" height="17.6" rx="2.4"/>
+    <path d="M8 7.6h8M8 11.6h.01M12 11.6h.01M16 11.6h.01M8 15.4h.01M12 15.4h.01M16 15.4v2.4"/>`,
+  tools: `<path d="m12 3.4 1.9 4.6 4.7 1.9-4.7 1.9L12 16.4l-1.9-4.6-4.7-1.9 4.7-1.9z"/>
+    <path d="M18.4 15.2l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/>`,
+  cabinet: `<circle cx="12" cy="8.2" r="3.6"/>
+    <path d="M4.8 20c.6-3.7 3.6-6 7.2-6s6.6 2.3 7.2 6"/>`,
+  more: `<circle cx="5.6" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+    <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+    <circle cx="18.4" cy="12" r="1.5" fill="currentColor" stroke="none"/>`,
+};
+
+const tabIcon = name => `<svg class="tabbar-icon" viewBox="0 0 24 24" aria-hidden="true"
+  fill="none" stroke="currentColor" stroke-width="1.7"
+  stroke-linecap="round" stroke-linejoin="round">${TAB_ICONS[name]}</svg>`;
+
+/* ============ Нижняя панель и лист «Ещё» ============
+
+   Зачем это вообще появилось. На телефоне было две навигации сразу:
+   шапка разворачивалась в два ряда плиток, и вдобавок кнопка «Меню»
+   открывала список из тринадцати пунктов. Человек не выбирает из
+   тринадцати — он теряется и уходит.
+
+   Теперь четыре главных раздела внизу, под большим пальцем, и всегда
+   видно, где находишься. Остальное — в листе «Ещё», сгруппированное
+   и с пояснениями: раздел, который надо объяснять одним словом, лучше
+   объяснить одной строкой, чем прятать за непонятным названием.
+
+   Почему именно эти четыре: «Что делать» — с него начинают, когда
+   случилась беда; «Калькуляторы» — за ними приходят чаще всего;
+   «ИИ» — то, за что платят; «Кабинет» — то, ради чего возвращаются.
+   Главная доступна по логотипу в шапке, как принято везде. */
+const MOBILE_TABS = [
+  ["situations.html", "Что делать", "situations"],
+  ["calc.html", "Калькуляторы", "calc"],
+  ["tools.html", "ИИ", "tools"],
+  ["dashboard.html", "Кабинет", "cabinet"],
+];
+
+/* Разделы листа «Ещё». Второй строкой — зачем он нужен: без пояснения
+   «Практикум» и «Ответы» звучат одинаково непонятно. */
+const MOBILE_MORE = [
+  ["Разделы", [
+    ["index.html", "Главная", "Обзор и что нового"],
+    ["knowledge.html", "База знаний", "Статьи простым языком"],
+    ["courses.html", "Курсы", "Пошаговое обучение"],
+    ["games.html", "Практикум", "Разбор ситуаций на примерах"],
+    ["answers.html", "Ответы", "Вопросы других людей"],
+    ["expenses.html", "Дневник трат", "Куда уходят деньги"],
+  ]],
+  ["Справка", [
+    ["faq.html", "Частые вопросы", "Как устроен сервис"],
+    ["about.html", "О сервисе", "Кто мы и как связаться"],
+    ["legal.html", "Правовые документы", "Оферта и обработка данных"],
+  ]],
+];
+
+function renderMobileNav(active, u) {
+  document.querySelector(".tabbar")?.remove();
+  document.querySelector(".sheet-backdrop")?.remove();
+
+  const isMore = !MOBILE_TABS.some(([h]) => h === active) && active !== "index.html";
+
+  const tab = ([href, label, icon]) => `
+    <a href="${PF.href(href)}" class="tabbar-item${active === href ? " active" : ""}">
+      ${tabIcon(icon)}<span>${label}</span>
+    </a>`;
+
+  const bar = document.createElement("nav");
+  bar.className = "tabbar";
+  bar.setAttribute("aria-label", "Основные разделы");
+  bar.innerHTML = MOBILE_TABS.map(tab).join("") + `
+    <button class="tabbar-item${isMore ? " active" : ""}" onclick="openMoreSheet()" aria-label="Ещё разделы">
+      ${tabIcon("more")}<span>Ещё</span>
+    </button>`;
+  document.body.appendChild(bar);
+
+  const group = ([title, items]) => `
+    <p class="sheet-title">${title}</p>
+    <div class="sheet-group">
+      ${items.map(([href, label, hint]) => `
+        <a href="${PF.href(href)}" class="sheet-item${active === href ? " active" : ""}">
+          <span class="sheet-label">${label}</span>
+          <span class="sheet-hint">${hint}</span>
+        </a>`).join("")}
+    </div>`;
+
+  const admin = u && u.isAdmin
+    ? group(["Управление", [["admin.html", "Админ-панель", "Люди, оплаты, вопросы"]]])
+    : "";
+
+  const back = document.createElement("div");
+  back.className = "sheet-backdrop";
+  back.onclick = e => { if (e.target === back) closeMoreSheet(); };
+  back.innerHTML = `
+    <div class="sheet" role="dialog" aria-label="Ещё разделы">
+      <div class="sheet-grip" onclick="closeMoreSheet()"></div>
+      ${MOBILE_MORE.map(group).join("")}
+      ${admin}
+      <p class="sheet-title">Оформление</p>
+      <div class="sheet-group">
+        <button class="sheet-item" onclick="toggleTheme()">
+          <span class="sheet-label">Сменить тему</span>
+          <span class="sheet-hint">Светлая или тёмная</span>
+        </button>
+      </div>
+      <button class="btn ghost sheet-close" onclick="closeMoreSheet()">Закрыть</button>
+    </div>`;
+  document.body.appendChild(back);
+}
+
+/* Лист открывается и закрывается сменой класса на body: так заодно
+   блокируется прокрутка страницы под ним — иначе палец листает фон,
+   а не список, и это выглядит поломкой. */
+function openMoreSheet() {
+  document.body.classList.add("sheet-open");
+}
+function closeMoreSheet() {
+  document.body.classList.remove("sheet-open");
+}
+window.openMoreSheet = openMoreSheet;
+window.closeMoreSheet = closeMoreSheet;
+
+/* Выбранную плитку подтягиваем в видимую часть строки.
+
+   Ряд прокручивается вбок, и выбранный пункт может оказаться за краем
+   экрана — человек открывает страницу и не видит, что именно выбрано.
+   Делаем это после отрисовки страницы и только на узком экране: на
+   широком строка не прокручивается, и дёргать её незачем. */
+function scrollActiveTabIntoView() {
+  if (window.innerWidth > 860) return;
+  for (const row of document.querySelectorAll(".tabs")) {
+    const active = row.querySelector(".tab.active");
+    if (!active) continue;
+    /* Ставим по центру, а не к краю: так видно и соседей,
+       и сразу понятно, что ряд можно листать. */
+    const shift = active.offsetLeft - (row.clientWidth - active.offsetWidth) / 2;
+    row.scrollTo({ left: Math.max(0, shift), behavior: "instant" });
+  }
+}
+window.addEventListener("load", scrollActiveTabIntoView);
+document.addEventListener("click", e => {
+  if (e.target.closest(".tabs .tab")) setTimeout(scrollActiveTabIntoView, 0);
+});
+
 /* ============ Шапка (вставляется на каждую страницу) ============ */
 function renderHeader(active) {
   const u = PF.user();
@@ -294,6 +447,7 @@ function renderHeader(active) {
     </div>
     <nav class="mobile-menu">${mobileLinks}</nav>`;
   document.body.prepend(header);
+  renderMobileNav(active, u);
 }
 
 function renderFooter() {
