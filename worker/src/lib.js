@@ -33,6 +33,36 @@ export function allowedOrigins(env) {
   return raw.split(",").map(s => s.trim()).filter(Boolean);
 }
 
+/* Запрос со своей же страницы.
+ *
+ * На своём сервере nginx отдаёт и страницы, и API с одного адреса. Такой
+ * запрос никакого разрешения не требует: это сайт обращается сам к себе,
+ * и заперать его от самого себя бессмысленно. Сравниваем по имени хоста —
+ * так работает и по http, и по https, и после смены адреса или переезда
+ * на домен список менять не придётся.
+ *
+ * Без этого на новом сервере нельзя было войти: страницы открывались,
+ * а вход возвращал «Origin не разрешён», потому что в списке значился
+ * только адрес GitHub Pages. */
+export function isSameOrigin(request, origin) {
+  if (!origin) return true;
+  let from;
+  try { from = new URL(origin).hostname; } catch { return false; }
+  if (!from) return false;
+
+  /* Своё имя ищем в трёх местах, потому что до кода оно доходит
+     по-разному. За nginx настоящее имя приходит в заголовках, а адрес
+     запроса к тому моменту уже внутренний — 127.0.0.1. Сравниваем без
+     порта: браузер в Origin порт не пишет, а в заголовке он может быть. */
+  const candidates = [
+    request.headers.get("X-Forwarded-Host"),
+    request.headers.get("Host"),
+  ];
+  try { candidates.push(new URL(request.url).host); } catch { /* адрес битый */ }
+
+  return candidates.some(h => h && String(h).split(":")[0].trim() === from);
+}
+
 export function corsHeaders(env, origin) {
   const list = allowedOrigins(env);
   const allow = list.includes(origin) ? origin : list[0];

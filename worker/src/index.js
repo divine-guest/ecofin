@@ -1,7 +1,7 @@
 /* ПравоФин — единая точка входа API.
    Все проверки прав и лимитов живут здесь и в модулях, а не в браузере:
    клиент может врать о своём плане сколько угодно — это ни на что не влияет. */
-import { json, fail, corsHeaders, allowedOrigins, now } from "./lib.js";
+import { json, fail, corsHeaders, allowedOrigins, isSameOrigin, now } from "./lib.js";
 import * as auth from "./auth.js";
 import * as ai from "./ai.js";
 import * as admin from "./admin.js";
@@ -215,8 +215,9 @@ export default {
       return handler(request, env, origin);
     }
 
-    /* Браузерные запросы: чужому домену отказываем до всякой работы. */
-    if (origin && !allowedOrigins(env).includes(origin))
+    /* Браузерные запросы: чужому домену отказываем до всякой работы.
+       Свой же адрес разрешён всегда — сайт обращается сам к себе. */
+    if (origin && !allowedOrigins(env).includes(origin) && !isSameOrigin(request, origin))
       return fail(env, origin, "Origin не разрешён", 403);
 
     if (!env.DB) return fail(env, origin, "База не подключена: добавьте binding DB", 500);
