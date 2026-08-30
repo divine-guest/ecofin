@@ -220,7 +220,20 @@ install_if_changed "$HERE/enable-tls.sh"    "$DIR/enable-tls.sh"    755
 # по себе он ничего не уронит, но при следующем перезапуске nginx просто
 # не поднимется — и причина будет уже забыта.
 NGINX_LIVE=/etc/nginx/sites-available/pravofin
-if [ ! -f "$NGINX_LIVE" ] || ! cmp -s "$HERE/nginx.conf" "$NGINX_LIVE"; then
+
+# Настройку, которую доработал certbot, не трогаем.
+#
+# Certbot дописывает в неё прослушивание 443-го порта, пути к сертификату
+# и перенаправление с http на https. Если после этого положить сверху
+# исходный файл из репозитория — а установщик делает это каждые пять
+# минут, — HTTPS отвалится молча и починится только следующим выпуском
+# сертификата. То есть сайт станет незащищённым, и никто не заметит.
+#
+# Поэтому: появился сертификат — файл считается чужим. Менять его дальше
+# нужно осознанно, а не мимоходом.
+if grep -q 'managed by Certbot\|ssl_certificate' "$NGINX_LIVE" 2>/dev/null; then
+  : # настройка под сертификатом, оставляем как есть
+elif [ ! -f "$NGINX_LIVE" ] || ! cmp -s "$HERE/nginx.conf" "$NGINX_LIVE"; then
   NGINX_OLD=""
   if [ -f "$NGINX_LIVE" ]; then
     NGINX_OLD=$(mktemp)
