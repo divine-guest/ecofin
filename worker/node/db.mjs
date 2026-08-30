@@ -44,11 +44,16 @@ async function nativeDriver(file) {
     if (!s) { s = db.prepare(sql); cache.set(sql, s); }
     return s;
   };
+  /* Обычные подстановки идут россыпью, нумерованные — одним объектом
+     (см. bindable ниже). Поэтому массив раскладываем, а объект передаём
+     как есть: развернуть его в аргументы означало бы потерять номера. */
+  const args = p => (Array.isArray(p) ? p : [p]);
+
   return {
     name: "better-sqlite3",
-    get: (sql, p) => stmt(sql).get(...p),
-    all: (sql, p) => stmt(sql).all(...p),
-    run: (sql, p) => stmt(sql).run(...p),
+    get: (sql, p) => stmt(sql).get(...args(p)),
+    all: (sql, p) => stmt(sql).all(...args(p)),
+    run: (sql, p) => stmt(sql).run(...args(p)),
     exec: sql => db.exec(sql),
     close: () => db.close(),
   };
@@ -131,6 +136,28 @@ function clean(values) {
   });
 }
 
+/* Подстановки бывают двух видов, и это единственное место, где D1
+   и обычный SQLite расходятся.
+
+   Обычные «?» подставляются по порядку — их и там, и там принимают
+   массивом. А нумерованные «?1, ?2» удобны тем, что одно значение можно
+   вставить дважды: WHERE email LIKE ?1 OR name LIKE ?1. D1 и такие берёт
+   массивом, а better-sqlite3 отвечает «Too many parameter values were
+   provided» — ему нужен объект, где ключ равен номеру.
+
+   Из-за этого админка отдавала 500 на списке людей, и по той же причине
+   падала проверка прав владельца: список приходил пустым, и аккаунт
+   в нём не находился. Одна поломка, два непохожих симптома.
+
+   Чиним здесь, а не в запросах: так же будет работать любой следующий
+   запрос с «?1», написанный по привычке от Cloudflare. */
+function bindable(sql, values) {
+  if (!/\?\d/.test(sql)) return values;
+  const byNumber = {};
+  values.forEach((v, i) => { byNumber[i + 1] = v; });
+  return byNumber;
+}
+
 /* ---------- Выражение ---------- */
 
 class Stmt {
@@ -148,17 +175,17 @@ class Stmt {
   }
 
   async first() {
-    const row = this.driver.get(this.sql, this.values);
+    const row = this.driver.get(this.sql, bindable(this.sql, this.values));
     return row === undefined ? null : row;
   }
 
   async all() {
-    const rows = this.driver.all(this.sql, this.values);
+    const rows = this.driver.all(this.sql, bindable(this.sql, this.values));
     return { success: true, results: rows || [], meta: {} };
   }
 
   async run() {
-    const r = this.driver.run(this.sql, this.values) || {};
+    const r = this.driver.run(this.sql, bindable(this.sql, this.values)) || {};
     return {
       success: true,
       meta: {
@@ -171,7 +198,7 @@ class Stmt {
 
   /* Внутреннее: выполнить внутри уже открытой транзакции. */
   _exec() {
-    const r = this.driver.run(this.sql, this.values) || {};
+    const r = this.driver.run(this.sql, bindable(this.sql, this.values)) || {};
     return { success: true, meta: { changes: r.changes ?? 0, last_row_id: Number(r.lastInsertRowid ?? 0) } };
   }
 }

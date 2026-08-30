@@ -186,6 +186,23 @@ for (let i = 0; i < 500; i++) {
 const writeMs = Date.now() - t1;
 ok(writeMs < 4000, `500 записей за ${writeMs} мс (${(writeMs / 500).toFixed(3)} мс на запись)`);
 
+/* ---------- Нумерованные подстановки ----------
+
+   D1 принимает и «?», и «?1», а better-sqlite3 нумерованные хочет
+   объектом. Из-за этого админка отдавала 500 на списке людей, а проверка
+   прав владельца падала: список приходил пустым. Одна поломка, два
+   непохожих симптома — и ни один из 39 тестов её не поймал. */
+
+const numbered = await db.prepare(
+  "SELECT COUNT(*) AS n FROM users WHERE email LIKE ?1 OR name LIKE ?1"
+).bind("%test%").first();
+ok(numbered && typeof numbered.n === "number", "одно значение подставляется дважды: ?1 … ?1");
+
+const mixed = await db.prepare(
+  "SELECT email FROM users WHERE email LIKE ?1 OR name LIKE ?1 LIMIT ?2 OFFSET ?3"
+).bind("%%", 5, 0).all();
+ok(Array.isArray(mixed.results), "нумерованные подстановки вместе с LIMIT и OFFSET");
+
 db.close();
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);
