@@ -2237,12 +2237,17 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
     scrollbar-width: none;
   }
   .tabs::-webkit-scrollbar { display: none; }
+  /* Не сжимать — всем детям ряда, а не только кнопкам. В рядах попадаются
+     и метки: они сжимались, текст в них переносился, и вся строка
+     вытягивалась в высоту втрое. */
+  .tabs > * { flex: 0 0 auto; }
+  .tabs { align-items: center; }
   .tabs .tab {
-    flex: 0 0 auto;
     scroll-snap-align: start;
     padding: 9px 15px;
     font-size: .84rem;
     min-height: 40px;
+    white-space: nowrap;
   }
 }
 
