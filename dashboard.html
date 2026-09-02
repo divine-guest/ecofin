@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=91">
+<link rel="stylesheet" href="css/style.css?v=105">
 </head>
 <body>
 <main class="section">
@@ -38,15 +38,17 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=91"></script>
-<script src="js/api.js?v=91"></script>
-<script src="js/app.js?v=91"></script>
-<script src="js/progress.js?v=91"></script>
-<script src="js/palette.js?v=91"></script>
-<script src="js/ai.js?v=91"></script>
-<script src="js/knowledge.js?v=91"></script>
-<script src="js/competencies.js?v=91"></script>
-<script src="js/courses.js?v=91"></script>
+<script src="js/rates.js?v=105"></script>
+<script src="js/book.js?v=105"></script>
+<script src="js/themes.js?v=105"></script>
+<script src="js/api.js?v=105"></script>
+<script src="js/app.js?v=105"></script>
+<script src="js/progress.js?v=105"></script>
+<script src="js/palette.js?v=105"></script>
+<script src="js/ai.js?v=105"></script>
+<script src="js/knowledge.js?v=105"></script>
+<script src="js/competencies.js?v=105"></script>
+<script src="js/courses.js?v=105"></script>
 <script>
 initPage("dashboard.html");
 
@@ -416,6 +418,10 @@ function renderCabinet() {
           Напомним заранее — за 3 дня, за день и в сам день. С подпиской Pro
           напоминания приходят ещё и в Telegram.
         </p>
+        <!-- Куда именно придут напоминания. Раньше об этом нигде не
+             говорилось: человек ставил сроки и считал, что подписался
+             на уведомления, а они всё это время лежали только на сайте. -->
+        <div id="dlChannel"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
           <input type="text" id="dlTitle" placeholder="Например: аванс по УСН" style="flex:1;min-width:150px" maxlength="140">
           <input type="date" id="dlDate" style="width:auto">
@@ -575,6 +581,45 @@ const CABINET = {
       }));
     } catch {}
 
+    /* «Моё дело»: сколько отложить и не подходит ли лимит.
+       Это самое действенное, что можно показать человеку в кабинете:
+       остальные строки сообщают о сервисе, а эта — о его деньгах. */
+    try {
+      const b = await API.request("/api/book");
+      if (!b.profile.regime) {
+        items.push({ kind: "info", text: "Настройте «Моё дело» — сервис будет сам считать налог с ваших поступлений",
+                     go: () => (location.href = PF.href("book.html")) });
+      } else if (b.year.income > 0) {
+        const est = BOOK.estimate(b.profile, b.year);
+        const lim = BOOK.limitState(b.profile, b.year, b.yearNumber);
+        if (est.known) items.push({ kind: "info",
+          text: `Отложить на налог и взносы: ${BOOK.RUB(est.tax + est.own)}`,
+          go: () => (location.href = PF.href("book.html")) });
+        /* Предупреждаем заранее, а не по факту: после превышения лимита
+           сделать уже нельзя ничего, налог пересчитают задним числом. */
+        if (lim && lim.share > 0.7) items.push({ kind: "warn",
+          text: `До лимита режима осталось ${BOOK.RUB(lim.left)} — это ${Math.round((1 - lim.share) * 100)}%`,
+          go: () => (location.href = PF.href("book.html")) });
+      }
+    } catch {}
+
+    /* Не подключён Telegram — предлагаем подключить, а не «добавить срок».
+       Человек, который хочет уведомлений, раньше попадал отсюда в календарь:
+       там он ставил срок и всё равно не получал ничего, кроме отметки
+       на сайте. Настоящие уведомления живут в мессенджере, и вести надо
+       туда. Проверку держим отдельно от остальных: она про канал
+       доставки, а не про долги и лимиты. */
+    try {
+      const tg = await API.telegram.status();
+      this.tgLinked = Boolean(tg.linked);
+      this.tgEnabled = Boolean(tg.enabled);
+      if (tg.enabled && !tg.linked && this.hasReminders) {
+        items.push({ kind: "info",
+          text: "Напоминания приходят только на сайт — подключите Telegram, чтобы видеть их сразу",
+          go: () => SETTINGS.open("notify") });
+      }
+    } catch { /* статус бота не критичен для остального блока */ }
+
     if (typeof NOTIFY !== "undefined" && NOTIFY.unread) {
       items.push({ kind: "info", text: `Непрочитанных уведомлений: ${NOTIFY.unread}`, go: () => NOTIFY.open() });
     }
@@ -592,6 +637,14 @@ const CABINET = {
     if (!items.length) {
       const steps = [];
 
+      /* Порядок здесь и есть ответ на вопрос «где настроить уведомления».
+         Сначала канал доставки, потом сроки: срок без канала — это
+         запись в календаре, о которой человек узнает, только если сам
+         зайдёт и посмотрит. */
+      if (this.tgEnabled && !this.tgLinked) {
+        steps.push({ text: "Подключите Telegram — туда придут напоминания о сроках",
+                     btn: "Подключить Telegram", go: () => SETTINGS.open("notify") });
+      }
       if (!this.hasReminders) {
         steps.push({ text: "Поставьте первый срок — напомним заранее, чтобы не пропустить",
                      btn: "Добавить срок", go: () => CABINET.show("tasks") });
@@ -696,6 +749,30 @@ const REM = {
   presets: [],
   limit: null,
 
+  /* Где человек увидит напоминание. Пишем прямо в разделе сроков:
+     именно здесь возникает мысль «а как настроить уведомления», и
+     ответ на неё не должен требовать похода по вкладкам. */
+  async renderChannel() {
+    const box = document.getElementById("dlChannel");
+    if (!box) return;
+    let tg;
+    try { tg = await API.telegram.status(); } catch { return; }
+    if (!tg.enabled) return;
+
+    if (tg.linked) {
+      box.innerHTML = `<p class="hint" style="margin-bottom:12px">
+        <span class="badge ok">Telegram подключён</span>
+        напоминания придут и сюда, и в мессенджер.</p>`;
+      return;
+    }
+    box.innerHTML = `
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px">
+        <p style="margin:0 0 10px">Сейчас напоминания видны <b>только на сайте</b> —
+          их надо зайти и посмотреть. Подключите Telegram, и они придут сами.</p>
+        <button class="btn small" onclick="SETTINGS.open('notify')">Подключить Telegram</button>
+      </div>`;
+  },
+
   async load() {
     const box = document.getElementById("dlList");
     if (!box) return;
@@ -704,6 +781,7 @@ const REM = {
       this.items = d.reminders;
       this.limit = d.limit;
       this.render(d);
+      this.renderChannel();
       if (!this.presets.length) {
         this.presets = (await API.reminders.presets()).presets;
         this.renderPresets();

@@ -21,7 +21,7 @@
 """
 
 from PIL import Image, ImageDraw, ImageFont
-import os, math
+import os, math, io, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SS = 4  # во столько раз рисуем крупнее и потом уменьшаем — так сглаживаются края
@@ -55,58 +55,73 @@ def rounded_mask(size, radius):
     return m
 
 
-def draw_scales(d, cx, cy, scale, color=GOLD_LIGHT):
-    """Весы правосудия. Координаты повторяют icon.svg (холст 512),
-    поэтому правки логотипа переносятся сюда один в один."""
+def count_calcs():
+    """Сколько калькуляторов на сайте. Считаем по разметке, а не пишем
+    числом: обложка ссылки — то место, куда забывают заглянуть, и она
+    полгода обещала девятнадцать, когда их стало двадцать пять."""
+    try:
+        html = io.open("calc.html", encoding="utf-8").read()
+        return html.count('onclick="switchCalc(')
+    except Exception:
+        return 0
+
+
+def count_articles():
+    """Столько же про статьи базы знаний.
+
+    Считаем по строкам «code:», а не по «title:». Заголовки с тем же
+    отступом есть и у разделов, и у тестов — по ним выходило 57 вместо
+    49. Поле «code» (какой закон) есть только у статьи."""
+    try:
+        js = io.open("js/knowledge.js", encoding="utf-8").read()
+        return len(re.findall(r'^    code: "', js, re.M))
+    except Exception:
+        return 0
+
+
+def draw_mark(d, cx, cy, scale, color=GOLD_LIGHT):
+    """Монета с рублём. Координаты повторяют icon.svg (холст 512),
+    поэтому правка значка переносится сюда один в один.
+
+    Раньше здесь были весы правосудия — знак прежнего названия. Сайт
+    переставлен финансами вперёд, и значок на домашнем экране телефона
+    должен говорить о деньгах.
+
+    Растущих столбиков, которые есть в большом знаке на главной, здесь
+    нет намеренно: на значке 32 пикселя они превращаются в три палочки,
+    неотличимые от грязи."""
     def P(x, y):
         return (cx + (x - 256) * scale, cy + (y - 256) * scale)
 
     def W(w):
         return max(1, round(w * scale))
 
-    # основание и ступень
-    d.line([P(140, 420), P(372, 420)], fill=color, width=W(16))
-    for a, b in [((168, 404), (344, 404)), ((168, 404), (180, 386)),
-                 ((344, 404), (332, 386)), ((180, 386), (332, 386))]:
-        d.line([P(*a), P(*b)], fill=color, width=W(10))
+    def circle(x, y, r, width):
+        c = P(x, y)
+        rr = r * scale
+        d.ellipse([c[0] - rr, c[1] - rr, c[0] + rr, c[1] + rr], outline=color, width=W(width))
 
-    # колонна и навершие
-    d.line([P(256, 386), P(256, 120)], fill=color, width=W(16))
-    r = 26 * scale
-    c = P(256, 86)
-    d.ellipse([c[0] - r, c[1] - r, c[0] + r, c[1] + r], outline=color, width=W(13))
+    # монета: ободок и внутренний кант
+    circle(256, 250, 150, 18)
+    circle(256, 250, 128, 6)
 
-    # коромысло: дуга через три точки, рисуем ломаной по кривой Безье
-    pts = []
-    for i in range(41):
-        t = i / 40
-        x = (1 - t) ** 2 * 110 + 2 * (1 - t) * t * 256 + t ** 2 * 402
-        y = (1 - t) ** 2 * 128 + 2 * (1 - t) * t * 92 + t ** 2 * 128
-        pts.append(P(x, y))
-    d.line(pts, fill=color, width=W(16), joint="curve")
+    # рубль: ножка и поперечина
+    d.line([P(226, 170), P(226, 330)], fill=color, width=W(26))
+    d.line([P(196, 282), P(282, 282)], fill=color, width=W(26))
 
-    # две чаши
-    for x0 in (78, 370):
-        bowl = []
-        for i in range(25):
-            a = math.pi * i / 24
-            bowl.append(P(x0 + 32 - 32 * math.cos(a), 170 + 21 * math.sin(a)))
-        d.line(bowl, fill=color, width=W(9), joint="curve")
-        d.line([P(x0, 170), P(x0, 150)], fill=color, width=W(9))
-        d.line([P(x0 + 64, 170), P(x0 + 64, 150)], fill=color, width=W(9))
-        d.line([P(x0, 150), P(x0 + 64, 150)], fill=color, width=W(9))
-
-    # узел крепления
-    r = 14 * scale
-    c = P(256, 128)
-    d.ellipse([c[0] - r, c[1] - r, c[0] + r, c[1] + r], fill=GOLD_DOT)
+    # чаша рубля: правая половина окружности, ломаной по дуге
+    bowl = []
+    for i in range(25):
+        a = -math.pi / 2 + math.pi * i / 24
+        bowl.append(P(226 + 38 * math.cos(a), 208 + 38 * math.sin(a)))
+    d.line(bowl, fill=color, width=W(26), joint="curve")
 
 
 def make_icon(size, radius_ratio=0.22, pad=0.0, name="icon.png"):
     big = size * SS
     img = diagonal_gradient((big, big), TEAL, GREEN).convert("RGBA")
     d = ImageDraw.Draw(img)
-    draw_scales(d, big / 2, big / 2, (big / 512) * (1 - pad * 2))
+    draw_mark(d, big / 2, big / 2, (big / 512) * (1 - pad * 2))
     if radius_ratio:
         img.putalpha(rounded_mask((big, big), round(big * radius_ratio)))
     img = img.resize((size, size), Image.LANCZOS)
@@ -135,7 +150,7 @@ def make_cover():
     d = ImageDraw.Draw(img)
 
     # знак слева
-    draw_scales(d, 240, H // 2 - 10, 0.62)
+    draw_mark(d, 240, H // 2 - 10, 0.62)
 
     x = 470
     d.text((x, 176), "ЭкоФин", font=font(84), fill=(255, 255, 255))
@@ -147,7 +162,7 @@ def make_cover():
 
     d.text((x, 448), "ИИ-консультант · разбор договоров ·",
            font=font(29, False), fill=(160, 196, 187))
-    d.text((x, 488), "19 калькуляторов · 42 статьи по делу",
+    d.text((x, 488), f"{count_calcs()} калькуляторов · {count_articles()} статей по делу",
            font=font(29, False), fill=(160, 196, 187))
 
     img.save(os.path.join(HERE, "og-cover.png"), optimize=True)

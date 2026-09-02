@@ -142,3 +142,119 @@ const DOCSCAN = {
     throw new Error("Фотография слишком большая даже после сжатия — сфотографируйте по частям");
   },
 };
+
+/* ============ Приём файла или фотографии в любое поле ============
+
+   Раньше документ можно было приложить ровно в одном месте — в разборе
+   договора. Во всех остальных инструментах стояло пустое поле «вставьте
+   текст», и человек с бумажной претензией на руках просто уходил:
+   перепечатывать две страницы никто не станет.
+
+   Теперь любое текстовое поле умеет принимать файл. PDF, DOCX и TXT
+   разбираются прямо в браузере — ничего никуда не уходит и лимит не
+   тратится. Фотография и скан без текстового слоя отправляются
+   на распознавание: там нужна зрячая модель, и это стоит запуска.
+
+   Использование — одна строка рядом с полем:
+
+       DOCSCAN.attach({ target: "replyText" });
+
+   Полю дописывается зона перетаскивания, кнопка выбора файла и строка
+   состояния. Готовый текст подставляется в поле, и человек может его
+   поправить перед отправкой — распознавание не бывает идеальным, и
+   прятать результат от правки было бы нечестно.                      */
+
+DOCSCAN.attach = function ({ target, label = "" } = {}) {
+  const field = document.getElementById(target);
+  if (!field || field.dataset.scanReady) return;
+  field.dataset.scanReady = "1";
+
+  const box = document.createElement("div");
+  box.className = "scan-box";
+  box.innerHTML = `
+    <button type="button" class="scan-pick">
+      <span class="scan-ico" aria-hidden="true">📎</span>
+      <span>${label || "Приложить файл или фото документа"}</span>
+    </button>
+    <span class="scan-hint">PDF, DOCX, TXT или снимок с телефона</span>
+    <div class="scan-status" hidden></div>`;
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".pdf,.docx,.txt,.md,.csv,image/*";
+  input.style.display = "none";
+  box.appendChild(input);
+  field.parentNode.insertBefore(box, field);
+
+  const status = box.querySelector(".scan-status");
+  const say = (msg, kind = "") => {
+    status.hidden = !msg;
+    status.className = "scan-status " + kind;
+    status.textContent = msg;
+  };
+
+  async function handle(file) {
+    if (!file) return;
+    if (!PF.user()) {
+      toast("Войдите, чтобы прикладывать документы");
+      return setTimeout(() => (location.href = PF.href("auth.html")), 1200);
+    }
+    try {
+      say("Открываем файл…");
+      const data = await DOCSCAN.read(file, say);
+
+      /* Текстовый слой есть — значит распознавать нечего, всё уже готово
+         и бесплатно. Так проходит почти всё, что приходит по почте. */
+      if (data.text && data.text.trim().length > 30) {
+        put(data.text);
+        say(`${file.name}: взято ${data.text.trim().length} символов. Проверьте и правьте, если надо.`, "ok");
+        return;
+      }
+
+      if (!data.images.length) {
+        say("В файле нет ни текста, ни страниц для распознавания", "err");
+        return;
+      }
+
+      say(`Распознаём ${data.images.length} ${DOCSCAN.pageWord(data.images.length)}… Это занимает до минуты.`);
+      const res = await API.ocr({ images: data.images, fileName: data.fileName });
+      PF.quota = res.quota || PF.quota;
+      put(res.text || "");
+      say(`${file.name}: распознано. Сверьте числа и даты — на фото они читаются хуже всего.`, "ok");
+      if (typeof renderQuota === "function") renderQuota();
+    } catch (e) {
+      if (e.isPaywall) { say(""); return showPaywall(e.message); }
+      say(e.message, "err");
+    }
+  }
+
+  /* Дописываем, а не затираем: в поле уже может быть набранное вручную,
+     и потерять его из-за случайного перетаскивания обидно. */
+  function put(text) {
+    const had = field.value.trim();
+    field.value = had ? had + "\n\n" + text.trim() : text.trim();
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  box.querySelector(".scan-pick").onclick = () => input.click();
+  input.onchange = () => handle(input.files[0]);
+
+  /* Перетаскивание вешаем на само поле: туда его и тянут. */
+  field.addEventListener("dragover", e => { e.preventDefault(); field.classList.add("scan-over"); });
+  field.addEventListener("dragleave", () => field.classList.remove("scan-over"));
+  field.addEventListener("drop", e => {
+    e.preventDefault();
+    field.classList.remove("scan-over");
+    handle(e.dataTransfer.files[0]);
+  });
+};
+
+/* «страницу», «страницы», «страниц» — мелочь, но текст без неё
+   выглядит машинным ровно в тот момент, когда человек ждёт. */
+DOCSCAN.pageWord = function (n) {
+  const a = n % 100, b = a % 10;
+  if (a > 10 && a < 20) return "страниц";
+  if (b > 1 && b < 5) return "страницы";
+  if (b === 1) return "страницу";
+  return "страниц";
+};

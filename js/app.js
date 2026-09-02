@@ -227,13 +227,20 @@ const MOON_SVG = `<svg class="pill-icon" viewBox="0 0 24 24" aria-hidden="true"
   <path d="M20 14.2A8.4 8.4 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2z"/>
 </svg>`;
 
-const SCALES_SVG = `<svg class="logo-mark" viewBox="0 0 24 24" aria-hidden="true"
-  fill="none" stroke="currentColor" stroke-width="1.5"
+/* Знак в шапке. Были весы правосудия — от них отказались вместе с
+   героем: сайт про финансы, а весы обещают суд.
+
+   На 24 пикселях подробностей не бывает, поэтому здесь ровно две вещи:
+   круг монеты и рубль внутри. Растущие столбики, которые есть в большом
+   знаке, в такой размер уже не влезают читаемо — превратились бы в кашу
+   из трёх палочек. */
+const LOGO_SVG = `<svg class="logo-mark" viewBox="0 0 24 24" aria-hidden="true"
+  fill="none" stroke="currentColor" stroke-width="1.6"
   stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="12" cy="3.1" r="1.3" fill="currentColor" stroke="none"/>
-  <path d="M12 4.6v14.6M8.6 19.2h6.8M4.5 7.4h15"/>
-  <path d="M4.5 7.4 2 12.4M4.5 7.4 7 12.4M19.5 7.4 17 12.4M19.5 7.4 22 12.4"/>
-  <path d="M2 12.4a2.5 2.5 0 0 0 5 0M17 12.4a2.5 2.5 0 0 0 5 0"/>
+  <circle cx="12" cy="12" r="9.2"/>
+  <path d="M9.9 7.2v9.6"/>
+  <path d="M9.9 7.2h2.9a2.4 2.4 0 0 1 0 4.8H9.9"/>
+  <path d="M8.2 14.1h5.2"/>
 </svg>`;
 
 /* ============ Значки нижней панели ============
@@ -251,6 +258,10 @@ const TAB_ICONS = {
     <path d="M18.4 15.2l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/>`,
   cabinet: `<circle cx="12" cy="8.2" r="3.6"/>
     <path d="M4.8 20c.6-3.7 3.6-6 7.2-6s6.6 2.3 7.2 6"/>`,
+  /* «Моё дело» — кошелёк: раздел про деньги, и значок должен читаться
+     без подписи, потому что подпись на телефоне мельче значка. */
+  book: `<path d="M3.6 8.4a2 2 0 0 1 2-2h12.8a2 2 0 0 1 2 2v9.2a2 2 0 0 1-2 2H5.6a2 2 0 0 1-2-2z"/>
+    <path d="M3.6 9.6h11.2M16.6 13.6h.01"/>`,
   more: `<circle cx="5.6" cy="12" r="1.5" fill="currentColor" stroke="none"/>
     <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
     <circle cx="18.4" cy="12" r="1.5" fill="currentColor" stroke="none"/>`,
@@ -278,7 +289,16 @@ const tabIcon = name => `<svg class="tabbar-icon" viewBox="0 0 24 24" aria-hidde
    Главная доступна по логотипу в шапке, как принято везде. */
 const MOBILE_TABS = [
   ["situations.html", "Что делать", "situations"],
-  ["calc.html", "Калькуляторы", "calc"],
+  /* «Моё дело» стоит вторым, а не последним: это единственный раздел,
+     куда заходят каждый день, и на телефоне он должен быть под пальцем.
+     Пятая вкладка — это предел; шестую в ряд уже не втиснуть,
+     не сделав подписи нечитаемыми. */
+  ["book.html", "Моё дело", "book"],
+  /* Внизу «Расчёты», а не «Калькуляторы»: слово длиннее всех остальных
+     вместе взятых и на узком экране съедало место у соседей — подписи
+     вставали вплотную и читались как одна строка. В шапке компьютера
+     место есть, там осталось полное название. */
+  ["calc.html", "Расчёты", "calc"],
   ["tools.html", "ИИ", "tools"],
   ["dashboard.html", "Кабинет", "cabinet"],
 ];
@@ -288,6 +308,8 @@ const MOBILE_TABS = [
 const MOBILE_MORE = [
   ["Разделы", [
     ["index.html", "Главная", "Обзор и что нового"],
+    ["clients.html", "Мои дела", "ИП, ООО и клиенты — в одном кабинете"],
+    ["docs.html", "Документы", "32 готовых бланка — заполнить и распечатать"],
     ["knowledge.html", "База знаний", "Статьи простым языком"],
     ["courses.html", "Курсы", "Пошаговое обучение"],
     ["games.html", "Практикум", "Разбор ситуаций на примерах"],
@@ -444,6 +466,8 @@ function renderHeader(active) {
     /* «Что делать» стоит первым намеренно: человек приходит не за
        инструментом, а с бедой, и не знает, в какой раздел ему идти. */
     ["situations.html", "Что делать"],
+    ["book.html", "Моё дело"],
+    ["docs.html", "Документы"],
     ["tools.html", "ИИ-инструменты"],
     ["calc.html", "Калькуляторы"],
     ["knowledge.html", "База знаний"],
@@ -480,7 +504,7 @@ function renderHeader(active) {
   header.className = "site-header";
   header.innerHTML = `
     <div class="container nav">
-      <a href="${PF.href("index.html")}" class="logo">${SCALES_SVG}<span class="logo-name">Эко<b>Фин</b></span></a>
+      <a href="${PF.href("index.html")}" class="logo">${LOGO_SVG}<span class="logo-name">Эко<b>Фин</b></span></a>
       <button class="nav-burger" onclick="this.closest('.site-header').classList.toggle('menu-open')" aria-label="Меню">Меню</button>
       <nav class="nav-links">${links}</nav>
       ${u ? `<button class="header-pill notif-btn" onclick="NOTIFY.open()" title="Уведомления" aria-label="Уведомления">${BELL_SVG}<span class="pill-text">Уведомления</span></button>` : ""}
@@ -500,7 +524,9 @@ function renderFooter() {
   f.innerHTML = `<div class="container">
     <p><b>ЭкоФин</b> — экосистема финансовой и юридической грамотности © 2026</p>
     <p class="footer-nav">
-      ${L("situations.html", "Что делать")} · ${L("tools.html", "Инструменты")} · ${L("calc.html", "Калькуляторы")} ·
+      ${L("situations.html", "Что делать")} · ${L("book.html", "Моё дело")} ·
+      ${L("docs.html", "Документы")} ·
+      ${L("tools.html", "Инструменты")} · ${L("calc.html", "Калькуляторы")} ·
       ${L("knowledge.html", "База знаний")} · ${L("courses.html", "Курсы")} ·
       ${L("answers.html", "Ответы на вопросы")} · ${L("games.html", "Практикум")} ·
       ${L("expenses.html", "Дневник трат")} ·

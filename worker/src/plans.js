@@ -32,9 +32,9 @@ export const PLANS = {
       analyzePerMonth: 0,   // разборы документов — только за счёт пробного запуска
       reminders: 3,
     },
-    features: { telegram: false, courses: false, theming: false, priority: false },
+    features: { telegram: false, courses: false, theming: false, priority: false, clients: false },
     perks: [
-      "19 калькуляторов — сколько угодно раз",
+      "25 калькуляторов — сколько угодно раз",
       "Налоговый календарь и 3 напоминания о сроках",
       "3 вопроса консультанту каждый день",
       "База знаний, шаблоны документов, практикум",
@@ -47,7 +47,7 @@ export const PLANS = {
     price: { month: 290, year: 2490 },
     tagline: "Дешевле одного часа бухгалтера в месяц",
     limits: { aiPerDay: 300, toolUses: null, analyzePerMonth: 20, reminders: null },
-    features: { telegram: true, courses: false, theming: false, priority: false },
+    features: { telegram: true, courses: false, theming: false, priority: false, clients: false },
     perks: [
       "Консультант отвечает весь день, а не три раза",
       "20 разборов договоров и требований в месяц",
@@ -65,13 +65,14 @@ export const PLANS = {
     price: { month: 690, year: 5490 },
     tagline: "Когда цена ошибки выше цены подписки",
     limits: { aiPerDay: 300, toolUses: null, analyzePerMonth: null, reminders: null },
-    features: { telegram: true, courses: true, theming: true, priority: true },
+    features: { telegram: true, courses: true, theming: true, priority: true, clients: true },
     perks: [
       "Всё из «Базового», и без счётчиков",
       "Разбор договоров и фотографий сколько нужно",
       "Все курсы с сертификатами: бухучёт и юриспруденция",
       "Оформление сервиса под себя — 10 палитр",
       "Приоритетная очередь: отвечает быстрее",
+      "Несколько дел в одном кабинете — для бухгалтеров и тех, у кого ИП и ООО",
     ],
     worth: "Проверка одного договора у юриста — от 3 000 ₽. " +
            "Здесь это входит в подписку и делается за минуту, в любое время суток.",
@@ -106,15 +107,17 @@ export function freeMonths(id) {
   return Math.round((p.price.month * 12 - p.price.year) / p.price.month);
 }
 
-/* Тариф «Бухгалтер» пока обслуживаем вручную: несколько клиентов в одном
-   кабинете ещё не сделаны, и продавать то, чего нет, нельзя. Показываем
-   как «по запросу» — это заодно честный способ проверить спрос. */
+/* Тариф «Бухгалтер». Несколько дел в одном кабинете теперь работают —
+   они входят в «Про». Отдельный тариф остаётся «по запросу», потому что
+   в нём должно быть больше: выгрузки по всем клиентам разом, общий
+   календарь сроков и счёт на одну организацию. Пока этого нет,
+   продавать отдельную цену не за что. */
 export const ENTERPRISE = {
   title: "Бухгалтер",
   price: "от 2 490 ₽/мес",
   tagline: "Ведёте несколько клиентов",
   perks: [
-    "До 50 клиентов в одном кабинете",
+    "Больше 50 клиентов в одном кабинете",
     "Общий календарь сроков по всем",
     "Выгрузки и отчёты",
   ],

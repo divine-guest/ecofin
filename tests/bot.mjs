@@ -141,12 +141,49 @@ await toBot(stranger, "/imya Взломщик");
 const notChanged = await sql(`SELECT name FROM users WHERE email = '${em}'`);
 ok(notChanged[0].name === mine[0].name, "из чужого чата имя не поменять");
 
+console.log("\n— Учёт из телеграма —");
+/* Смысл этих команд — убрать трение: если занести поступление сложнее,
+   чем написать четыре символа, его не занесут вовсе. Поэтому проверяем
+   не только что запись создалась, но и что бот разобрал сумму, отделил
+   контрагента и понял, кто платил: на НПД от плательщика зависит ставка. */
+const yr = new Date().getFullYear();
+const bookRows = () => sql(`SELECT * FROM book_ops WHERE email = '${em}' ORDER BY id`);
+
+await toBot(chatId, "/dohod 50000 ООО Ромашка");
+let rows = await bookRows();
+ok(rows.length === 1, `поступление записано (записей: ${rows.length})`);
+ok(rows[0] && rows[0].amount === 5000000, `сумма в копейках: ${rows[0] && rows[0].amount}`);
+ok(rows[0] && rows[0].party === "ООО Ромашка", `контрагент разобран: «${rows[0] && rows[0].party}»`);
+ok(rows[0] && rows[0].payer === "company", "по умолчанию плательщик — компания");
+
+await toBot(chatId, "/dohod 40000 физлицо Иванов");
+rows = await bookRows();
+const person = rows.find(r => r.amount === 4000000);
+ok(Boolean(person), "второе поступление записано");
+ok(person && person.payer === "person", "слово «физлицо» распознано");
+ok(person && person.party === "Иванов", `и вырезано из контрагента: «${person && person.party}»`);
+
+await toBot(chatId, "/rashod 18 000,50 Реклама");
+rows = await bookRows();
+const exp = rows.find(r => r.kind === "expense");
+ok(Boolean(exp), "расход записан");
+ok(exp && exp.amount === 1800050, `пробелы и запятая разобраны: ${exp && exp.amount} копеек`);
+
+const wasRows = (await bookRows()).length;
+await toBot(chatId, "/dohod ерунда");
+ok((await bookRows()).length === wasRows, "бессмысленная сумма запись не создаёт");
+await toBot(chatId, "/dohod -5000");
+ok((await bookRows()).length === wasRows, "отрицательная сумма запись не создаёт");
+
+const delo = await toBot(chatId, "/delo");
+ok(delo.status === 200, "сводка по делу отвечает");
+
 console.log("\n— Неизвестная команда —");
 const unknown = await toBot(chatId, "/nesushchestvuet");
 ok(unknown.status === 200, "неизвестная команда не роняет бота");
 
 /* Убираем за собой. */
-for (const t of ["reminders", "point_ops", "payments", "sessions", "usage", "actions", "ai_jobs"]) {
+for (const t of ["reminders", "point_ops", "payments", "sessions", "usage", "actions", "ai_jobs", "book_ops"]) {
   try { await sql(`DELETE FROM ${t} WHERE email = '${em}'`); } catch {}
 }
 await sql(`DELETE FROM users WHERE email = '${em}'`);

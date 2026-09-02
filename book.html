@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Моё дело — ЭкоФин</title>
+<!-- seo:start -->
+<meta name="description" content="Моё дело в ЭкоФин: учёт выручки и расходов, налог к отложению, контроль лимита УСН и НПД, сроки платежей и книга учёта.">
+<link rel="canonical" href="https://divine-guest.github.io/ecofin/book.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Моё дело — ЭкоФин">
+<meta property="og:description" content="Моё дело в ЭкоФин: учёт выручки и расходов, налог к отложению, контроль лимита УСН и НПД, сроки платежей и книга учёта.">
+<meta property="og:url" content="https://divine-guest.github.io/ecofin/book.html">
+<meta property="og:image" content="https://divine-guest.github.io/ecofin/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ЭкоФин — финансы, налоги и право в одном сервисе">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<!-- seo:end -->
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css?v=105">
+<style>
+  /* Полоса лимита. Отдельным правилом, а не через готовый прогресс:
+     здесь важен цвет по мере приближения — зелёный, охра, красный.
+     Число «осталось 180 000» человек прочитает и забудет, а полосу,
+     которая позеленела в январе и покраснела в октябре, — нет. */
+  .lim-track { height: 12px; border-radius: 999px; background: var(--surface-2);
+               overflow: hidden; border: 1px solid var(--border); }
+  .lim-fill  { height: 100%; border-radius: 999px; transition: width .5s ease; }
+  .lim-ok    { background: linear-gradient(90deg, var(--primary), var(--primary-2)); }
+  .lim-warn  { background: linear-gradient(90deg, #d9a03a, #c98120); }
+  .lim-bad   { background: linear-gradient(90deg, #d1584a, #b3392c); }
+
+  /* Строка операции: сумма всегда справа и всегда одной ширины,
+     иначе колонка «прыгает» и список читается как таблица с браком. */
+  .op-row { display: flex; align-items: baseline; gap: 10px; padding: 10px 0;
+            border-bottom: 1px solid var(--border); }
+  .op-row:last-child { border-bottom: 0; }
+  .op-main { flex: 1; min-width: 0; }
+  .op-sum  { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .op-in   { color: var(--primary); }
+  .op-out  { color: var(--muted); }
+  .op-sub  { color: var(--muted); font-size: var(--t-sm); }
+
+  /* Быстрый ввод. Кнопки «от кого» — не выпадающий список: на телефоне
+     список это два касания и закрытие клавиатуры, а здесь важно, чтобы
+     запись занимала секунды. Иначе её просто не будут вносить. */
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--muted); font-family: inherit;
+                font-weight: 600; font-size: .88rem; padding: 9px 14px; cursor: pointer;
+                min-height: 44px; }
+  .seg button.on { background: var(--primary); color: #fff; }
+
+  .money-in  { font-size: clamp(1.5rem, 5vw, 2.1rem); font-weight: 800; line-height: 1.15; }
+  .hint-line { color: var(--muted); font-size: var(--t-sm); margin-top: 4px; }
+</style>
+</head>
+<body>
+<main class="section tint-green">
+  <div class="container">
+    <div class="section-title">
+      <h1>Моё <span>дело</span></h1>
+      <div class="line"></div>
+      <p class="subtitle">Заносите поступления · сервис сам считает налог, взносы и остаток до лимита</p>
+    </div>
+
+    <div id="bookRoot"><p style="color:var(--muted)">Загружаю…</p></div>
+  </div>
+</main>
+
+<script src="js/rates.js?v=105"></script>
+<script src="js/themes.js?v=105"></script>
+<script src="js/api.js?v=105"></script>
+<script src="js/app.js?v=105"></script>
+<script src="js/progress.js?v=105"></script>
+<script src="js/palette.js?v=105"></script>
+<script src="js/ai.js?v=105"></script>
+<script src="js/docscan.js?v=105"></script>
+<script src="js/book.js?v=105"></script>
+<script>
+initPage("book.html");
+
+const R = document.getElementById("bookRoot");
+let STATE = null;
+
+/* Какое дело открыто. Ноль — своё; номер приходит из адреса, когда
+   бухгалтер перешёл сюда со страницы «Мои дела». Держим в адресе,
+   а не в памяти вкладки: ссылку на учёт конкретного клиента должно
+   быть можно переслать себе же или открыть с телефона. */
+const CLIENT = Number(new URLSearchParams(location.search).get("client")) || 0;
+const q = extra => (CLIENT ? (extra ? extra + "&" : "?") + "client=" + CLIENT : (extra || ""));
+
+/* Форма ввода живёт вне перерисовки: если стирать её вместе со списком,
+   у человека пропадает набранное, стоит записи прийти с другого
+   устройства. Поэтому храним черновик здесь. */
+const draft = { kind: "income", payer: "company" };
+
+const RUB = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
+const dmy = s => s.split("-").reverse().join(".");
+const today = () => new Date().toISOString().slice(0, 10);
+
+async function load() {
+  if (!PF.user()) {
+    R.innerHTML = `
+      <div class="card" style="text-align:center;padding:34px 22px">
+        <h3 style="margin-bottom:8px">Здесь будут ваши деньги</h3>
+        <p style="color:var(--muted);max-width:520px;margin:0 auto 18px">
+          Учёт выручки, налог к отложению и остаток до лимита. Данные привязаны
+          к аккаунту — заносите с телефона, смотрите с компьютера.</p>
+        <a class="btn" href="${PF.href("auth.html")}">Войти или зарегистрироваться</a>
+      </div>`;
+    return;
+  }
+  try {
+    STATE = await API.request("/api/book" + q());
+    render();
+  } catch (e) {
+    R.innerHTML = `<div class="card"><p>${escapeHtml(e.message)}</p>
+      <button class="btn small secondary" onclick="load()">Попробовать ещё раз</button></div>`;
+  }
+}
+
+/* ---------- Отрисовка ---------- */
+
+function render() {
+  const { profile, year, ops, locked, paid, yearNumber } = STATE;
+
+  if (!profile.regime) return renderSetup();
+
+  /* Чужое дело обязано быть подписано. Бухгалтер держит открытыми
+     несколько вкладок, и записать выручку не тому клиенту — ошибка,
+     которую заметят в лучшем случае через месяц. */
+  const banner = CLIENT ? `
+    <div class="card" style="margin-bottom:18px;border-color:var(--primary)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div><b>Дело: ${escapeHtml(profile.name || "клиент")}</b>
+          <div class="hint-line">Записи и расчёт относятся к нему, а не к вашему собственному учёту.</div></div>
+        <a class="btn small secondary" href="${PF.href("clients.html")}">Ко всем делам</a>
+      </div>
+    </div>` : "";
+
+  const est = BOOK.estimate(profile, year);
+  const lim = BOOK.limitState(profile, year, yearNumber);
+  const pays = BOOK.nextPayments(profile, year, est);
+
+  R.innerHTML = banner + topNumbers(year, est, profile)
+    + (lim ? limitCard(lim, profile) : "")
+    + quickAdd()
+    + scanBox()
+    + (pays.length ? paymentsCard(pays) : "")
+    + opsCard(ops, locked, paid, yearNumber)
+    + settingsCard(profile);
+  bindQuick();
+  bindScan();
+}
+
+/* Три числа сверху — то, ради чего страницу открывают. Всё остальное
+   можно листать, эти три должны быть видны сразу, без прокрутки. */
+function topNumbers(year, est, profile) {
+  const setAside = est.known ? est.tax + est.own : 0;
+  return `
+  <div class="grid cols-3" style="margin-bottom:18px">
+    <div class="card">
+      <div class="op-sub">Заработано за ${STATE.yearNumber} год</div>
+      <div class="money-in">${RUB(year.income)}</div>
+      <div class="hint-line">${year.expense > 0 ? "расходы " + RUB(year.expense) : "расходы пока не вносили"}</div>
+    </div>
+    <div class="card">
+      <div class="op-sub">Отложить на налог и взносы</div>
+      <div class="money-in" style="color:var(--gold)">${est.known ? RUB(setAside) : "—"}</div>
+      <div class="hint-line">${est.known
+        ? `налог ${RUB(est.tax)}${est.own ? " + взносы " + RUB(est.own) : ""}`
+        : "укажите режим налогообложения"}</div>
+    </div>
+    <div class="card">
+      <div class="op-sub">Режим</div>
+      <div style="font-size:1.15rem;font-weight:700;margin:6px 0">
+        ${escapeHtml(BOOK.REGIMES[profile.regime]?.title || "не выбран")}</div>
+      <div class="hint-line">${profile.form === "ip" ? "ИП" : profile.form === "ooo" ? "ООО" : "физлицо"}${
+        profile.workers > 0 ? `, работников ${profile.workers}` : ", без работников"}</div>
+    </div>
+  </div>
+
+  ${est.known ? `
+  <div class="card" style="margin-bottom:18px">
+    <p style="margin:0 0 6px"><b>Откуда это число.</b> ${escapeHtml(est.how)}</p>
+    ${est.notCounted.length ? `<p class="hint-line" style="margin:0">
+      В оценку не входит: ${est.notCounted.map(escapeHtml).join("; ")}.</p>` : ""}
+    <p class="hint-line" style="margin:8px 0 0">${escapeHtml(RATES.disclaimer())}
+      Это оценка для планирования, а не декларация.</p>
+  </div>` : ""}`;
+}
+
+/* Полоса лимита с прогнозом. Прогноз — самое ценное здесь: он превращает
+   отвлечённое «лимит 2,4 млн» в «до него вам 47 дней». */
+function limitCard(lim, profile) {
+  const pct = Math.round(lim.share * 100);
+  const cls = lim.share > 0.9 ? "lim-bad" : lim.share > 0.7 ? "lim-warn" : "lim-ok";
+  const f = lim.forecast;
+  return `
+  <div class="card" style="margin-bottom:18px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px">
+      <b>Лимит режима</b>
+      <span class="op-sub">${pct}% из ${RUB(lim.target)}</span>
+    </div>
+    <div class="lim-track"><div class="lim-fill ${cls}" style="width:${Math.max(2, pct)}%"></div></div>
+    <p style="margin:12px 0 0">
+      ${lim.over
+        ? `<b style="color:var(--danger)">Лимит превышен.</b> ${escapeHtml(lim.what || "")}`
+        : `Осталось <b>${RUB(lim.left)}</b>.` + (f
+            ? ` При нынешнем темпе упрётесь примерно
+                <b>${f.when.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</b>
+                — это через ${f.daysLeft} ${BOOK.plural(f.daysLeft, "день", "дня", "дней")}.`
+            : lim.why === "safe"
+              ? " При нынешнем темпе до конца года лимит не достанете — беспокоиться не о чем."
+              : " Темп пока не сложился — прогноз появится через пару записей.")}
+    </p>
+    ${!lim.over && lim.what ? `<p class="hint-line" style="margin:6px 0 0">${escapeHtml(lim.what)}</p>` : ""}
+  </div>`;
+}
+
+/* Быстрое внесение. Сумма, от кого, кнопка — три касания, и запись есть.
+   Всё остальное (категория, контрагент, примечание) прячем за «подробнее»:
+   обязательные поля, которые нужны раз в десять записей, убивают привычку. */
+function quickAdd() {
+  return `
+  <div class="card" style="margin-bottom:18px">
+    <h3 style="margin:0 0 12px">Новая запись</h3>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <span class="seg" id="segKind">
+        <button data-v="income" class="${draft.kind === "income" ? "on" : ""}">Поступление</button>
+        <button data-v="expense" class="${draft.kind === "expense" ? "on" : ""}">Расход</button>
+      </span>
+      <span class="seg" id="segPayer" style="${draft.kind === "income" ? "" : "display:none"}">
+        <button data-v="company" class="${draft.payer === "company" ? "on" : ""}">От компании</button>
+        <button data-v="person" class="${draft.payer === "person" ? "on" : ""}">От физлица</button>
+      </span>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+      <input type="number" id="opSum" inputmode="decimal" placeholder="Сумма, ₽" style="flex:1;min-width:130px">
+      <input type="date" id="opDay" value="${today()}" style="width:auto">
+      <button class="btn" onclick="addOp()">Записать</button>
+    </div>
+    <details style="margin-top:10px">
+      <summary style="cursor:pointer;color:var(--muted);font-size:var(--t-sm)">Контрагент, категория, примечание</summary>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+        <input type="text" id="opParty" placeholder="Контрагент" maxlength="120" style="flex:1;min-width:160px">
+        <input type="text" id="opCat" placeholder="Категория" maxlength="60" style="flex:1;min-width:130px">
+      </div>
+      <input type="text" id="opNote" placeholder="Примечание" maxlength="300" style="margin-top:10px">
+    </details>
+    <p class="hint-line">На НПД ставка зависит от того, кто заплатил: 4% с физлиц, 6% с компаний.
+      Поэтому и спрашиваем.</p>
+  </div>`;
+}
+
+function paymentsCard(pays) {
+  const row = p => `
+    <div class="op-row">
+      <div class="op-main">
+        <div>${escapeHtml(p.what)}</div>
+        ${p.note ? `<div class="op-sub">${escapeHtml(p.note)}</div>` : ""}
+      </div>
+      <div class="op-sum">${p.when.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</div>
+    </div>`;
+  return `
+  <div class="card" style="margin-bottom:18px">
+    <h3 style="margin:0 0 6px">Ближайшие платежи</h3>
+    ${pays.map(row).join("")}
+    <button class="btn small secondary" style="margin-top:12px"
+      onclick="location.href=PF.href('dashboard.html#reminders')">Поставить напоминание</button>
+  </div>`;
+}
+
+function opsCard(ops, locked, paid, yearNumber) {
+  const row = (o, i) => `
+    <div class="op-row">
+      <div class="op-main">
+        <div>${escapeHtml(o.party || o.category || (o.kind === "income" ? "Поступление" : "Расход"))}</div>
+        <div class="op-sub">${dmy(o.day)}${o.category && o.party ? " · " + escapeHtml(o.category) : ""}${
+          o.kind === "income" ? (o.payer === "person" ? " · от физлица" : " · от компании") : ""}</div>
+      </div>
+      <div class="op-sum ${o.kind === "income" ? "op-in" : "op-out"}">
+        ${o.kind === "income" ? "+" : "−"}${RUB(o.amount)}</div>
+      <button class="btn small danger" onclick="delOp(${o.id})" aria-label="Удалить запись">✕</button>
+    </div>`;
+
+  const lockedBlock = locked && locked.count > 0 ? `
+    <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px">
+      <p style="margin:0 0 8px"><b>Ещё ${locked.count}
+        ${BOOK.plural(locked.count, "запись", "записи", "записей")}</b> за более ранние месяцы —
+        они на месте и никуда не денутся.</p>
+      <p class="hint-line" style="margin:0 0 12px">Полная история за год, разбивка по месяцам
+        и книга учёта доходов входят в платные тарифы. Итог года выше посчитан по всем записям.</p>
+      <button class="btn small gold" onclick="PAY.open('basic')">Открыть историю — от 290 ₽</button>
+    </div>` : "";
+
+  return `
+  <div class="card" style="margin-bottom:18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h3 style="margin:0">${paid ? `Операции за ${yearNumber} год` : "Записи за этот месяц"}</h3>
+      <button class="btn small secondary" onclick="exportBook()">Книга учёта</button>
+    </div>
+    <div style="margin-top:10px">
+      ${ops.length ? ops.map(row).join("")
+        : `<p style="color:var(--muted);margin:8px 0">Записей пока нет. Внесите первое поступление —
+           дальше сервис сам посчитает налог и покажет, сколько осталось до лимита.</p>`}
+    </div>
+    ${lockedBlock}
+  </div>`;
+}
+
+function settingsCard(p) {
+  const opt = (v, t, sel) => `<option value="${v}"${sel === v ? " selected" : ""}>${t}</option>`;
+  return `
+  <details class="card">
+    <summary style="cursor:pointer;font-weight:700">Профиль дела — форма, режим, работники</summary>
+    <div class="grid cols-2" style="margin-top:14px">
+      <div class="form-group"><label>Кто вы</label>
+        <select id="pForm">
+          ${opt("self", "Физлицо / самозанятый", p.form)}
+          ${opt("ip", "ИП", p.form)}
+          ${opt("ooo", "ООО", p.form)}
+        </select></div>
+      <div class="form-group"><label>Режим налогообложения</label>
+        <select id="pRegime">
+          ${Object.entries(BOOK.REGIMES).map(([id, r]) => opt(id, r.title, p.regime)).join("")}
+        </select></div>
+      <div class="form-group"><label>Работников</label>
+        <input type="number" id="pWorkers" min="0" max="500" value="${p.workers || 0}"></div>
+      <div class="form-group"><label>Потенциальный доход по патенту, ₽ за год</label>
+        <input type="number" id="pPsn" min="0" value="${p.psn || 0}">
+        <p class="hint">Нужен только для патента. Цифру устанавливает регион —
+          её даёт <a href="https://patent.nalog.ru/" target="_blank" rel="noopener">калькулятор ФНС</a>.</p></div>
+    </div>
+    <button class="btn" onclick="saveProfile()">Сохранить</button>
+  </details>`;
+}
+
+/* Первый заход: пока не выбран режим, считать нечего. Спрашиваем ровно
+   два поля — форму и режим. Длинная анкета на входе отсеивает людей
+   вернее любой цены. */
+function renderSetup() {
+  R.innerHTML = `
+  <div class="card" style="max-width:560px;margin:0 auto">
+    <h3 style="margin:0 0 6px">Два вопроса — и можно начинать</h3>
+    <p style="color:var(--muted);margin:0 0 16px">Без них не посчитать налог: у каждого режима
+      своя ставка и свой лимит. Поменять можно в любой момент.</p>
+    <div class="form-group"><label>Кто вы</label>
+      <select id="pForm">
+        <option value="self">Физлицо / самозанятый</option>
+        <option value="ip">ИП</option>
+        <option value="ooo">ООО</option>
+      </select></div>
+    <div class="form-group"><label>Режим налогообложения</label>
+      <select id="pRegime">
+        ${Object.entries(BOOK.REGIMES).map(([id, r]) => `<option value="${id}">${r.title}</option>`).join("")}
+      </select></div>
+    <input type="hidden" id="pWorkers" value="0"><input type="hidden" id="pPsn" value="0">
+    <button class="btn wide" onclick="saveProfile()">Начать вести учёт</button>
+    <p class="hint" style="margin-top:12px">Не знаете свой режим?
+      <a href="${PF.href("calc.html")}">Калькулятор подберёт выгодный</a> по вашим доходам.</p>
+  </div>`;
+}
+
+/* ---------- Внесение по фотографии ----------
+
+   Занести поступление руками — это открыть страницу, вспомнить сумму,
+   напечатать. Три действия, каждое из которых можно отложить, а
+   отложенное не заносят никогда. Сфотографировать чек — одно действие,
+   и оно делается в момент оплаты, пока бумажка ещё в руке.
+
+   Записываем не молча: показываем разобранное и ждём подтверждения.
+   Ошибка в сумме здесь — это неверный налог, и проверить её сейчас
+   дешевле, чем искать потом расхождение в годовом итоге. */
+function scanBox() {
+  return `
+  <div class="card" style="margin-bottom:18px">
+    <h3 style="margin:0 0 6px">Внести по фотографии</h3>
+    <p class="hint-line" style="margin:0 0 12px">Сфотографируйте чек, счёт или акт —
+      сумма, дата и контрагент подставятся сами. Останется проверить и подтвердить.</p>
+    <button class="btn" id="scanPick">Сфотографировать или выбрать файл</button>
+    <input type="file" id="scanFile" accept="image/*" capture="environment" style="display:none">
+    <div id="scanState" class="hint-line"></div>
+    <div id="scanResult"></div>
+  </div>`;
+}
+
+function bindScan() {
+  const pick = document.getElementById("scanPick");
+  const input = document.getElementById("scanFile");
+  if (!pick || !input) return;
+  pick.onclick = () => input.click();
+  input.onchange = () => doScan(input.files[0]);
+}
+
+const scanSay = (msg, cls = "") => {
+  const el = document.getElementById("scanState");
+  if (el) { el.textContent = msg; el.className = "hint-line " + cls; }
+};
+
+async function doScan(file) {
+  if (!file) return;
+  document.getElementById("scanResult").innerHTML = "";
+  try {
+    scanSay("Готовим снимок…");
+    const data = await DOCSCAN.read(file, scanSay);
+    if (!data.images.length) {
+      scanSay("Это не фотография. Для чека нужен снимок или скан.", "err");
+      return;
+    }
+    scanSay("Разбираем документ… Это занимает до минуты.");
+    const r = await API.request("/api/book/scan", { method: "POST", body: { images: data.images } });
+    PF.quota = r.quota || PF.quota;
+    scanSay("");
+    showScanned(r);
+  } catch (e) {
+    if (e.isPaywall) { scanSay(""); return showPaywall(e.message); }
+    scanSay(e.message, "err");
+  }
+}
+
+/* Поля показываем открытыми для правки, а не готовой карточкой.
+   Распознавание ошибается на смятых чеках, и «подтвердить вслепую» —
+   это способ занести неверную сумму, не заметив. */
+function showScanned(d) {
+  document.getElementById("scanResult").innerHTML = `
+    <div style="border:1px solid var(--primary);border-radius:12px;padding:14px;margin-top:12px">
+      <p style="margin:0 0 12px"><b>Разобрали так.</b> Проверьте — особенно сумму и дату.</p>
+      <div class="grid cols-2">
+        <div class="form-group"><label>Сумма, ₽</label>
+          <input type="number" step="0.01" id="scSum" value="${d.amount}"></div>
+        <div class="form-group"><label>Дата</label>
+          <input type="date" id="scDay" value="${escapeHtml(d.day)}"></div>
+        <div class="form-group"><label>Контрагент</label>
+          <input type="text" id="scParty" value="${escapeHtml(d.party || "")}"></div>
+        <div class="form-group"><label>Категория</label>
+          <input type="text" id="scCat" value="${escapeHtml(d.category || "")}"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <span class="seg" id="scKind">
+          <button data-v="income" class="${d.kind === "income" ? "on" : ""}">Поступление</button>
+          <button data-v="expense" class="${d.kind === "expense" ? "on" : ""}">Расход</button>
+        </span>
+        <span class="seg" id="scPayer">
+          <button data-v="company" class="${d.payer !== "person" ? "on" : ""}">От компании</button>
+          <button data-v="person" class="${d.payer === "person" ? "on" : ""}">От физлица</button>
+        </span>
+      </div>
+      <button class="btn" onclick="confirmScan()">Записать</button>
+      <button class="btn secondary" onclick="document.getElementById('scanResult').innerHTML=''">Отменить</button>
+    </div>`;
+
+  scanDraft.kind = d.kind;
+  scanDraft.payer = d.payer;
+  for (const [id, field] of [["scKind", "kind"], ["scPayer", "payer"]]) {
+    const box = document.getElementById(id);
+    box.querySelectorAll("button").forEach(btn => btn.onclick = () => {
+      scanDraft[field] = btn.dataset.v;
+      box.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === btn));
+    });
+  }
+}
+
+const scanDraft = { kind: "expense", payer: "company" };
+
+async function confirmScan() {
+  const amount = Number(document.getElementById("scSum").value);
+  if (!amount || amount <= 0) return toast("Проверьте сумму", "err");
+  try {
+    await API.request("/api/book/op", { method: "POST", body: {
+      day: document.getElementById("scDay").value,
+      kind: scanDraft.kind,
+      payer: scanDraft.payer,
+      amount,
+      party: document.getElementById("scParty").value.trim(),
+      category: document.getElementById("scCat").value.trim(),
+      note: "С фотографии",
+    } });
+    STATE = await API.request("/api/book" + q());
+    render();
+    toast("Записано");
+  } catch (e) {
+    if (e.isPaywall) return showPaywall(e.message);
+    toast(e.message, "err");
+  }
+}
+
+/* ---------- Действия ---------- */
+
+function bindQuick() {
+  const pick = (id, field, after) => {
+    const box = document.getElementById(id);
+    if (!box) return;
+    box.querySelectorAll("button").forEach(b => b.onclick = () => {
+      draft[field] = b.dataset.v;
+      box.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      if (after) after();
+    });
+  };
+  pick("segKind", "kind", () => {
+    /* «От кого» имеет смысл только у поступлений: у расхода плательщик — вы. */
+    const seg = document.getElementById("segPayer");
+    if (seg) seg.style.display = draft.kind === "income" ? "" : "none";
+  });
+  pick("segPayer", "payer");
+
+  /* Enter в поле суммы записывает: на телефоне это кнопка «готово»
+     на клавиатуре, и тянуться к экранной кнопке не приходится. */
+  document.getElementById("opSum")?.addEventListener("keydown", e => {
+    if (e.key === "Enter") addOp();
+  });
+}
+
+const val = id => (document.getElementById(id)?.value || "").trim();
+
+async function addOp() {
+  const amount = Number(val("opSum"));
+  if (!amount || amount <= 0) return toast("Укажите сумму", "err");
+  const body = {
+    day: val("opDay") || today(),
+    kind: draft.kind,
+    payer: draft.payer,
+    amount,
+    category: val("opCat"),
+    party: val("opParty"),
+    note: val("opNote"),
+  };
+  try {
+    await API.request("/api/book/op", { method: "POST", body: { ...body, client: CLIENT } });
+    /* Сообщение не «сохранено», а «отложите столько-то»: человек вносит
+       запись не ради записи, и полезное действие должно быть в ответе. */
+    const before = STATE.year.income;
+    STATE = await API.request("/api/book" + q());
+    const est = BOOK.estimate(STATE.profile, STATE.year);
+    const delta = est.known && draft.kind === "income"
+      ? Math.max(0, (est.tax + est.own) - taxOn(before))
+      : 0;
+    render();
+    toast(delta > 0 ? `Записано. Отложите с этого ${RUB(delta)}` : "Записано");
+  } catch (e) {
+    if (e.isPaywall) return showPaywall(e.message);
+    toast(e.message, "err");
+  }
+}
+
+/* Сколько составлял бы налог с прежней выручки — нужно, чтобы показать
+   прирост от одной записи, а не общий итог. */
+function taxOn(income) {
+  const fake = { ...STATE.year, income, incomeFromPersons: STATE.year.incomeFromPersons };
+  const e = BOOK.estimate(STATE.profile, fake);
+  return e.known ? e.tax + e.own : 0;
+}
+
+async function delOp(id) {
+  if (!confirm("Удалить запись?")) return;
+  try {
+    await API.request("/api/book/op/delete", { method: "POST", body: { id } });
+    STATE = await API.request("/api/book" + q());
+    render();
+    toast("Запись удалена");
+  } catch (e) { toast(e.message, "err"); }
+}
+
+async function saveProfile() {
+  const body = {
+    form: val("pForm"),
+    regime: val("pRegime"),
+    workers: Number(val("pWorkers")) || 0,
+    psn: Number(val("pPsn")) || 0,
+  };
+  try {
+    await API.request("/api/book/profile", { method: "POST", body });
+    STATE = await API.request("/api/book" + q());
+    render();
+    toast("Профиль сохранён");
+  } catch (e) { toast(e.message, "err"); }
+}
+
+/* Книга учёта. Выгружаем в CSV с разделителем «;» и BOM — иначе Excel
+   на русской Windows открывает файл одной колонкой и с кракозябрами,
+   а человек решает, что выгрузка сломана. */
+async function exportBook() {
+  try {
+    const d = await API.request("/api/book/export?year=" + STATE.yearNumber + (CLIENT ? "&client=" + CLIENT : ""));
+    const head = ["№", "Дата", "Вид", "Сумма, ₽", "Категория", "Контрагент", "Примечание"];
+    const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [head.map(esc).join(";")];
+    for (const r of d.rows) {
+      lines.push([r.n, dmy(r.day), r.kind === "income" ? "доход" : "расход",
+                  String(r.amount).replace(".", ","), r.category, r.party, r.note].map(esc).join(";"));
+    }
+    const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `ЭкоФин — книга учёта ${d.year}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(`Выгружено записей: ${d.rows.length}`);
+  } catch (e) {
+    if (e.isPaywall) return showPaywall(e.message);
+    toast(e.message, "err");
+  }
+}
+
+load();
+window.addEventListener("pf:signedout", load);
+</script>
+</body>
+</html>

@@ -1,23 +1,39 @@
+<!-- Значок сайта: монета с рублём.
+
+     Были весы правосудия — знак прежнего названия. Сайт переставлен
+     финансами вперёд, и значок на вкладке, на домашнем экране телефона
+     и в превью ссылок должен говорить о деньгах, а не о суде.
+
+     Координаты повторяются в make-images.py (холст 512), чтобы правка
+     значка переносилась в PNG один в один. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#0e8f86"/>
       <stop offset="1" stop-color="#22c55e"/>
     </linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+    <!-- gradientUnits обязателен. По умолчанию градиент задан в долях
+         от рамки самой фигуры, а у вертикальной линии рамка нулевой
+         ширины: красить нечем, и линия не рисуется вовсе. Из-за этого
+         у рубля пропадали ножка и поперечина — оставалась одна чаша,
+         и значок читался как полумесяц. Те же грабли были и в прежних
+         весах, просто там их прятала низкая непрозрачность. -->
+    <linearGradient id="gold" gradientUnits="userSpaceOnUse"
+                    x1="106" y1="100" x2="406" y2="400">
       <stop offset="0" stop-color="#f4dd8f"/>
       <stop offset="1" stop-color="#b18f1f"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <g stroke="url(#gold)" stroke-width="16" stroke-linecap="round" fill="none">
-    <path d="M140 420 h232" stroke-linejoin="round"/>
-    <path d="M168 404 h176 l-12 -18 h-152 z" stroke-width="10"/>
-    <line x1="256" y1="386" x2="256" y2="120"/>
-    <circle cx="256" cy="86" r="26" stroke-width="13"/>
-    <path d="M110 128 Q256 92 402 128"/>
-    <path d="M78 170 a46 46 0 0 0 64 0 M78 170 v-20 M142 170 v-20 M78 150 h64" stroke-width="9"/>
-    <path d="M370 170 a46 46 0 0 0 64 0 M370 170 v-20 M434 170 v-20 M370 150 h64" stroke-width="9"/>
+  <g stroke="url(#gold)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Монета: ободок и внутренний кант -->
+    <circle cx="256" cy="250" r="150" stroke-width="18"/>
+    <circle cx="256" cy="250" r="128" stroke-width="6" opacity=".65"/>
+    <!-- Рубль: ножка, чаша, поперечина -->
+    <g stroke-width="26">
+      <path d="M226 170 v160"/>
+      <path d="M226 170 h4 a38 38 0 0 1 0 76 h-4"/>
+      <path d="M196 282 h86"/>
+    </g>
   </g>
-  <circle cx="256" cy="128" r="14" fill="#eed688"/>
 </svg>

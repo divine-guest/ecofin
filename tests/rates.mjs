@@ -114,5 +114,131 @@ console.log("\n— Взносы за сотрудника —");
   ok(over < naive, "сверх предельной базы ставка понижается", { over: Math.round(over), naive });
 }
 
+
+console.log("\n— Взносы за работника: обёртка не расходится с правилом —");
+{
+  /* payroll добавляет разбивку и стоимость работника, но само правило
+     должно оставаться одно. Если однажды кто-то перепишет расчёт внутри
+     payroll, эта проверка упадёт — ради неё она и написана. */
+  let same = true;
+  for (const [pay, months, small] of [[50000, 12, true], [50000, 12, false],
+                                       [80000, 12, true], [150000, 12, false], [80000, 6, true]]) {
+    const p = R.payroll({ monthly: pay, months, small });
+    const e = R.employerContrib(pay * months, { small, injury: R.payrollContrib.injuryMin, months });
+    if (!near(p.all, e, 0.01)) same = false;
+  }
+  ok(same, "payroll считает то же, что employerContrib");
+
+  const p = R.payroll({ monthly: 80000, months: 12, small: false });
+  ok(near(p.cost, p.total + p.main + p.injury, 1), `стоимость работника = зарплата + взносы: ${Math.round(p.cost)}`);
+  ok(near(p.onHand, p.total - R.ndfl(p.total), 1), "на руки = начислено минус НДФЛ");
+  ok(p.cost > p.total, "взносы платятся сверх зарплаты, а не из неё");
+}
+
+console.log("\n— Продажа имущества —");
+{
+  /* Выдержанный срок владения снимает налог целиком — это главное
+     в расчёте, и проверяем именно границу. */
+  ok(R.propertyTax({ price: 6e6, years: 5, realty: true }).free, "квартира: 5 лет — налога нет");
+  ok(!R.propertyTax({ price: 6e6, years: 4.9, realty: true }).free, "4,9 года — налог есть");
+  ok(R.propertyTax({ price: 6e6, years: 3, realty: true, special: true }).free,
+     "наследство и единственное жильё — достаточно 3 лет");
+  ok(R.propertyTax({ price: 900000, years: 3, realty: false }).free, "машина: 3 года — налога нет");
+
+  /* Из двух способов уменьшения выбирается выгодный. */
+  const a = R.propertyTax({ price: 6e6, bought: 4.5e6, years: 2, realty: true });
+  ok(a.base === 1.5e6, `дорогая покупка: выгоднее расходы, база ${a.base}`, a.base);
+  ok(a.better === "costs", "и это отмечено в ответе");
+  ok(near(a.tax, 1.5e6 * 0.13, 1), `налог 13% с 1,5 млн: ${Math.round(a.tax)}`, a.tax);
+
+  const b = R.propertyTax({ price: 3e6, bought: 2.9e6, years: 1, realty: true });
+  ok(b.base === 100000, `дешёвая разница: выгоднее расходы, база ${b.base}`, b.base);
+
+  const c = R.propertyTax({ price: 1.2e6, bought: 0, years: 1, realty: true });
+  ok(c.base === 200000, `без документов о покупке — вычет 1 млн, база ${c.base}`, c.base);
+  ok(c.better === "deduction", "и выгоднее здесь вычет");
+
+  /* Выше 2,4 млн базы включается вторая ступень. */
+  const d = R.propertyTax({ price: 10e6, bought: 0, years: 1, realty: true });
+  ok(d.base === 9e6 && d.tax > 9e6 * 0.13, "с базы выше 2,4 млн ставка растёт до 15%");
+}
+
+console.log("\n— Пособия по материнству —");
+{
+  const s = R.sickLeave;
+  const maxDaily = (s.bases[0] + s.bases[1]) / s.days;
+
+  const hi = R.maternityPay({ pay1: 9e6, pay2: 9e6, days: 140 });
+  ok(hi.atMax, "очень высокий заработок упирается в потолок");
+  ok(near(hi.daily, maxDaily, 0.01), `дневное пособие по потолку: ${Math.round(hi.daily)}`);
+  ok(near(hi.birth, maxDaily * 140, 1), `максимум за 140 дней: ${Math.round(hi.birth)}`);
+
+  const lo = R.maternityPay({ pay1: 50000, pay2: 50000, days: 140 });
+  ok(lo.atMin, "маленький заработок поднимается до минимума");
+  ok(near(lo.daily, s.minWageMonth * 24 / s.days, 0.01), "минимум считается из МРОТ");
+
+  const mid = R.maternityPay({ pay1: 900000, pay2: 1100000, days: 140 });
+  ok(!mid.atMax && !mid.atMin, "обычный заработок — без границ");
+  ok(near(mid.daily, 2e6 / s.days, 0.01), `дневное: ${Math.round(mid.daily)}`);
+  ok(near(mid.careMonthly, mid.daily * R.maternity.careMonthDays * 0.4, 1),
+     `уход до 1,5 лет — 40%: ${Math.round(mid.careMonthly)}`);
+
+  /* Дни болезни уменьшают знаменатель, то есть повышают пособие. */
+  const sick = R.maternityPay({ pay1: 900000, pay2: 1100000, days: 140, excluded: 100 });
+  ok(sick.daily > mid.daily, "исключённые дни болезни повышают пособие, а не понижают");
+
+  ok(R.maternityPay({ pay1: 9e6, pay2: 9e6, days: 194 }).birth >
+     R.maternityPay({ pay1: 9e6, pay2: 9e6, days: 140 }).birth, "за 194 дня платят больше, чем за 140");
+}
+
+console.log("\n— Алименты —");
+{
+  const net = 100000 - R.ndfl(1200000) / 12;
+  for (const [kids, share] of [[1, 0.25], [2, 1 / 3], [3, 0.5]]) {
+    const a = R.alimonyPay({ income: 100000, kids });
+    ok(near(a.sum, net * share, 1), `на ${kids}: ${Math.round(a.sum)} (${Math.round(share * 100)}%)`, a.sum);
+  }
+  ok(near(R.alimonyPay({ income: 100000, kids: 1 }).net, net, 1),
+     "доля считается от дохода ПОСЛЕ НДФЛ, а не от начисленного");
+  ok(R.alimonyPay({ income: 87000, kids: 1, alreadyNet: true }).sum > R.alimonyPay({ income: 87000, kids: 1 }).sum,
+     "если сумма уже на руки, НДФЛ второй раз не снимается");
+  ok(R.alimonyPay({ income: 100000, kids: 5 }).share === 0.5, "больше трёх детей — та же половина");
+  ok(!R.alimonyPay({ income: 100000, kids: 3 }).capped, "половина дохода не упирается в предел 70%");
+}
+
+console.log("\n— Исковая давность —");
+{
+  const l = R.limitationEnds({ knownAt: "2024-03-15" });
+  ok(l.ends.getFullYear() === 2027, `три года от даты, когда узнали: ${l.ends.toLocaleDateString("ru-RU")}`);
+
+  const withClaim = R.limitationEnds({ knownAt: "2024-03-15", claimDays: 30 });
+  ok(withClaim.ends > l.ends, "досудебная претензия сдвигает срок вперёд");
+
+  const capped = R.limitationEnds({ knownAt: "2024-03-15", claimDays: 999 });
+  const half = R.limitationEnds({ knownAt: "2024-03-15", claimDays: R.limitation.claimPauseDays });
+  ok(near(capped.ends.getTime(), half.ends.getTime(), 1000), "приостановка не больше полугода");
+
+  const old = R.limitationEnds({ knownAt: "2024-03-15", brokenAt: "2010-01-01" });
+  ok(old.cutByAbsolute, "предельный десятилетний срок обрезает общий");
+  ok(old.real.getFullYear() === 2020, `и побеждает: ${old.real.toLocaleDateString("ru-RU")}`);
+
+  ok(R.limitationEnds({ knownAt: "не дата" }) === null, "битая дата не ломает расчёт");
+  ok(R.limitationEnds({ knownAt: "2019-01-10" }).daysLeft < 0, "истёкший срок даёт отрицательный остаток");
+}
+
+console.log("\n— Налог с вклада —");
+{
+  const d = R.depositTax({ interest: 250000, maxKeyRate: 21 });
+  ok(near(d.free, 210000), `необлагаемый минимум = 1 млн × 21%: ${Math.round(d.free)}`, d.free);
+  ok(near(d.base, 40000), `облагается только превышение: ${Math.round(d.base)}`, d.base);
+  ok(near(d.tax, 40000 * 0.13, 1), `налог 13%: ${Math.round(d.tax)}`, d.tax);
+
+  ok(R.depositTax({ interest: 100000, maxKeyRate: 21 }).tax === 0, "доход ниже минимума — налога нет");
+  ok(R.depositTax({ interest: 5e6, maxKeyRate: 21 }).tax > (5e6 - 210000) * 0.13,
+     "с большой суммы включается вторая ступень 15%");
+  const lowRate = R.depositTax({ interest: 250000, maxKeyRate: 10 });
+  ok(lowRate.tax > d.tax, "чем ниже ключевая ставка, тем больше налог: минимум меньше");
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

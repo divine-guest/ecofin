@@ -218,13 +218,78 @@ export async function changePassword(request, env, origin, user) {
   return json(env, origin, { ok: true });
 }
 
+/* POST /api/auth/delete — удаление аккаунта.
+
+   Раньше отсюда исчезали четыре таблицы из пятнадцати. Всё остальное —
+   напоминания, уведомления, заметки, сохранённые расчёты, история
+   вопросов к ИИ, привязка к Telegram, операции с баллами — оставалось
+   в базе навсегда, вместе с почтой человека.
+
+   Это не мелочь. 152-ФЗ (ст. 14) даёт человеку право потребовать
+   удаления своих данных, а сервис оформляется на ИП с уведомлением
+   в РКН — то есть отвечает за это по закону. Кнопка «удалить аккаунт»,
+   которая удаляет четверть данных, хуже отсутствующей: она обещает то,
+   чего не делает.
+
+   Два исключения, и оба намеренные:
+
+   payments — записи об оплатах остаются, но обезличиваются. Первичные
+   документы по расчётам организация обязана хранить пять лет (ФЗ-402,
+   ст. 29), и выручка в отчётности не должна проседать задним числом от
+   того, что кто-то удалил аккаунт. Сумма и дата — не персональные данные,
+   как только от них отвязана личность.
+
+   public_qa — опубликованные ответы остаются в ленте, тоже без почты:
+   человек соглашался на публикацию, и лента — общее знание, а не его
+   личная страница. Неопубликованные (ожидающие и отклонённые) удаляются
+   целиком: их никто не видел и согласия на них никто не давал.
+
+   ВАЖНО при добавлении нового раздела: таблицу с полем email надо
+   вписать сюда сразу. Забыть легко — список ниже длинный и на глаз
+   выглядит полным. Ровно это и случилось с book_ops: раздел появился,
+   в удаление не попал, и поймала это только проверка в
+   tests/profile_test.mjs, которая заводит тот же адрес заново и смотрит,
+   не прицепились ли к нему прежние данные. Не убирайте её.             */
 export async function deleteAccount(request, env, origin, user) {
-  if (user.role === "admin") return fail(env, origin, "Аккаунт администратора нельзя удалить из кабинета", 403);
+  if (user.role === "admin" || user.role === "owner")
+    return fail(env, origin,
+      "Аккаунт с правами администратора нельзя удалить из кабинета — сначала снимите права", 403);
+
+  const e = user.email;
+  const P = sql => env.DB.prepare(sql).bind(e);
+
+  /* Отметки об отправленных напоминаниях связаны не почтой, а номером
+     напоминания, поэтому чистим их ДО самих напоминаний: после удаления
+     подзапрос уже ничего не найдёт, и строки остались бы висеть. */
+  await env.DB.prepare(
+    "DELETE FROM reminder_sent WHERE reminder_id IN (SELECT id FROM reminders WHERE email = ?)"
+  ).bind(e).run().catch(() => {});
+
   await env.DB.batch([
-    env.DB.prepare("DELETE FROM sessions WHERE email = ?").bind(user.email),
-    env.DB.prepare("DELETE FROM usage    WHERE email = ?").bind(user.email),
-    env.DB.prepare("DELETE FROM actions  WHERE email = ?").bind(user.email),
-    env.DB.prepare("DELETE FROM users    WHERE email = ?").bind(user.email),
+    P("DELETE FROM sessions      WHERE email = ?"),
+    P("DELETE FROM usage         WHERE email = ?"),
+    P("DELETE FROM actions       WHERE email = ?"),
+    P("DELETE FROM reminders     WHERE email = ?"),
+    P("DELETE FROM notifications WHERE email = ?"),
+    P("DELETE FROM ai_jobs       WHERE email = ?"),
+    P("DELETE FROM point_ops     WHERE email = ?"),
+    P("DELETE FROM progress      WHERE email = ?"),
+    P("DELETE FROM saved_calcs   WHERE email = ?"),
+    P("DELETE FROM tg_link_codes WHERE email = ?"),
+    P("DELETE FROM qa_useful     WHERE email = ?"),
+    P("DELETE FROM book_ops      WHERE email = ?"),
+    env.DB.prepare("DELETE FROM clients WHERE owner = ?").bind(e),
+    P("DELETE FROM public_qa     WHERE email = ? AND status != 'published'"),
+
+    /* Обезличиваем то, что обязаны сохранить. */
+    env.DB.prepare("UPDATE public_qa SET email = 'удалён' WHERE email = ?").bind(e),
+    env.DB.prepare("UPDATE payments  SET email = 'удалён' WHERE email = ?").bind(e),
+
+    /* Приглашённые этим человеком не должны остаться со ссылкой
+       в никуда: иначе подсчёт приглашений будет считать пустоту. */
+    env.DB.prepare("UPDATE users SET referred_by = NULL WHERE referred_by = ?").bind(e),
+
+    P("DELETE FROM users WHERE email = ?"),
   ]);
   return json(env, origin, { ok: true });
 }
@@ -275,6 +340,10 @@ export async function ownerRecover(request, env, origin) {
   const given = await sha256(secret);
   const want = await sha256(env.RECOVERY_SECRET);
   if (given !== want) return fail(env, origin, "Неверный ключ восстановления", 403);
+  /* Ключ верный — значит это владелец. Счётчик попыток обнуляем, чтобы
+     опечатка в новом пароле не съела оставшиеся попытки: человек и так
+     заперт снаружи, добивать его лимитом незачем. */
+  await forgive(env, request, "recover", email).catch(() => {});
 
   if (!ownerEmails(env).includes(email))
     return fail(env, origin, "Этот адрес не значится владельцем сервиса", 403);

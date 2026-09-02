@@ -147,4 +147,29 @@ const after = await info();
 console.log("\nГотово. Теперь Telegram шлёт сюда:");
 console.log("  " + after.url);
 console.log("  секрет проверяется: " + (SECRET ? "да" : "НЕТ — стоит задать TELEGRAM_WEBHOOK_SECRET"));
+
+/* Меню команд.
+
+   Без него Telegram не показывает подсказку по нажатию «/», и человек
+   узнаёт о командах только из /help — то есть почти никогда. Список
+   короткий намеренно: в меню имеет смысл держать то, чем пользуются
+   каждый день, остальное всё равно останется в /help.
+
+   Команды с кириллическими названиями сюда не кладём: Telegram
+   принимает в меню только латиницу, а работать они продолжат. */
+const MENU = [
+  { command: "dohod",   description: "Записать поступление: /dohod 50000 ООО Ромашка" },
+  { command: "rashod",  description: "Записать трату: /rashod 18000 Реклама" },
+  { command: "delo",    description: "Доход и расходы за год" },
+  { command: "sroki",   description: "Ближайшие напоминания" },
+  { command: "dobavit", description: "Добавить напоминание" },
+  { command: "svodka",  description: "Что у вас на этой неделе" },
+  { command: "profil",  description: "Тариф, лимиты, баллы" },
+  { command: "podpiska", description: "Подписка и до какого числа" },
+  { command: "help",    description: "Все команды" },
+];
+
+const menuRes = await api("setMyCommands", { commands: MENU });
+console.log("  меню команд: " + (menuRes.ok ? "обновлено" : "не удалось — " + JSON.stringify(menuRes).slice(0, 120)));
 console.log("");
+

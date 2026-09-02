@@ -111,6 +111,46 @@ else {
      "вернуться к теме сервиса можно и без подписки");
 }
 
+
+console.log("\n— Распознавание документа по фото —");
+{
+  /* Крошечная белая точка: содержимое неважно, важно, что запрос
+     проходит проверки и доходит до модели. */
+  const dot = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+  ok((await call("/api/ocr", { method: "POST", body: { images: [dot] } })).status === 401,
+     "без входа распознавание закрыто");
+
+  const guest = await make("ocr");
+  ok((await call("/api/ocr", { method: "POST", token: guest.token, body: { images: [] } })).status === 400,
+     "пустой список изображений отклонён");
+  ok((await call("/api/ocr", { method: "POST", token: guest.token, body: { images: ["javascript:alert(1)"] } })).status === 400,
+     "не-картинка отклонена");
+  ok((await call("/api/ocr", { method: "POST", token: guest.token, body: { images: ["data:image/png;base64," + "A".repeat(7e6)] } })).status === 400,
+     "слишком большое изображение отклонено");
+
+  /* Расход тот же, что у разбора: иначе распознавание стало бы способом
+     получить разбор в обход лимита — распознал, отправил текст дальше. */
+  const before = (await call("/api/quota", { token: guest.token })).data;
+  const run = await call("/api/ocr", { method: "POST", token: guest.token, body: { images: [dot], fileName: "точка.png" } });
+  ok(run.status === 200 || run.status === 502 || run.status === 504,
+     `распознавание отвечает (${run.status})`, run.data.error);
+
+  const after = (await call("/api/quota", { token: guest.token })).data;
+  if (run.status === 200) {
+    ok(after.tool.left === before.tool.left - 1, `успешный запуск списал попытку: было ${before.tool.left}, стало ${after.tool.left}`);
+    /* Второй заход на исчерпанном лимите обязан упереться в пейволл,
+       а не молча сработать. */
+    const again = await call("/api/ocr", { method: "POST", token: guest.token, body: { images: [dot] } });
+    ok(again.status === 402 && again.data.paywall, "на исчерпанном лимите — предложение подписки, а не отказ");
+  } else {
+    /* Провайдер не ответил — попытка должна вернуться. У бесплатного
+       тарифа она одна, и сжигать её за чужой сбой нечестно. */
+    ok(after.tool.left === before.tool.left,
+       `при сбое провайдера попытка возвращена: было ${before.tool.left}, осталось ${after.tool.left}`);
+  }
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 
 await cleanup(admin.email);

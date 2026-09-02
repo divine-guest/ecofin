@@ -72,6 +72,45 @@ ok((await call("/api/auth/login", { method: "POST", body: { email, password: rp.
 ok((await call("/api/auth/login", { method: "POST", body: { email, password: "parol12345" } })).status === 401,
    "старый пароль больше не подходит");
 
+console.log("\n— Удаление аккаунта уносит ВСЕ личные данные —");
+/* Раньше кнопка «удалить аккаунт» чистила четыре таблицы из пятнадцати:
+   напоминания, заметки, уведомления и прочее оставались в базе вместе
+   с почтой человека. 152-ФЗ (ст. 14) даёт право потребовать удаления,
+   и кнопка, которая удаляет четверть, хуже отсутствующей — она обещает
+   то, чего не делает.
+
+   Проверяем не «вернулось ли ok», а то, что данных действительно нет:
+   заводим человека, оставляем следы в разных разделах, удаляем и
+   пробуем достать следы заново. */
+const dEmail = `del${Date.now()}@test.ru`;
+const dReg = await call("/api/auth/register", { method: "POST", body: { name: "Удаляемый Тест", email: dEmail, password: "parol12345" } });
+const dT = dReg.data.token;
+
+const dueSoon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+ok((await call("/api/reminders", { method: "POST", token: dT, body: { title: "Декларация УСН", due: dueSoon } })).status === 201,
+   "у человека есть напоминание");
+ok((await call("/api/notes", { method: "POST", token: dT, body: { text: "мои доходы за март" } })).status === 200,
+   "и заметка в блокноте");
+ok((await call("/api/book/op", { method: "POST", token: dT, body: { day: dueSoon.slice(0, 8) + "01", kind: "income", amount: 50000 } })).status === 201,
+   "и запись в учёте");
+
+ok((await call("/api/auth/delete", { method: "POST", token: dT })).status === 200, "аккаунт удалён");
+ok((await call("/api/auth/me", { token: dT })).status === 401, "прежний токен больше не работает");
+
+/* Заводим тот же адрес заново: если старые строки остались в базе,
+   они прицепятся к новому аккаунту — это и есть проверка. */
+const again = await call("/api/auth/register", { method: "POST", body: { name: "Он Же Снова", email: dEmail, password: "parol12345" } });
+ok(again.status === 201, "адрес освободился, можно зарегистрироваться заново");
+const aT = again.data.token;
+ok(((await call("/api/reminders", { token: aT })).data.reminders || []).length === 0, "напоминаний от прошлого аккаунта не осталось");
+ok(!((await call("/api/notes", { token: aT })).data.text || ""), "заметок от прошлого аккаунта не осталось");
+ok((await call("/api/book", { token: aT })).data.year.income === 0, "записей учёта от прошлого аккаунта не осталось");
+ok((await call("/api/auth/me", { token: aT })).data.user.plan === "free", "новый аккаунт чистый");
+
+console.log("\n— Владельца и админа нельзя удалить из кабинета —");
+ok((await call("/api/auth/delete", { method: "POST", token: ot })).status === 403,
+   "аккаунт с правами админа кнопкой в кабинете не удаляется");
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);
 

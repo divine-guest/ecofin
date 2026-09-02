@@ -261,6 +261,9 @@ async function buildSitemap(articles, today) {
   const pages = [
     ["", "1.0", "weekly"],
     ["situations.html", "0.95", "weekly"],
+    ["book.html", "0.9", "weekly"],
+    ["docs.html", "0.9", "weekly"],
+    ["clients.html", "0.7", "monthly"],
     ["tools.html", "0.9", "weekly"],
     ["calc.html", "0.9", "weekly"],
     ["knowledge.html", "0.9", "weekly"],

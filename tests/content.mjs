@@ -138,9 +138,22 @@ ok(heroNum("калькулятор") === calcCount,
 ok(heroNum("стат") === ARTICLES.length,
    `статей: на главной ${heroNum("стат")}, в базе знаний ${ARTICLES.length}`);
 
+/* На витрине они названы «готовыми документами», а не «шаблонами»:
+   человек ищет документ, а слово «шаблон» обещает заготовку, которую
+   ещё надо доделывать. Ищем по слову «документ» — оно в счётчиках
+   главной встречается ровно один раз. */
 const tplCount = Object.keys(load("../js/templates.js", ["TEMPLATES"]).TEMPLATES).length;
-ok(heroNum("шаблон") === tplCount,
-   `шаблонов: на главной ${heroNum("шаблон")}, в templates.js ${tplCount}`);
+ok(heroNum("документ") === tplCount,
+   `документов: на главной ${heroNum("документ")}, в templates.js ${tplCount}`);
+
+/* Каждый документ должен лежать в какой-то группе, иначе он есть
+   в библиотеке, но его не видно на странице. */
+const { TEMPLATES: T2, TEMPLATE_GROUPS } = load("../js/templates.js", ["TEMPLATES", "TEMPLATE_GROUPS"]);
+const grouped = TEMPLATE_GROUPS.flatMap(g => g[2]);
+const orphan = Object.keys(T2).filter(t => !grouped.includes(t));
+const ghost = grouped.filter(t => !T2[t]);
+ok(orphan.length === 0, `все документы разложены по группам${orphan.length ? ": не попали — " + orphan.join(", ") : ""}`);
+ok(ghost.length === 0, `в группах нет ссылок на несуществующие документы${ghost.length ? ": " + ghost.join(", ") : ""}`);
 
 /* Цены в разметке для поиска обязаны совпадать с тарифами воркера:
    расхождение цены на витрине и в кассе — претензия потребителя. */

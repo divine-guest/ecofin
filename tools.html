@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ИИ-Инструменты — ЭкоФин</title>
 <!-- seo:start -->
-<meta name="description" content="ИИ-инструменты ЭкоФин: генератор документов, анализ договора по файлу или фотографии, налоговый помощник и чек-листы.">
+<meta name="description" content="ИИ-инструменты ЭкоФин: разбор договора по файлу или фото, ответ на претензию и требование, оценка последствий ситуации, объяснение в банк по 115-ФЗ, сравнение редакций договора, подбор ОКВЭД и чек-листы.">
 <link rel="canonical" href="https://divine-guest.github.io/ecofin/tools.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ЭкоФин">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:title" content="ИИ-Инструменты — ЭкоФин">
-<meta property="og:description" content="ИИ-инструменты ЭкоФин: генератор документов, анализ договора по файлу или фотографии, налоговый помощник и чек-листы.">
+<meta property="og:description" content="ИИ-инструменты ЭкоФин: разбор договора по файлу или фото, ответ на претензию и требование, оценка последствий ситуации, объяснение в банк по 115-ФЗ, сравнение редакций договора, подбор ОКВЭД и чек-листы.">
 <meta property="og:url" content="https://divine-guest.github.io/ecofin/tools.html">
 <meta property="og:image" content="https://divine-guest.github.io/ecofin/og-cover.png">
 <meta property="og:image:width" content="1200">
@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=91">
+<link rel="stylesheet" href="css/style.css?v=105">
 </head>
 <body>
 <main class="section tint-green">
@@ -45,6 +45,12 @@
       <button class="tab" onclick="switchTool(5,this)">Налоговый помощник</button>
       <button class="tab" onclick="switchTool(6,this)">Чек-листы</button>
       <button class="tab" onclick="switchTool(7,this)">Шаблоны без ИИ</button>
+      <button class="tab" onclick="switchTool(8,this)">Чем это грозит</button>
+      <button class="tab" onclick="switchTool(9,this)">Объяснение в банк</button>
+      <button class="tab" onclick="switchTool(10,this)">Что изменилось в договоре</button>
+      <button class="tab" onclick="switchTool(11,this)">Подбор ОКВЭД</button>
+      <button class="tab" onclick="switchTool(12,this)">Аудит карточки товара</button>
+      <button class="tab" onclick="switchTool(13,this)">Сверка с налоговой</button>
     </div>
 
     <!-- Генератор документов -->
@@ -174,6 +180,21 @@
         <label>Что за сделка</label>
         <input type="text" id="cpDeal" placeholder="Например: поставка на 2 млн с отсрочкой 30 дней">
       </div>
+
+      <!-- Проверка по реестрам. Стоит выше плана проверки намеренно:
+           статус самозанятого — не совет, а факт, и он либо есть,
+           либо его нет. Совет читают после. -->
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>Дата выплаты — на неё и проверяем статус</label>
+          <input type="date" id="cpDate">
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end">
+          <button class="btn" onclick="checkRegistry()">Проверить по реестрам</button>
+        </div>
+      </div>
+      <div id="cpRegistry"></div>
+
       <div id="innLinks" class="check-links"></div>
       <button class="btn" onclick="genCounterparty()">Собрать план проверки</button>
       <div class="ai-result" id="cpResult"></div>
@@ -244,21 +265,286 @@
       <button class="btn secondary" id="tplSave" style="display:none" onclick="saveTemplate()">Сохранить в мои документы</button>
       <div class="ai-result" id="tplResult"></div>
     </div>
+
+    <!-- ===== Чем это грозит =====
+         Единственный инструмент, которому не нужен документ. Человек
+         приходит с ситуацией, а не с бумагой: «не пробил чек», «работаю
+         без ИП», «взял предоплату и не сделал». Ему нужно знать цену
+         вопроса и есть ли ещё время всё исправить. -->
+    <div class="tab-panel game-stage" id="toolRisk">
+      <p style="color:var(--muted);margin-bottom:14px">
+        Опишите ситуацию своими словами — получите: чем это грозит по закону,
+        какие суммы штрафов, сколько времени осталось и что сделать,
+        чтобы уменьшить последствия. Документ не нужен.
+      </p>
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>Кто вы</label>
+          <select id="riskWho">
+            <option>Самозанятый</option>
+            <option>ИП</option>
+            <option>Директор или учредитель ООО</option>
+            <option>Работник</option>
+            <option>Работодатель</option>
+            <option>Физлицо, не бизнес</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Уже случилось или только собираетесь?</label>
+          <select id="riskWhen">
+            <option>Уже произошло</option>
+            <option>Происходит прямо сейчас</option>
+            <option>Только планирую — хочу понять риски заранее</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Что произошло</label>
+        <textarea id="riskText" rows="6" placeholder="Например: работаю с клиентами без регистрации, доход около 80 тысяч в месяц, длится второй год"></textarea>
+      </div>
+      <button class="btn" onclick="genRisk()">Оценить последствия</button>
+      <div class="ai-result" id="riskResult"></div>
+    </div>
+
+    <!-- ===== Объяснение в банк по 115-ФЗ =====
+         Счёт блокируют внезапно, деньги замирают, а банк требует
+         объяснение в свободной форме и в короткий срок. Это самая
+         дорогая по времени бумага у предпринимателя. -->
+    <div class="tab-panel game-stage" id="toolBank">
+      <p style="color:var(--muted);margin-bottom:14px">
+        Банк приостановил операции или запросил документы по 115-ФЗ.
+        Составим объяснение и список приложений — так, как это принято
+        в банковском комплаенсе: коротко, по существу, с документами.
+      </p>
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>Что сделал банк</label>
+          <select id="bankWhat">
+            <option>Запросил документы и пояснения</option>
+            <option>Приостановил дистанционное обслуживание</option>
+            <option>Отказал в проведении операции</option>
+            <option>Заблокировал счёт полностью</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ваш статус</label>
+          <select id="bankWho">
+            <option>ИП</option>
+            <option>ООО</option>
+            <option>Самозанятый</option>
+            <option>Физлицо</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Какие операции вызвали вопросы</label>
+        <textarea id="bankOps" rows="5" placeholder="Например: поступило 1,8 млн от нового заказчика по договору поставки, в тот же день перевёл 1,5 млн поставщику"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Чем можете подтвердить (перечислите, что есть на руках)</label>
+        <textarea id="bankDocs" rows="3" placeholder="Договор с заказчиком, счета, акты, накладные от поставщика, налоговая декларация"></textarea>
+      </div>
+      <button class="btn" onclick="genBank()">Составить объяснение</button>
+      <div class="ai-result" id="bankResult"></div>
+    </div>
+
+    <!-- ===== Сравнение редакций договора =====
+         Контрагент присылает «мы чуть поправили» — и в новой редакции
+         меняется подсудность или срок оплаты. Глазами это не ловится. -->
+    <div class="tab-panel game-stage" id="toolDiff">
+      <p style="color:var(--muted);margin-bottom:14px">
+        Контрагент прислал новую редакцию договора? Вставьте обе — покажем,
+        что именно изменилось, и объясним, в чью пользу каждая правка.
+      </p>
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>Было — первая редакция</label>
+          <textarea id="diffOld" rows="12" placeholder="Вставьте текст исходного договора…"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Стало — новая редакция</label>
+          <textarea id="diffNew" rows="12" placeholder="Вставьте текст новой редакции…"></textarea>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Чью сторону вы занимаете</label>
+        <select id="diffSide">
+          <option>Исполнитель / поставщик — я оказываю услуги или поставляю</option>
+          <option>Заказчик / покупатель — я плачу</option>
+          <option>Арендатор</option>
+          <option>Арендодатель</option>
+        </select>
+      </div>
+      <button class="btn" onclick="genDiff()">Найти изменения</button>
+      <div class="ai-result" id="diffResult"></div>
+    </div>
+
+    <!-- ===== Подбор ОКВЭД =====
+         Ошибка в кодах стоит дорого и не сразу: банк блокирует платежи
+         «не по видам деятельности», а патент и льготы просто не дают. -->
+    <div class="tab-panel game-stage" id="toolOkved">
+      <p style="color:var(--muted);margin-bottom:14px">
+        Опишите, чем занимаетесь, — подберём коды ОКВЭД: основной и
+        дополнительные. От них зависят доступ к патенту и льготам, тариф
+        на травматизм и то, не заблокирует ли банк поступление
+        «не по вашей деятельности».
+      </p>
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>Форма</label>
+          <select id="okvedForm">
+            <option>Регистрирую ИП</option>
+            <option>Регистрирую ООО</option>
+            <option>Уже работаю — добавляю новое направление</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Планы на ближайший год</label>
+          <select id="okvedPlan">
+            <option>Только то, что описал</option>
+            <option>Возможно расширение — заложите запас кодов</option>
+            <option>Хочу применять патент</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Чем занимаетесь</label>
+        <textarea id="okvedText" rows="5" placeholder="Например: делаю сайты и настраиваю рекламу, иногда продаю готовые шаблоны и провожу обучение"></textarea>
+      </div>
+      <button class="btn" onclick="genOkved()">Подобрать коды</button>
+      <div class="ai-result" id="okvedResult"></div>
+    </div>
+<!-- ===== Аудит карточки товара =====
+         Сервисов, которые советуют «добавьте ключевых слов», хватает.
+         Наше отличие в другом: карточка — это ещё и публичная оферта
+         и реклама одновременно. За отсутствие обязательных сведений
+         штрафует Роспотребнадзор, за «лучший на рынке» без подтверждения
+         — ФАС, за немаркированный товар — налоговая. Маркетолог этого
+         не увидит, а мы для того и нужны. -->
+    <div class="tab-panel game-stage" id="toolCard">
+      <p style="color:var(--muted);margin-bottom:14px">
+        Разберём карточку с двух сторон сразу: что мешает продавать
+        и что нарушает закон. Второе дороже — за обязательные сведения
+        штрафует Роспотребнадзор, за превосходные степени без доказательств — ФАС.
+      </p>
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>Где продаёте</label>
+          <select id="cardWhere">
+            <option>Wildberries</option>
+            <option>Ozon</option>
+            <option>Яндекс Маркет</option>
+            <option>Свой сайт или соцсети</option>
+            <option>Авито</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Категория товара</label>
+          <input type="text" id="cardCat" placeholder="Например: женские платья, БАДы, детские игрушки">
+        </div>
+        <div class="form-group">
+          <label>Цена, ₽</label>
+          <input type="number" id="cardPrice" placeholder="2490">
+        </div>
+        <div class="form-group">
+          <label>Цена у конкурентов, ₽ (необязательно)</label>
+          <input type="text" id="cardRivals" placeholder="1900–3200">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Название карточки — как оно есть сейчас</label>
+        <input type="text" id="cardTitle" maxlength="300" placeholder="Скопируйте название целиком, вместе со всеми словами">
+      </div>
+      <div class="form-group">
+        <label>Описание и характеристики</label>
+        <textarea id="cardText" rows="9" placeholder="Вставьте описание карточки. Можно приложить снимок экрана — распознаем."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Что известно про фотографии (необязательно)</label>
+        <input type="text" id="cardPhotos" placeholder="Например: 5 фото на белом фоне, инфографики нет, видео нет">
+      </div>
+      <button class="btn" onclick="genCard()">Разобрать карточку</button>
+      <div class="ai-result" id="cardResult"></div>
+    </div>
+<!-- ===== Сверка с налоговой =====
+         Единый налоговый счёт свёл все налоги в один кошелёк, и теперь
+         человек видит в личном кабинете одну цифру сальдо, из которой
+         невозможно понять, за что она. Отрицательное сальдо всплывает
+         внезапно, вместе с пенями, которые капали месяцами.
+
+         Сверять надо руками, и поэтому не сверяет никто. -->
+    <div class="tab-panel game-stage" id="toolRecon">
+      <p style="color:var(--muted);margin-bottom:14px">
+        Возьмите из личного кабинета ФНС справку о состоянии единого налогового
+        счёта или скриншот сальдо — разберём, из чего оно сложилось, сойдётся ли
+        с вашим учётом и что делать с расхождением.
+      </p>
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>Кто вы</label>
+          <select id="rcWho">
+            <option>ИП на УСН «Доходы»</option>
+            <option>ИП на УСН «Доходы минус расходы»</option>
+            <option>ИП на патенте</option>
+            <option>Самозанятый</option>
+            <option>ООО на УСН</option>
+            <option>ООО на ОСНО</option>
+            <option>Физлицо</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Сальдо ЕНС по данным ФНС, ₽</label>
+          <input type="text" id="rcSaldo" placeholder="Например: −18 400 или +5 200">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Что вы платили и когда — по своим данным</label>
+        <textarea id="rcMine" rows="5" placeholder="Например: 28.04 — 12 000 аванс УСН, 28.07 — 15 000 аванс УСН, 28.12 — 57 390 взносы"></textarea>
+        <p class="hint">Если ведёте «Моё дело», можно нажать кнопку ниже — подставим оттуда.</p>
+      </div>
+      <button class="btn small secondary no-print" onclick="fillFromBook()" style="margin-bottom:14px">Взять из «Моего дела»</button>
+      <div class="form-group">
+        <label>Справка из личного кабинета ФНС или скриншот сальдо</label>
+        <textarea id="rcText" rows="8" placeholder="Вставьте текст справки — или приложите файл либо снимок экрана."></textarea>
+      </div>
+      <button class="btn" onclick="genRecon()">Разобрать расхождение</button>
+      <div class="ai-result" id="rcResult"></div>
+    </div>
+
+
   </div>
   <div class="container"><div id="partnersTools"></div></div>
 </main>
 
-<script src="js/themes.js?v=91"></script>
-<script src="js/api.js?v=91"></script>
-<script src="js/app.js?v=91"></script>
-<script src="js/progress.js?v=91"></script>
-<script src="js/palette.js?v=91"></script>
-<script src="js/ai.js?v=91"></script>
-<script src="js/templates.js?v=91"></script>
-<script src="js/docscan.js?v=91"></script>
-<script src="js/partners.js?v=91"></script>
+<script src="js/themes.js?v=105"></script>
+<script src="js/api.js?v=105"></script>
+<script src="js/app.js?v=105"></script>
+<script src="js/progress.js?v=105"></script>
+<script src="js/palette.js?v=105"></script>
+<script src="js/ai.js?v=105"></script>
+<script src="js/templates.js?v=105"></script>
+<script src="js/docscan.js?v=105"></script>
+<script src="js/partners.js?v=105"></script>
 <script>
 initPage("tools.html");
+
+/* Любое поле, куда вставляют текст документа, принимает и файл, и фото.
+   Раньше приложить документ можно было только в разборе договора —
+   в остальных инструментах человек с бумагой на руках упирался
+   в «вставьте текст» и уходил. Список короткий намеренно: поля,
+   куда кладут именно документ, а не свои пояснения. */
+document.addEventListener("pf:ready", () => {
+  const fields = [
+    ["replyText", "Приложить претензию, требование или иск"],
+    ["plainText", "Приложить документ, который надо объяснить"],
+    ["diffOld",   "Приложить первую редакцию"],
+    ["diffNew",   "Приложить новую редакцию"],
+    ["bankOps",   "Приложить запрос банка"],
+    ["cardText",  "Приложить снимок карточки"],
+    ["rcText",    "Приложить справку из личного кабинета ФНС"],
+  ];
+  for (const [id, label] of fields) DOCSCAN.attach({ target: id, label });
+});
 
 /* Блок партнёрских предложений внизу страницы инструментов. */
 document.addEventListener("pf:ready", () => PARTNERS.render("partnersTools", "tools"));
@@ -396,6 +682,249 @@ async function runAI(prompt, offlineFn, resultId, action, system) {
     }
   }
   renderQuota();
+}
+
+/* --- Чем это грозит ---
+
+   Отличается от всех остальных тем, что не требует документа. Человек
+   приходит не с бумагой, а с тревогой: «а что мне будет». Ему нужны три
+   вещи в таком порядке: цена вопроса, сколько осталось времени и можно
+   ли ещё всё исправить самому. Порядок закреплён в системной подсказке,
+   иначе модель начинает с общих рассуждений о законе. */
+function genRisk() {
+  const who = document.getElementById("riskWho").value;
+  const when = document.getElementById("riskWhen").value;
+  const text = document.getElementById("riskText").value.trim();
+  if (text.length < 15) return toast("Опишите ситуацию подробнее — хотя бы пару предложений");
+
+  return runAI(
+    `Статус: ${who}. Стадия: ${when}.\n\nСитуация:\n${text}`,
+    null, "riskResult", "Оценка последствий",
+    `Ты — юрист-практик по российскому праву. Тебе описывают ЖИТЕЙСКУЮ ситуацию без документов.
+
+Ответь строго в этом порядке:
+1. ЧТО ЭТО ПО ЗАКОНУ — как ситуация квалифицируется, какими нормами регулируется.
+2. ЧЕМ ГРОЗИТ — перечисли конкретные последствия с суммами: штрафы (статья КоАП/НК и вилка сумм), доначисления, пени, блокировки, ответственность директора. Если есть уголовный порог — назови его прямо и укажи, с какой суммы он наступает.
+3. СРОКИ — сколько времени есть: срок давности привлечения, срок на исправление, когда обычно всплывает.
+4. ЧТО СДЕЛАТЬ СЕЙЧАС — пронумерованный список действий, от самого срочного. Отдельно выдели то, что снижает или снимает ответственность при добровольном исправлении.
+5. ЧЕГО НЕ ДЕЛАТЬ — типичные ошибки, которые ухудшают положение.
+
+Пиши цифрами и статьями, а не общими словами. Если данных не хватает для оценки суммы — скажи, какой именно цифры не хватает. В конце одной строкой: это информационная оценка, а не юридическая консультация.`
+  );
+}
+
+/* --- Объяснение в банк по 115-ФЗ ---
+
+   Банк даёт короткий срок и ждёт документ определённого вида. Здесь
+   важнее формат, чем красноречие: комплаенс читает быстро и ищет
+   экономический смысл операции и подтверждающие бумаги. */
+function genBank() {
+  const what = document.getElementById("bankWhat").value;
+  const who = document.getElementById("bankWho").value;
+  const ops = document.getElementById("bankOps").value.trim();
+  const docs = document.getElementById("bankDocs").value.trim();
+  if (ops.length < 15) return toast("Опишите операции, которые вызвали вопросы");
+
+  return runAI(
+    `Статус клиента: ${who}. Действие банка: ${what}.\n\nОперации, вызвавшие вопросы:\n${ops}\n\nПодтверждающие документы на руках:\n${docs || "не указаны"}`,
+    null, "bankResult", "Объяснение в банк по 115-ФЗ",
+    `Ты — специалист по банковскому комплаенсу, знаешь 115-ФЗ и методички ЦБ (в том числе 375-П и признаки сомнительных операций).
+
+Подготовь ДВЕ части.
+
+ЧАСТЬ 1 — готовое письмо в банк. Деловой стиль, от первого лица, без эмоций и без ссылок на «нарушение моих прав». Структура: кто мы и чем занимаемся (реальная экономическая деятельность), по какой операции вопрос, экономический смысл операции, кто контрагент и как его нашли, чем подтверждается, перечень приложений нумерованным списком. Объём — одна страница: комплаенс читает быстро.
+
+ЧАСТЬ 2 — что приложить и что сделать. Список документов по каждому пункту письма. Отдельно: сроки ответа банку, что делать при отказе (обращение в межведомственную комиссию ЦБ), и чего категорически не делать — не дробить платежи, не снимать наличные, не открывать счёт в другом банке «пока разбираются», потому что это подтверждает подозрения.
+
+Если из описания видно конкретный признак сомнительности (транзит, обналичивание, несоответствие ОКВЭД, отсутствие налоговых платежей со счёта) — назови его прямо и объясни, как это опровергнуть документами.`
+  );
+}
+
+/* --- Что изменилось в новой редакции ---
+
+   Правки присылают со словами «мы чуть поправили», и глазами
+   расхождение в одном слове не ловится. Модель здесь именно
+   сравнивает, а не пересказывает — это оговорено отдельно, иначе
+   она начинает разбирать новый договор с нуля. */
+function genDiff() {
+  const oldT = document.getElementById("diffOld").value.trim();
+  const newT = document.getElementById("diffNew").value.trim();
+  const side = document.getElementById("diffSide").value;
+  if (oldT.length < 100 || newT.length < 100)
+    return toast("Вставьте обе редакции целиком — иначе сравнивать нечего");
+
+  return runAI(
+    `Моя сторона: ${side}.\n\n=== БЫЛО ===\n${oldT}\n\n=== СТАЛО ===\n${newT}`,
+    null, "diffResult", "Сравнение редакций договора",
+    `Ты — юрист по договорной работе. Тебе дают две редакции одного договора. Задача — СРАВНИТЬ их, а не пересказывать содержание.
+
+Формат ответа:
+
+1. КОРОТКО — одно предложение: в чью пользу правки в целом.
+
+2. ИЗМЕНЕНИЯ ПО ПУНКТАМ. Для каждого: номер пункта → что было → что стало → в чью пользу → чем грозит стороне пользователя. Сортируй по опасности, а не по порядку в договоре. Особое внимание: цена и порядок расчётов, сроки, ответственность и неустойки, порядок расторжения, подсудность, применимое право, порядок приёмки, переход прав.
+
+3. ЧТО ИСЧЕЗЛО — пункты, которые были и пропали. Это самая опасная категория: удаление замечают реже, чем добавление.
+
+4. ЧТО ДОБАВИЛОСЬ — новые пункты, которых не было.
+
+5. ЧТО ТРЕБОВАТЬ ОБРАТНО — конкретные формулировки для протокола разногласий, в порядке приоритета.
+
+Если редакции совпадают дословно — так и скажи, не выдумывай различий. Косметические правки (опечатки, пунктуация) собери одной строкой в конце, не расписывай.`
+  );
+}
+
+/* --- Подбор ОКВЭД ---
+
+   Коды выбирают один раз и потом годами платят за ошибку: банк не
+   пропускает платежи «не по деятельности», патент не дают, тариф
+   на травматизм оказывается втрое выше нужного. */
+function genOkved() {
+  const form = document.getElementById("okvedForm").value;
+  const plan = document.getElementById("okvedPlan").value;
+  const text = document.getElementById("okvedText").value.trim();
+  if (text.length < 10) return toast("Опишите, чем занимаетесь");
+
+  return runAI(
+    `Форма: ${form}. Планы: ${plan}.\n\nДеятельность:\n${text}`,
+    null, "okvedResult", "Подбор кодов ОКВЭД",
+    `Ты — специалист по регистрации бизнеса, знаешь классификатор ОКВЭД-2 (ОК 029-2014).
+
+Подбери коды и объясни выбор:
+
+1. ОСНОВНОЙ КОД — один, с расшифровкой. Объясни, почему именно он: основной код определяет тариф на травматизм и попадание в льготные перечни, поэтому «на всякий случай пошире» здесь вредно.
+
+2. ДОПОЛНИТЕЛЬНЫЕ КОДЫ — списком, с расшифровкой каждого и пояснением, зачем он нужен. Отдельно пометь те, что стоит взять на вырост.
+
+3. ЧЕМ ЭТО ОБЕРНЁТСЯ — по каждому важному коду: доступен ли патент по этому виду деятельности, есть ли ограничения по режимам, попадает ли под лицензирование или обязательные уведомления в Роспотребнадзор.
+
+4. ЧЕГО ИЗБЕГАТЬ — коды, которые лучше не брать: с лицензированием, с повышенным тарифом на травматизм, привлекающие внимание банков.
+
+5. ПРОВЕРИТЬ САМОМУ — напомни, что действующую редакцию классификатора надо сверить на сайте ФНС, а поступления не по заявленным кодам банк может задержать по 115-ФЗ.
+
+Коды указывай с точками, как в заявлении: 62.01, 73.11. Если из описания не ясен ключевой момент — задай один уточняющий вопрос в конце.`
+  );
+}
+
+/* --- Аудит карточки товара ---
+
+   Отличие от любого SEO-разбора в том, что карточка — не только витрина.
+   Это ещё публичная оферта по ГК и реклама по 38-ФЗ, и там свои
+   обязательные сведения и свои запреты. За «лучший на рынке» без
+   подтверждения штрафует ФАС, за отсутствие состава и страны
+   происхождения — Роспотребнадзор, за немаркированный товар — налоговая.
+
+   Порядок в ответе поставлен по цене ошибки: сначала то, за что штрафуют,
+   потом то, что мешает продавать. Продавец придёт за вторым, а спасём
+   мы его первым — и именно это он потом расскажет знакомым. */
+function genCard() {
+  const where = document.getElementById("cardWhere").value;
+  const cat = document.getElementById("cardCat").value.trim();
+  const price = document.getElementById("cardPrice").value.trim();
+  const rivals = document.getElementById("cardRivals").value.trim();
+  const title = document.getElementById("cardTitle").value.trim();
+  const text = document.getElementById("cardText").value.trim();
+  const photos = document.getElementById("cardPhotos").value.trim();
+
+  if (title.length < 5 && text.length < 30)
+    return toast("Вставьте хотя бы название и описание карточки");
+
+  return runAI(
+    `Площадка: ${where}\nКатегория: ${cat || "не указана"}\n` +
+    `Цена: ${price || "не указана"} ₽${rivals ? `, у конкурентов ${rivals} ₽` : ""}\n` +
+    `Фотографии: ${photos || "не описаны"}\n\n` +
+    `НАЗВАНИЕ:\n${title || "(не указано)"}\n\nОПИСАНИЕ И ХАРАКТЕРИСТИКИ:\n${text || "(не указано)"}`,
+    null, "cardResult", "Аудит карточки товара: " + (cat || where),
+    `Ты — эксперт по карточкам товаров на российских маркетплейсах и одновременно юрист по потребительскому и рекламному праву.
+
+Разбери карточку строго в этом порядке.
+
+1. ЧЕМ ЭТО ГРОЗИТ ПО ЗАКОНУ — самое дорогое, поэтому первым.
+   • Обязательные сведения по ст. 10 Закона о защите прав потребителей: наименование, состав или комплектация, изготовитель и его адрес, страна происхождения, гарантийный срок или срок службы, правила использования. Перечисли, чего именно НЕТ в этой карточке.
+   • Превосходные степени без подтверждения: «лучший», «№1», «самый», «единственный» — нарушение ст. 5 Закона о рекламе. Процитируй найденные формулировки дословно.
+   • Обещания результата и медицинские заявления там, где их нельзя: «вылечит», «омолодит», «гарантированно похудеете».
+   • Маркировка «Честный знак», если категория к ней относится.
+   • Возрастные ограничения и обязательная сертификация для категории.
+   Если нарушений нет — так и скажи, не выдумывай.
+
+2. НАЗВАНИЕ. Что человек набирает в поиске, чтобы найти такой товар. Предложи 2–3 варианта названия целиком, готовых к вставке. Учитывай ограничение площадки по длине и то, что первые слова весят больше.
+
+3. ОПИСАНИЕ. Что переписать и почему. Дай готовый текст первого абзаца — того, который видно без «показать полностью».
+
+4. ХАРАКТЕРИСТИКИ. Какие поля не заполнены. Особо отметь те, по которым покупатели фильтруют выдачу: без них карточка не показывается вовсе, сколько бы ключевых слов в ней ни было.
+
+5. ФОТОГРАФИИ. Чего не хватает: главное фото, инфографика с выгодами, фото в использовании, размерная сетка, видео. Скажи, что снять в первую очередь.
+
+6. ЦЕНА. Если названы цены конкурентов — где карточка находится относительно них и что это значит для показов и выкупа.
+
+7. ЧТО СДЕЛАТЬ СЕГОДНЯ. Три пункта, по убыванию отдачи. Конкретно, без «поработайте над SEO».
+
+Пиши по-русски, коротко и по делу. Не выдумывай данные, которых нет в карточке: если чего-то не видно, так и напиши. В конце одной строкой: требования площадок меняются, перед публикацией сверьтесь с её справкой.`
+  );
+}
+
+/* --- Сверка с налоговой ---
+
+   Единый налоговый счёт свёл все налоги в один кошелёк: в личном
+   кабинете теперь одна цифра сальдо, из которой не понять, за что она.
+   Отрицательное сальдо всплывает внезапно — вместе с пенями, которые
+   капали месяцами, потому что деньги списались не на тот налог.
+
+   Сверять надо руками, и поэтому не сверяет никто. Здесь достаточно
+   вставить справку и нажать кнопку.
+
+   Данные для сравнения берём из «Моего дела», если человек его ведёт:
+   переписывать свои же платежи руками — ровно то препятствие, из-за
+   которого сверка и откладывается. */
+async function fillFromBook() {
+  if (!PF.user()) return toast("Войдите, чтобы взять данные из учёта");
+  try {
+    const d = await API.request("/api/book");
+    if (!d.year.count) return toast("В «Моём деле» пока нет записей");
+    const lines = [
+      `Доход за ${d.yearNumber} год: ${Math.round(d.year.income).toLocaleString("ru-RU")} ₽`,
+      d.year.expense ? `Расходы: ${Math.round(d.year.expense).toLocaleString("ru-RU")} ₽` : "",
+      d.profile.regime ? `Режим: ${d.profile.regime}` : "",
+      d.profile.form === "ip" ? "Форма: ИП" : d.profile.form === "ooo" ? "Форма: ООО" : "Форма: физлицо",
+      `Записей в учёте: ${d.year.count}`,
+    ].filter(Boolean);
+    const el = document.getElementById("rcMine");
+    el.value = (el.value.trim() ? el.value.trim() + "\n" : "") + lines.join("\n");
+    toast("Подставлено из учёта — допишите даты платежей");
+  } catch (e) {
+    toast(e.message, "err");
+  }
+}
+
+function genRecon() {
+  const who = document.getElementById("rcWho").value;
+  const saldo = document.getElementById("rcSaldo").value.trim();
+  const mine = document.getElementById("rcMine").value.trim();
+  const text = document.getElementById("rcText").value.trim();
+
+  if (!saldo && text.length < 30)
+    return toast("Укажите сальдо или вставьте справку из личного кабинета");
+
+  return runAI(
+    `Статус: ${who}\nСальдо ЕНС по данным ФНС: ${saldo || "не указано"}\n\n` +
+    `МОИ ДАННЫЕ:\n${mine || "не указаны"}\n\nСПРАВКА ИЗ ЛИЧНОГО КАБИНЕТА ФНС:\n${text || "не приложена"}`,
+    null, "rcResult", "Сверка с налоговой",
+    `Ты — бухгалтер, который каждый день разбирает единый налоговый счёт.
+
+Разбери так:
+
+1. ЧТО ГОВОРИТ САЛЬДО. Положительное — переплата, деньги лежат на счёте и их можно вернуть или зачесть. Отрицательное — долг, на него ежедневно капают пени по ст. 75 НК РФ. Скажи прямо, что именно у человека.
+
+2. ИЗ ЧЕГО ОНО СЛОЖИЛОСЬ. Разложи по видам платежей: налог, авансовые платежи, страховые взносы, пени, штрафы. Если в справке видны начисления и поступления — покажи, где они не совпали.
+
+3. РАСХОЖДЕНИЕ С ЕГО УЧЁТОМ. Сравни то, что человек считает уплаченным, с тем, что видит ФНС. Назови конкретную сумму разницы. Самые частые причины назови поимённо: не подано уведомление об исчисленных суммах, поэтому деньги легли на счёт, но не зачлись; платёж ушёл по старым реквизитам; взносы зачлись раньше налога; уменьшение налога на взносы не заявлено.
+
+4. ЧТО СДЕЛАТЬ. Пронумерованно, от срочного. Если долг — как остановить пени. Если переплата — как вернуть: заявление о распоряжении сальдо, срок рассмотрения. Если не хватает уведомления — какое и до какого числа.
+
+5. ЧЕГО НЕ ДЕЛАТЬ. Например: не платить «на всякий случай» ещё раз до выяснения — деньги упадут в общий котёл и спишутся не туда.
+
+Если данных мало для вывода — скажи, какой именно цифры или документа не хватает, и не выдумывай её. В конце одной строкой: сверку подтверждает только акт сверки с инспекцией, это предварительный разбор.`
+  );
 }
 
 function genDoc() {
@@ -783,6 +1312,78 @@ function openAllSources() {
   else trackEvent("inn_open_all");
 }
 renderInnLinks();
+/* Дата по умолчанию — сегодня: чаще всего проверяют перед выплатой. */
+{ const d = document.getElementById("cpDate"); if (d && !d.value) d.value = new Date().toISOString().slice(0, 10); }
+
+/* --- Проверка по реестрам ---
+
+   Статус самозанятого — единственная проверка контрагента, которую
+   закон фактически вменяет в обязанность: заплатили тому, кто слетел
+   с НПД, — и вы налоговый агент задним числом, с НДФЛ, взносами,
+   пенями и штрафом за весь период.
+
+   Проверять надо на дату выплаты, а не «вообще», поэтому дату
+   спрашиваем. Ответ показываем цветом и словами: «активен» само по
+   себе ничего человеку не говорит, ему нужно знать, что делать. */
+async function checkRegistry() {
+  const inn = (document.getElementById("cpInn").value || "").replace(/\D/g, "");
+  const date = document.getElementById("cpDate").value || new Date().toISOString().slice(0, 10);
+  const box = document.getElementById("cpRegistry");
+
+  if (!PF.user()) {
+    toast("Войдите, чтобы проверять по реестрам");
+    return setTimeout(() => (location.href = PF.href("auth.html")), 1200);
+  }
+  if (inn.length !== 10 && inn.length !== 12) {
+    box.innerHTML = `<p class="inn-verdict bad">Введите ИНН: 10 цифр у организации, 12 у ИП и физлица.</p>`;
+    return;
+  }
+
+  box.innerHTML = `<p class="hint">Спрашиваем реестры…</p>`;
+  const parts = [];
+
+  /* Самозанятый — только у 12-значного ИНН: у организации его быть не может. */
+  if (inn.length === 12) {
+    try {
+      const d = await API.request("/api/registry/npd", { method: "POST", body: { inn, date } });
+      parts.push(`
+        <div class="inn-verdict ${d.active ? "ok" : "bad"}">
+          <b>${d.active ? "Самозанятый — статус подтверждён" : "Плательщиком НПД не является"}</b>
+          на ${d.date.split("-").reverse().join(".")}<br>${escapeHtml(d.what)}
+          <span class="hint"> · ${escapeHtml(d.source)}${d.cached ? ", из памяти за сегодня" : ""}</span>
+        </div>`);
+    } catch (e) {
+      parts.push(`<div class="inn-verdict bad"><b>Статус НПД проверить не удалось.</b><br>
+        ${escapeHtml(e.message)}</div>`);
+    }
+  }
+
+  try {
+    const c = await API.request("/api/registry/company", { method: "POST", body: { inn } });
+    if (!c.enabled) {
+      parts.push(`<p class="hint">${escapeHtml(c.what)}</p>`);
+    } else if (!c.found) {
+      parts.push(`<div class="inn-verdict bad">${escapeHtml(c.what)}</div>`);
+    } else {
+      parts.push(`
+        <div class="inn-verdict ${c.liquidated ? "bad" : "ok"}">
+          <b>${escapeHtml(c.name || "Без названия")}</b> — ${escapeHtml(c.kind)}<br>
+          ${c.ogrn ? "ОГРН " + escapeHtml(c.ogrn) + (c.registered ? ", с " + escapeHtml(c.registered) : "") + "<br>" : ""}
+          ${c.address ? escapeHtml(c.address) + "<br>" : ""}
+          ${c.head ? "Руководитель: " + escapeHtml(c.head) + "<br>" : ""}
+          ${c.activity ? "Основная деятельность: " + escapeHtml(c.activity) + "<br>" : ""}
+          ${c.liquidated
+            ? `<b>Деятельность прекращена ${escapeHtml(c.liquidatedAt)}.</b> Заключать сделку нельзя.`
+            : escapeHtml(c.status || "")}
+          <span class="hint"> · ${escapeHtml(c.source)}${c.cached ? ", из памяти" : ""}</span>
+        </div>`);
+    }
+  } catch (e) {
+    parts.push(`<p class="hint">Выписка: ${escapeHtml(e.message)}</p>`);
+  }
+
+  box.innerHTML = parts.join("");
+}
 
 function genCounterparty() {
   const inn = (document.getElementById("cpInn").value || "").trim();

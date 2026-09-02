@@ -1,7 +1,8 @@
 /* ЭкоФин — прокси к ИИ. Ключ живёт только в секретах воркера,
    лимиты проверяются здесь, до обращения к провайдеру. */
 import { json, fail, isPro } from "./lib.js";
-import { aiQuota, toolQuota, spendAI, spendTool, analyzeQuota, spendAnalyze } from "./quota.js";
+import { aiQuota, toolQuota, spendAI, spendTool, analyzeQuota, spendAnalyze,
+         refundAI, refundTool, refundAnalyze } from "./quota.js";
 import { logAction } from "./auth.js";
 import { rewardIfEarned } from "./referral.js";
 
@@ -21,6 +22,20 @@ export const DEFAULT_SYSTEM = `Ты — старший ИИ-консультан
 5. Если для точного ответа нужен статус (ИП/ООО/самозанятый), суммы или регион — дай разбор по вариантам и задай 1–2 уточняющих вопроса в конце.
 6. Русский язык, деловой и живой, без воды.
 7. НАЛОГОВЫЕ РЕЖИМЫ: в России их семь — НПД, УСН «Доходы» 6%, УСН «Доходы минус расходы» 15%, патент (ПСН), АУСН, ЕСХН и ОСНО. Когда речь о выборе или сравнении режимов, рассматривай все подходящие, а не только УСН, и объясняй, почему остальные не подходят. Патент и АУСН зависят от региона — говори, где проверить.`;
+
+/* Распознавание — не пересказ. Модель охотно «улучшает» текст: правит
+   опечатки, дописывает недостающее, переставляет пункты. Для документа
+   это яд: человек потом сошлётся на пункт, которого в бумаге нет.
+   Поэтому запрет на додумывание стоит первым и повторён дважды. */
+const OCR_SYSTEM = `Ты распознаёшь текст с фотографий и сканов документов.
+
+ПРАВИЛА:
+1. Перепечатай текст ДОСЛОВНО. Ничего не пересказывай, не сокращай, не исправляй и не дополняй.
+2. Сохрани структуру: заголовки, нумерацию пунктов, таблицы (таблицы — простым текстом со столбцами через пробелы), подписи и реквизиты.
+3. Если фрагмент не читается — поставь на его месте [неразборчиво] и продолжай. НЕ придумывай, что там могло быть написано.
+4. Не добавляй от себя ни заголовков, ни комментариев, ни выводов. Только то, что есть на изображении.
+5. Если страниц несколько — раздели их строкой «--- страница N ---».
+6. Числа, даты, номера и суммы переписывай особенно внимательно: именно из-за них документ и распознают.`;
 
 const ANALYZE_SYSTEM = `Ты — юрист-аналитик сервиса «ЭкоФин». Тебе передают текст или скан документа (договор, претензия, уведомление, акт, решение).
 
@@ -59,7 +74,7 @@ export async function callProvider(env, { model, messages, maxTokens }) {
   return text;
 }
 
-function upstreamError(env, origin, e) {
+export function upstreamError(env, origin, e) {
   if (e.name === "TimeoutError" || e.name === "AbortError")
     return fail(env, origin, "ИИ не ответил вовремя. Попробуйте ещё раз или сократите текст", 504);
   if (e.message === "empty")
@@ -105,6 +120,9 @@ export async function handleAI(request, env, origin, user) {
     await rewardIfEarned(env, user.email).catch(() => {});
     return json(env, origin, { text, quota: await quotaSnapshot(env, user) });
   } catch (e) {
+    /* Ответа нет — возвращаем списанное. Иначе провайдер «икнул», а
+       заплатил за это человек: у бесплатного тарифа пробный запуск один. */
+    await (kind === "tool" ? refundTool(env, user) : refundAI(env, user));
     return upstreamError(env, origin, e);
   }
 }
@@ -162,6 +180,73 @@ export async function handleAnalyze(request, env, origin, user) {
     await logAction(env, user.email, "Анализ документа: " + fileName);
     return json(env, origin, { text: out, quota: await quotaSnapshot(env, user) });
   } catch (e) {
+    await (isPro(user) ? refundAnalyze(env, user) : refundTool(env, user));
+    return upstreamError(env, origin, e);
+  }
+}
+
+/* POST /api/ocr — превратить фотографии страниц в текст, и только.
+
+   Зачем отдельно от /api/analyze. Разбор документа возвращает готовый
+   вывод: риски, чего не хватает, что исправить. Но фотографию человек
+   приносит и в другие инструменты — составить ответ на претензию,
+   объяснить простыми словами, сравнить две редакции. Там нужен не
+   разбор, а сам текст: дальше с ним работает уже свой инструмент.
+
+   Раньше это означало «перепечатайте руками», то есть чаще всего —
+   «не пользуйтесь». Теперь любое поле на сайте принимает фото.
+
+   Расход тот же, что у разбора: работает та же зрячая модель, и она
+   стоит столько же. Считать распознавание бесплатным было бы способом
+   получать разбор в обход лимита — достаточно распознать, а потом
+   отправить текст обычным инструментом. */
+export async function handleOcr(request, env, origin, user) {
+  if (!env.AI_API_KEY) return fail(env, origin, "AI_API_KEY не задан в секретах воркера", 500);
+
+  const b = await request.json().catch(() => ({}));
+  const images = Array.isArray(b.images) ? b.images.slice(0, MAX_IMAGES) : [];
+  const fileName = String(b.fileName || "документ").slice(0, 200);
+
+  if (!images.length) return fail(env, origin, "Нет изображений для распознавания");
+  for (const img of images) {
+    if (typeof img !== "string" || !img.startsWith("data:image/"))
+      return fail(env, origin, "Некорректный формат изображения");
+    if (img.length > MAX_IMAGE_BYTES)
+      return fail(env, origin, "Изображение слишком большое — сожмите до 4 МБ");
+  }
+
+  /* Списываем так же, как разбор: на платных — из месячной квоты
+     разборов, на бесплатном — из пробного запуска. */
+  if (isPro(user)) {
+    const spent = await spendAnalyze(env, user);
+    if (!spent) {
+      const q = await analyzeQuota(env, user);
+      return paywall(env, origin,
+        `Распознано документов в этом месяце ${q.spent} из ${q.limit}. На тарифе «Про» их без ограничений`,
+        "analyze");
+    }
+  } else {
+    const spent = await spendTool(env, user);
+    if (!spent) return paywall(env, origin,
+      "Пробный запуск израсходован. Распознавание документов по фото входит в платные тарифы", "tool");
+  }
+
+  try {
+    const text = await callProvider(env, {
+      model: env.AI_VISION_MODEL || "gpt-4o-mini",
+      messages: [
+        { role: "system", content: OCR_SYSTEM },
+        { role: "user", content: [
+          { type: "text", text: `Файл: ${fileName}. Перепечатай текст со страниц ниже.` },
+          ...images.map(url => ({ type: "image_url", image_url: { url } })),
+        ] },
+      ],
+      maxTokens: 3000,
+    });
+    await logAction(env, user.email, "Распознан документ: " + fileName);
+    return json(env, origin, { text, quota: await quotaSnapshot(env, user) });
+  } catch (e) {
+    await (isPro(user) ? refundAnalyze(env, user) : refundTool(env, user));
     return upstreamError(env, origin, e);
   }
 }

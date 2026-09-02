@@ -169,6 +169,12 @@ const API = {
     status(id) { return API.request("/api/ai/job?id=" + encodeURIComponent(id)); },
     list()     { return API.request("/api/ai/jobs"); },
   },
+  /* Распознать фото в текст. Отдельно от analyze: тот возвращает разбор,
+     а здесь нужен сам текст — дальше с ним работает нужный инструмент. */
+  ocr({ images, fileName }) {
+    return this.request("/api/ocr", { method: "POST", body: { images, fileName }, timeout: 120000 });
+  },
+
   analyze({ text, images, fileName }) {
     return this.request("/api/analyze", { method: "POST", body: { text, images, fileName }, timeout: 120000 });
   },

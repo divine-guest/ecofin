@@ -115,7 +115,25 @@ export const TIPS = [
   "Сверяйте расчётный счёт контрагента с выпиской ЕГРЮЛ перед первой оплатой — реквизиты в письме могут быть подменены.",
 ];
 
+/* Адрес страницы сайта.
+
+   SITE_URL в настройках задан С косой чертой на конце
+   (https://84-201-164-112.nip.io/), а здесь к нему дописывали ещё одну:
+   ссылки в сообщениях бота выходили вида «…nip.io//dashboard.html».
+   Nginx такой адрес переваривает, поэтому никто не замечал, но человеку
+   видна именно ссылка, и выглядит она сломанной. Заодно это ровно тот
+   мусор, из-за которого ссылку не хочется нажимать.
+
+   Приводим к одному виду в одном месте: лишние черты срезаются, ровно
+   одна добавляется. */
+const siteUrl = env => String(env.SITE_URL || "").replace(/\/+$/, "") + "/";
+
 const HELP = `Я помогу не пропустить сроки и отвечу на вопросы по финансам, налогам и праву.
+
+<b>Моё дело</b>
+/dohod 50000 ООО Ромашка — записать поступление
+/rashod 18000 Реклама — записать трату
+/delo — доход и расходы за год
 
 <b>Сроки</b>
 /sroki — ближайшие напоминания
@@ -304,7 +322,7 @@ async function handle(env, chatId, text, username) {
       `Запусков инструментов: ${lim(tool)}\n` +
       `Разборов документов в месяц: ${lim(an)}\n\n` +
       `Сменить имя: <code>/imya Иван Петров</code>\n` +
-      `Всё остальное — в кабинете: ${env.SITE_URL || ""}/dashboard.html`);
+      `Всё остальное — в кабинете: ${siteUrl(env)}dashboard.html`);
   }
 
   if (text === "/bally" || text === "/баллы") {
@@ -321,7 +339,7 @@ async function handle(env, chatId, text, username) {
 
   if (text === "/pozvat" || text === "/позвать") {
     const code = codeFor(user.email);
-    const link = `${env.SITE_URL || ""}/auth.html?ref=${code}`;
+    const link = `${siteUrl(env)}auth.html?ref=${code}`;
     return send(env, chatId,
       `Ваша пригласительная ссылка:\n${link}\n\n` +
       `Другу — 150 баллов сразу при регистрации. Вам — 150, когда он начнёт пользоваться, ` +
@@ -401,6 +419,94 @@ async function handle(env, chatId, text, username) {
     ).bind(user.email, title.slice(0, 140), due, isPro(user) ? "both" : "site", now()).run();
 
     return send(env, chatId, `Запомнил: <b>${esc(title)}</b> — ${dd}.${mm}.${yyyy}\n\nНапомню за 3 дня, за день и в сам день.`);
+  }
+
+  /* ---------- «Моё дело» из телеграма ----------
+
+     Смысл ровно один: убрать трение. Занести поступление на сайте — это
+     открыть браузер, найти вкладку, дождаться загрузки. В мессенджере —
+     написать четыре символа. Привычка складывается только там, где она
+     ничего не стоит, а без привычки раздел учёта мёртв.
+
+     Налог здесь намеренно НЕ считается. Ставки живут в одном месте —
+     js/rates.js, и второе место, где их придётся не забыть поправить
+     в январе, рано или поздно разойдётся с первым. Ошибиться в сумме
+     налога хуже, чем не назвать её: бот подтверждает запись и годовой
+     итог, а расчёт показывает страница, где числа всегда свежие.      */
+  if (/^\/(dohod|доход|rashod|расход)/.test(text)) {
+    const isExpense = /^\/(rashod|расход)/.test(text);
+    const rest = text.replace(/^\/\S+\s*/, "").trim();
+    const m = rest.match(/^([\d\s.,]+)(.*)$/);
+    const sum = m ? Number(m[1].replace(/\s/g, "").replace(",", ".")) : NaN;
+
+    if (!m || !Number.isFinite(sum) || sum <= 0) {
+      return send(env, chatId, isExpense
+        ? `Формат: <code>/rashod 18000 Яндекс Директ</code>`
+        : `Формат: <code>/dohod 50000 ООО Ромашка</code>
+
+Если платило физлицо, допишите слово «физлицо» — на НПД от этого зависит ставка:
+<code>/dohod 40000 физлицо Иванов</code>`);
+    }
+
+    const tail = (m[2] || "").trim();
+    /* Слово «физлицо» вырезаем из названия контрагента: иначе оно
+       осталось бы в списке операций и выглядело бы как опечатка. */
+    const fromPerson = /физлиц|физ\.?\s*лиц/i.test(tail);
+    const party = tail.replace(/физлиц\S*|физ\.?\s*лиц\S*/gi, "").trim().slice(0, 120);
+    const day = localDay(user.tz_offset ?? 3);
+
+    const cnt = await env.DB.prepare("SELECT COUNT(*) AS n FROM book_ops WHERE email = ?").bind(user.email).first();
+    if ((cnt?.n || 0) >= 10000)
+      return send(env, chatId, "Записей уже очень много — выгрузите книгу учёта на сайте и начните новый год.");
+
+    await env.DB.prepare(
+      `INSERT INTO book_ops (email, day, kind, amount, category, party, note, payer, created_at)
+       VALUES (?1, ?2, ?3, ?4, '', ?5, 'Из Telegram', ?6, ?7)`
+    ).bind(user.email, day, isExpense ? "expense" : "income", Math.round(sum * 100),
+           party, fromPerson ? "person" : "company", now()).run();
+
+    const yr = day.slice(0, 4);
+    const tot = await env.DB.prepare(
+      `SELECT COALESCE(SUM(amount),0) AS s FROM book_ops
+        WHERE email = ?1 AND kind = 'income' AND day >= ?2 AND day <= ?3`
+    ).bind(user.email, `${yr}-01-01`, `${yr}-12-31`).first();
+
+    const rub = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
+    const label = isExpense ? "−" : "+";
+    return send(env, chatId,
+`Записал: <b>${label}${rub(sum)}</b>${party ? " — " + esc(party) : ""}${!isExpense && fromPerson ? " (от физлица)" : ""}
+
+Доход за ${yr} год: <b>${rub((tot?.s || 0) / 100)}</b>
+Сколько отложить на налог и сколько осталось до лимита — в разделе «Моё дело»:
+${siteUrl(env)}book.html`);
+  }
+
+  if (/^\/(delo|дело)/.test(text)) {
+    const yr = String(new Date().getFullYear());
+    const rows = await env.DB.prepare(
+      `SELECT kind, COALESCE(SUM(amount),0) AS s, COUNT(*) AS n FROM book_ops
+        WHERE email = ?1 AND day >= ?2 AND day <= ?3 GROUP BY kind`
+    ).bind(user.email, `${yr}-01-01`, `${yr}-12-31`).all();
+
+    let inc = 0, exp = 0, n = 0;
+    for (const r of rows.results || []) {
+      if (r.kind === "income") inc = r.s; else exp = r.s;
+      n += r.n;
+    }
+    const rub = v => Math.round(v / 100).toLocaleString("ru-RU") + " ₽";
+    if (!n) return send(env, chatId,
+`Записей за ${yr} год пока нет.
+
+Занесите первое поступление: <code>/dohod 50000 ООО Ромашка</code>`);
+
+    return send(env, chatId,
+`<b>Моё дело — ${yr} год</b>
+
+Доход: <b>${rub(inc)}</b>
+Расходы: ${rub(exp)}
+Записей: ${n}
+
+Налог, взносы и остаток до лимита — ${siteUrl(env)}book.html`);
   }
 
   /* Обычное сообщение — вопрос консультанту, с теми же лимитами, что на сайте. */

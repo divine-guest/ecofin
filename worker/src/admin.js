@@ -8,12 +8,37 @@ import { runReminders } from "./telegram.js";
 import { PLANS, PERIOD_DAYS } from "./plans.js";
 const PLAN_DAYS = PERIOD_DAYS;
 
+/* Написания поискового запроса, по которым имеет смысл искать.
+
+   SQLite меняет регистр только у латиницы: lower('Егор') — это по-прежнему
+   'Егор'. Из-за этого поиск в админке вёл себя необъяснимо: «Егор» находил
+   человека, «егор» — нет, и понять правило со стороны было невозможно.
+
+   Чинить это в базе нечем: своей функции в D1 не завести, а отдельная
+   колонка с готовым нижним регистром потребовала бы пересчёта всех уже
+   заведённых строк. Зато регистр кириллицы прекрасно понимает JavaScript —
+   поэтому варианты написания строим здесь и ищем по любому из них.
+
+   Четыре варианта покрывают всё, что человек набирает в поиске руками:
+   как ввёл, строчными, прописными и с заглавной у каждого слова.        */
+function searchPatterns(raw) {
+  const t = String(raw || "").trim().slice(0, 120);
+  const title = t.toLowerCase().replace(/(^|\s)(\S)/gu, (_, sp, ch) => sp + ch.toUpperCase());
+  return [...new Set([t, t.toLowerCase(), t.toUpperCase(), title])].map(v => `%${v}%`);
+}
+
 /* GET /api/admin/users?q=&limit=&offset= */
 export async function listUsers(request, env, origin) {
   const url = new URL(request.url);
-  const q = `%${(url.searchParams.get("q") || "").trim().toLowerCase()}%`;
+  const pats = searchPatterns(url.searchParams.get("q"));
   const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit")) || 100));
   const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
+
+  /* Условие собираем под число вариантов: их от одного до четырёх.
+     Нумерованные подстановки, а не «?», — на них завязана прослойка db.mjs. */
+  const whereU = pats.map((_, i) => `u.email LIKE ?${i + 1} OR u.name LIKE ?${i + 1}`).join(" OR ");
+  const where  = pats.map((_, i) => `email LIKE ?${i + 1} OR name LIKE ?${i + 1}`).join(" OR ");
+  const nLim = pats.length + 1, nOff = pats.length + 2;
 
   const rows = await env.DB.prepare(
     `SELECT u.*,
@@ -22,14 +47,14 @@ export async function listUsers(request, env, origin) {
             (SELECT COALESCE(SUM(g.n), 0) FROM usage g
               WHERE g.email = u.email AND g.kind = 'ai') AS ai_total
        FROM users u
-      WHERE lower(u.email) LIKE ?1 OR lower(u.name) LIKE ?1
+      WHERE ${whereU}
       ORDER BY u.created_at DESC
-      LIMIT ?2 OFFSET ?3`
-  ).bind(q, limit, offset).all();
+      LIMIT ?${nLim} OFFSET ?${nOff}`
+  ).bind(...pats, limit, offset).all();
 
   const total = await env.DB.prepare(
-    "SELECT COUNT(*) AS n FROM users WHERE lower(email) LIKE ?1 OR lower(name) LIKE ?1"
-  ).bind(q).first();
+    `SELECT COUNT(*) AS n FROM users WHERE ${where}`
+  ).bind(...pats).first();
 
   const users = (rows.results || []).map(r => ({
     ...publicUser(r),

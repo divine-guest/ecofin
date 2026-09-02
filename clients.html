@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Мои дела — ЭкоФин</title>
+<!-- seo:start -->
+<meta name="description" content="Несколько дел в одном кабинете: ИП, ООО и клиенты бухгалтера. По каждому — доход за год, налог к отложению, остаток до лимита и ближайший платёж.">
+<link rel="canonical" href="https://divine-guest.github.io/ecofin/clients.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Мои дела — ЭкоФин">
+<meta property="og:description" content="Несколько дел в одном кабинете: ИП, ООО и клиенты бухгалтера. По каждому — налог, лимит и ближайший платёж.">
+<meta property="og:url" content="https://divine-guest.github.io/ecofin/clients.html">
+<meta property="og:image" content="https://divine-guest.github.io/ecofin/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ЭкоФин — финансы, налоги и право в одном сервисе">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<!-- seo:end -->
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css?v=105">
+<style>
+  /* Строка дела. Слева кто, справа деньги — глаз бухгалтера идёт
+     по правому краю сверху вниз и ищет, где горит. */
+  .cl-row {
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px;
+    margin-bottom: 10px; background: var(--surface);
+  }
+  .cl-main { flex: 1; min-width: 190px; }
+  .cl-name { font-weight: 700; }
+  .cl-sub { color: var(--muted); font-size: var(--t-sm); }
+  .cl-num { text-align: right; min-width: 128px; font-variant-numeric: tabular-nums; }
+  .cl-num b { display: block; font-size: 1.05rem; }
+  .cl-num span { color: var(--muted); font-size: var(--t-xs); }
+  /* Полоса лимита в строке — узкая: здесь она сигнал, а не главное. */
+  .cl-bar { height: 6px; border-radius: 999px; background: var(--surface-2);
+            overflow: hidden; margin-top: 6px; border: 1px solid var(--border); }
+  .cl-bar i { display: block; height: 100%; }
+  .cl-ok   { background: var(--primary); }
+  .cl-warn { background: #d9a03a; }
+  .cl-bad  { background: #c0392b; }
+</style>
+</head>
+<body>
+<main class="section tint-green">
+  <div class="container">
+    <div class="section-title">
+      <h1>Мои <span>дела</span></h1>
+      <div class="line"></div>
+      <p class="subtitle">ИП, ООО и клиенты — в одном кабинете · по каждому свой режим и свой налог</p>
+    </div>
+    <div id="clRoot"><p style="color:var(--muted)">Загружаю…</p></div>
+  </div>
+</main>
+
+<script src="js/rates.js?v=105"></script>
+<script src="js/themes.js?v=105"></script>
+<script src="js/api.js?v=105"></script>
+<script src="js/app.js?v=105"></script>
+<script src="js/progress.js?v=105"></script>
+<script src="js/palette.js?v=105"></script>
+<script src="js/ai.js?v=105"></script>
+<script src="js/book.js?v=105"></script>
+<script>
+initPage("clients.html");
+
+const R = document.getElementById("clRoot");
+let DATA = null;
+
+const RUB = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
+
+async function load() {
+  if (!PF.user()) {
+    R.innerHTML = `<div class="card" style="text-align:center;padding:34px 22px">
+      <h3 style="margin-bottom:8px">Несколько дел в одном кабинете</h3>
+      <p style="color:var(--muted);max-width:520px;margin:0 auto 18px">
+        Для бухгалтера, который ведёт клиентов, и для тех, у кого ИП и ООО сразу.
+        У каждого дела свой режим, свой налог и свой лимит.</p>
+      <a class="btn" href="${PF.href("auth.html")}">Войти</a></div>`;
+    return;
+  }
+  try {
+    DATA = await API.request("/api/clients");
+    render();
+  } catch (e) {
+    if (e.isPaywall) return renderLocked(e.message);
+    R.innerHTML = `<div class="card"><p>${escapeHtml(e.message)}</p>
+      <button class="btn small secondary" onclick="load()">Ещё раз</button></div>`;
+  }
+}
+
+/* Закрытое показываем содержательно, а не замком: человек должен
+   понять, что он получит, а не что ему не дали. */
+function renderLocked(msg) {
+  R.innerHTML = `
+  <div class="card" style="max-width:640px;margin:0 auto">
+    <h3 style="margin-bottom:8px">Что это даёт</h3>
+    <p style="color:var(--muted);margin-bottom:14px">${escapeHtml(msg)}</p>
+    <ul style="margin:0 0 18px 18px;line-height:1.9">
+      <li>Все клиенты на одном экране: доход за год, налог к отложению, остаток до лимита</li>
+      <li>У каждого дела свой режим — налог считается по нему, а не по вашему</li>
+      <li>Книга учёта выгружается по каждому делу отдельно</li>
+      <li>Видно сразу, у кого лимит близко: слёт с режима задним числом стоит дороже подписки</li>
+    </ul>
+    <button class="btn gold" onclick="PAY.open('pro')">Открыть в тарифе «Про»</button>
+  </div>`;
+}
+
+function render() {
+  const all = [DATA.own, ...DATA.clients];
+  R.innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+      <button class="btn" onclick="editClient(0)">Добавить дело</button>
+      <button class="btn secondary" onclick="location.href=PF.href('book.html')">Открыть учёт</button>
+    </div>
+    ${totalsCard(all)}
+    ${all.map(row).join("")}
+    ${DATA.clients.length ? "" : `
+      <p style="color:var(--muted);margin-top:14px">
+        Пока здесь только ваше собственное дело. Добавьте клиента или второе
+        своё — ИП и ООО удобнее вести раздельно: у них разные режимы и разные лимиты.</p>`}
+    <div id="clEdit"></div>`;
+}
+
+/* Сводка сверху. Бухгалтеру важно одно число — сколько всего денег
+   у его клиентов надо отложить на налоги в этом году. */
+function totalsCard(all) {
+  let income = 0, tax = 0, ready = 0;
+  for (const c of all) {
+    income += c.year.income;
+    if (!c.regime) continue;
+    const est = BOOK.estimate(c, c.year);
+    if (est.known) { tax += est.tax + est.own; ready++; }
+  }
+  return `
+  <div class="grid cols-3" style="margin-bottom:18px">
+    <div class="card"><div class="cl-sub">Дел в кабинете</div>
+      <div style="font-size:1.7rem;font-weight:800">${all.length}</div>
+      <div class="cl-sub">${ready < all.length ? `у ${all.length - ready} не указан режим` : "у всех указан режим"}</div></div>
+    <div class="card"><div class="cl-sub">Доход за ${DATA.yearNumber} год, всего</div>
+      <div style="font-size:1.7rem;font-weight:800">${RUB(income)}</div></div>
+    <div class="card"><div class="cl-sub">Отложить на налоги, всего</div>
+      <div style="font-size:1.7rem;font-weight:800;color:var(--gold)">${RUB(tax)}</div>
+      <div class="cl-sub">по делам с указанным режимом</div></div>
+  </div>`;
+}
+
+function row(c) {
+  const est = c.regime ? BOOK.estimate(c, c.year) : { known: false };
+  const lim = c.regime ? BOOK.limitState(c, c.year, DATA.yearNumber) : null;
+  const pct = lim ? Math.round(lim.share * 100) : 0;
+  const cls = !lim ? "" : lim.share > 0.9 ? "cl-bad" : lim.share > 0.7 ? "cl-warn" : "cl-ok";
+
+  return `
+  <div class="cl-row">
+    <div class="cl-main">
+      <div class="cl-name">${escapeHtml(c.name)}${c.id === 0 ? "" : ""}</div>
+      <div class="cl-sub">
+        ${c.regime ? escapeHtml(BOOK.REGIMES[c.regime]?.title || c.regime) : "режим не указан"}
+        ${c.inn ? " · ИНН " + escapeHtml(c.inn) : ""}
+        ${c.year.count ? ` · записей ${c.year.count}` : " · записей нет"}
+      </div>
+      ${lim ? `<div class="cl-bar"><i class="${cls}" style="width:${Math.max(2, pct)}%"></i></div>
+        <div class="cl-sub">${lim.over ? "лимит превышен" : `${pct}% лимита · осталось ${RUB(lim.left)}`}</div>` : ""}
+    </div>
+    <div class="cl-num"><b>${RUB(c.year.income)}</b><span>доход за год</span></div>
+    <div class="cl-num"><b style="color:var(--gold)">${est.known ? RUB(est.tax + est.own) : "—"}</b>
+      <span>отложить</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn small secondary" onclick="openBook(${c.id})">Учёт</button>
+      <button class="btn small secondary" onclick="editClient(${c.id})">${c.id ? "Правка" : "Режим"}</button>
+    </div>
+  </div>`;
+}
+
+/* Своё дело настраивается там же, где и всегда, — в «Моём деле».
+   Держать две формы для одного и того же означает однажды разойтись. */
+function openBook(id) {
+  location.href = PF.href("book.html") + (id ? "?client=" + id : "");
+}
+
+function editClient(id) {
+  if (id === 0 && !DATA.own.regime) return (location.href = PF.href("book.html"));
+  const c = id ? DATA.clients.find(x => x.id === id) : DATA.own;
+  if (!c) return;
+  if (id === 0) return (location.href = PF.href("book.html"));
+
+  const opt = (v, t, sel) => `<option value="${v}"${sel === v ? " selected" : ""}>${t}</option>`;
+  document.getElementById("clEdit").innerHTML = `
+  <div class="card" style="margin-top:18px">
+    <h3 style="margin-bottom:12px">${id ? "Правка дела" : "Новое дело"}</h3>
+    <div class="grid cols-2">
+      <div class="form-group"><label>Название</label>
+        <input type="text" id="clName" value="${escapeHtml(c.name || "")}" placeholder="ИП Петров или ООО Ромашка"></div>
+      <div class="form-group"><label>ИНН (необязательно)</label>
+        <input type="text" id="clInn" value="${escapeHtml(c.inn || "")}" maxlength="12"></div>
+      <div class="form-group"><label>Форма</label>
+        <select id="clForm">${opt("self","Физлицо / самозанятый",c.form)}${opt("ip","ИП",c.form)}${opt("ooo","ООО",c.form)}</select></div>
+      <div class="form-group"><label>Режим налогообложения</label>
+        <select id="clRegime">${Object.entries(BOOK.REGIMES).map(([k,v])=>opt(k,v.title,c.regime)).join("")}</select></div>
+      <div class="form-group"><label>Работников</label>
+        <input type="number" id="clWorkers" min="0" max="500" value="${c.workers || 0}"></div>
+      <div class="form-group"><label>Потенциальный доход по патенту, ₽</label>
+        <input type="number" id="clPsn" min="0" value="${c.psn || 0}"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="saveClient(${id})">Сохранить</button>
+      <button class="btn secondary" onclick="document.getElementById('clEdit').innerHTML=''">Отмена</button>
+      ${id ? `<button class="btn danger" onclick="delClient(${id})">Удалить дело</button>` : ""}
+    </div>
+    ${id ? `<p class="cl-sub" style="margin-top:10px">Удаление уносит и все записи учёта этого дела.</p>` : ""}
+  </div>`;
+  document.getElementById("clEdit").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+const v = id => (document.getElementById(id)?.value || "").trim();
+
+async function saveClient(id) {
+  const body = {
+    id: id || 0,
+    name: v("clName"), inn: v("clInn"),
+    form: v("clForm"), regime: v("clRegime"),
+    workers: Number(v("clWorkers")) || 0,
+    psn: Number(v("clPsn")) || 0,
+  };
+  if (body.name.length < 2) return toast("Напишите название дела", "err");
+  try {
+    await API.request("/api/clients", { method: "POST", body });
+    DATA = await API.request("/api/clients");
+    render();
+    toast("Сохранено");
+  } catch (e) {
+    if (e.isPaywall) return showPaywall(e.message);
+    toast(e.message, "err");
+  }
+}
+
+async function delClient(id) {
+  const c = DATA.clients.find(x => x.id === id);
+  if (!confirm(`Удалить «${c ? c.name : "дело"}» вместе со всеми записями учёта?`)) return;
+  try {
+    await API.request("/api/clients/delete", { method: "POST", body: { id } });
+    DATA = await API.request("/api/clients");
+    render();
+    toast("Дело удалено");
+  } catch (e) { toast(e.message, "err"); }
+}
+
+load();
+window.addEventListener("pf:signedout", load);
+</script>
+</body>
+</html>

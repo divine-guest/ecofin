@@ -248,6 +248,36 @@ install_if_changed "$HERE/watch-outside.sh" "$DIR/watch-outside.sh" 755
 install_if_changed "$HERE/run-tests.sh"     "$DIR/run-tests.sh"     755
 install_if_changed "$HERE/enable-tls.sh"    "$DIR/enable-tls.sh"    755
 
+# ---------- Заголовки безопасности ----------
+#
+# Кладём до всего остального, что касается nginx: настройка ниже на них
+# ссылается, и файл обязан быть на месте раньше, чем nginx её проверит.
+#
+# Ставим в два места, и это не лишнее. В snippets — чтобы на него мог
+# сослаться наш nginx.conf. В conf.d — потому что настройку, доработанную
+# certbot, установщик намеренно не трогает: правка nginx.conf в репозитории
+# до боевого сервера не доедет никогда, а conf.d подключается на уровне http
+# и достаёт до неё. Пока сертификата нет, работают оба пути и мешать друг
+# другу не могут: содержимое одинаковое.
+install -d -m 755 /etc/nginx/snippets /etc/nginx/conf.d
+NGINX_SEC=/etc/nginx/snippets/ecofin-security.conf
+NGINX_SEC_HTTP=/etc/nginx/conf.d/ecofin-security.conf
+
+if ! cmp -s "$HERE/security-headers.conf" "$NGINX_SEC"; then
+  install -m 644 "$HERE/security-headers.conf" "$NGINX_SEC"
+  echo "include $NGINX_SEC;" > "$NGINX_SEC_HTTP"
+  if nginx -t >/dev/null 2>&1; then
+    systemctl reload nginx 2>/dev/null || true
+    log "заголовки безопасности обновлены"
+  else
+    # Не прошло проверку — убираем и говорим вслух. Молча оставить
+    # сломанный файл нельзя: следующий перезапуск nginx уронит сайт целиком.
+    log "ЗАГОЛОВКИ БЕЗОПАСНОСТИ НЕ ПРОШЛИ ПРОВЕРКУ NGINX:"
+    nginx -t 2>&1 | sed 's/^/       /'
+    rm -f "$NGINX_SEC" "$NGINX_SEC_HTTP"
+  fi
+fi
+
 # Настройка nginx. Новую кладём, проверяем и, если она не прошла проверку,
 # возвращаем прежнюю. Иначе сломанный файл остался бы лежать на месте: сам
 # по себе он ничего не уронит, но при следующем перезапуске nginx просто
@@ -473,6 +503,16 @@ DIAG="$REPO/diag-8f3a2c.txt"
   OWN=$(grep -m1 '^OWNER_EMAILS=' "$DIR/env" | cut -d= -f2- | cut -d, -f1 | tr -d '[:space:]')
   echo "  в настройках: $(printf '%s' "$OWN" | cut -c1-3)***$(printf '%s' "$OWN" | sed 's/.*@/@/')"
   echo "  таких строк в базе: $(sqlite3 "$DIR/data/pravofin.db" "SELECT COUNT(*) FROM users WHERE email = '$OWN'" 2>&1)"
+  echo
+  echo "--- доходят ли до нас государственные реестры ---"
+  # Проверка статуса самозанятого — единственная обязательная по закону
+  # проверка контрагента, и она идёт к чужому серверу. Если сеть до него
+  # не доходит, узнать об этом надо здесь, а не от пользователя.
+  for host in statusnpd.nalog.ru cbr.ru; do
+    code=$(curl -s -o /dev/null -w '%{http_code}' -m 8 "https://$host/" 2>/dev/null || echo "нет связи")
+    printf "  %-24s %s
+" "$host" "$code"
+  done
   echo
   echo "--- что говорила установка (последние строки) ---"
   tail -40 /var/log/pravofin-setup.log 2>/dev/null | sed 's/^/  /' || echo "  журнала нет"

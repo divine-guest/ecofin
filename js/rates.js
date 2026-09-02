@@ -166,6 +166,75 @@ const RATES = {
     nonPropertyOrg: 20000, // неимущественный иск, организация
   },
 
+
+  /* --- НДФЛ с продажи имущества, НК РФ ст. 217.1 и 220 ---
+
+     Главное здесь не ставка, а срок владения: выдержал минимальный срок —
+     налога нет вообще и декларацию подавать не нужно. Именно на этом
+     теряют деньги чаще всего: продают за месяц до истечения срока.
+
+     Ставка отдельная от зарплатной: для доходов от продажи имущества
+     действует двухступенчатая шкала, а не пятиступенчатая. */
+  propertySale: {
+    minYearsCommon: 5,      // недвижимость по общему правилу
+    minYearsSpecial: 3,     // наследство, дар от близкого родственника,
+                            // приватизация, рента, единственное жильё
+    minYearsOther: 3,       // автомобиль и иное имущество
+    deductionRealty: 1000000,   // вычет вместо расходов, недвижимость
+    deductionOther: 250000,     // вычет вместо расходов, иное имущество
+    /* Шкала совпадает с дивидендной по значениям, но задана отдельно:
+       законодатель меняет их независимо, и общая константа однажды
+       увела бы один расчёт вслед за другим. */
+    scale: [
+      { upTo: 2400000, rate: 0.13 },
+      { upTo: Infinity, rate: 0.15 },
+    ],
+  },
+
+  /* --- Пособия по материнству, ФЗ-255 ---
+
+     Считаются из того же среднего заработка за два года и тех же
+     предельных баз, что и больничный: отдельных чисел не заводим,
+     иначе они разойдутся при следующей индексации. */
+  maternity: {
+    daysNormal: 140,        // обычные роды: 70 до + 70 после
+    daysComplicated: 156,   // осложнённые роды
+    daysMultiple: 194,      // многоплодная беременность
+    careShare: 0.40,        // пособие по уходу до 1,5 лет — доля заработка
+    careMonthDays: 30.4,    // среднее число дней в месяце для пересчёта
+  },
+
+  /* --- Алименты, СК РФ ст. 81 и 83 ---
+
+     Доли считаются от дохода ПОСЛЕ удержания НДФЛ — это прямо сказано
+     в постановлении Правительства № 841, и это самая частая ошибка
+     в самостоятельных расчётах: люди берут четверть от оклада. */
+  alimony: {
+    shares: { 1: 0.25, 2: 1 / 3, 3: 0.5 },   // на 1, 2, 3 и более детей
+    maxWithholding: 0.70,   // предел удержания по алиментам, ФЗ-229 ст. 99
+  },
+
+  /* --- Исковая давность, ГК РФ ст. 196, 200, 202, 203 --- */
+  limitation: {
+    generalYears: 3,        // общий срок
+    absoluteYears: 10,      // предельный, от самого нарушения
+    claimPauseDays: 180,    // приостановка на досудебный порядок, не более
+  },
+
+  /* --- НДФЛ с процентов по вкладам, НК РФ ст. 214.2 ---
+
+     Облагается не весь доход, а только превышение над необлагаемым
+     минимумом. Минимум считается как миллион рублей, умноженный на
+     максимальную ключевую ставку на первое число месяца в течение года —
+     то есть меняется каждый год вместе со ставкой. */
+  deposits: {
+    base: 1000000,
+    scale: [
+      { upTo: 2400000, rate: 0.13 },
+      { upTo: Infinity, rate: 0.15 },
+    ],
+  },
+
   /* Среднемесячное число календарных дней — ТК РФ ст. 139.
      Используется и в отпускных, и в компенсации при увольнении. */
   avgMonthDays: 29.3,
@@ -283,14 +352,21 @@ const RATES = {
 
   /* Взносы работодателя за год с указанной годовой зарплаты.
      small — малое или среднее предприятие (льготный тариф). */
-  employerContrib(yearSalary, { small = true, injury = 0.002, mrotMonth = 27093 } = {}) {
+  employerContrib(yearSalary, { small = true, injury = 0.002, mrotMonth = null, months = 12 } = {}) {
     const c = this.payrollContrib;
+    /* МРОТ берём из sickLeave: он там уже есть, и второе место для одного
+       и того же числа однажды разойдётся с первым. */
+    const mrot = mrotMonth ?? this.sickLeave.minWageMonth;
+    const m = Math.max(1, months);
     if (small) {
-      /* Льгота считается помесячно: полный тариф с МРОТ, 15% с остального. */
-      const perMonth = yearSalary / 12;
-      const atFull = Math.min(perMonth, mrotMonth);
-      const above = Math.max(0, perMonth - mrotMonth);
-      return (atFull * c.rate + above * c.smallRateOverMrot) * 12 + yearSalary * injury;
+      /* Льгота считается помесячно: полный тариф с МРОТ, 15% с остального.
+         Делим на фактическое число месяцев, а не всегда на двенадцать, —
+         иначе при работе полгода месячная выплата занижается вдвое
+         и льгота считается не от той суммы. */
+      const perMonth = yearSalary / m;
+      const atFull = Math.min(perMonth, mrot);
+      const above = Math.max(0, perMonth - mrot);
+      return (atFull * c.rate + above * c.smallRateOverMrot) * m + yearSalary * injury;
     }
     const upToBase = Math.min(yearSalary, c.base);
     const overBase = Math.max(0, yearSalary - c.base);
@@ -315,6 +391,153 @@ const RATES = {
   },
 
   dividendTax(amount) { return this.progressive(amount, this.dividendScale); },
+
+  /* --- Взносы за работника: полная картина ---
+
+     Само правило считает employerContrib — он тут единственный, и
+     дублировать его здесь нельзя: два расчёта одного и того же тарифа
+     рано или поздно разойдутся, а разойдутся они молча.
+
+     Эта обёртка добавляет то, чего нет в одном числе: разбивку на единый
+     тариф и травматизм, НДФЛ, сумму на руки и полную стоимость работника.
+     Последняя и есть главное: предприниматель держит в голове «зарплата
+     восемьдесят», а платит почти сто десять. */
+  payroll({ monthly = 0, months = 12, small = true, injuryRate = null } = {}) {
+    const p = this.payrollContrib;
+    const injury = injuryRate ?? p.injuryMin;
+    const total = monthly * months;
+
+    /* Единый тариф отдельно от травматизма: тот же расчёт с нулевой
+       ставкой травматизма и даёт чистый единый тариф. */
+    const main = this.employerContrib(total, { small, injury: 0, months });
+    const injurySum = total * injury;
+    const ndfl = this.ndfl(total);
+
+    return {
+      total,
+      main,
+      injury: injurySum,
+      all: main + injurySum,
+      overBase: Math.max(0, total - p.base),
+      /* Во что обходится работник. НДФЛ сюда не входит — он удерживается
+         ИЗ зарплаты, а не платится сверх неё. */
+      cost: total + main + injurySum,
+      ndfl,
+      onHand: total - ndfl,
+    };
+  },
+
+  /* --- НДФЛ с продажи имущества ---
+
+     Первое, что проверяем, — срок владения. Если он выдержан, дальше
+     считать нечего: налога нет и декларацию подавать не нужно.  */
+  propertyTax({ price = 0, bought = 0, years = 0, realty = true,
+                special = false, useCosts = false } = {}) {
+    const p = this.propertySale;
+    const need = realty ? (special ? p.minYearsSpecial : p.minYearsCommon) : p.minYearsOther;
+    if (years >= need) return { free: true, need, tax: 0 };
+
+    const deduction = realty ? p.deductionRealty : p.deductionOther;
+    /* Два способа уменьшить доход, выбрать можно только один.
+       Считаем оба и подсказываем выгодный — вручную люди почти всегда
+       берут вычет, хотя расходы часто больше. */
+    const byDeduction = Math.max(0, price - deduction);
+    const byCosts = Math.max(0, price - bought);
+    const base = useCosts ? byCosts : Math.min(byDeduction, byCosts);
+
+    return {
+      free: false, need, deduction,
+      byDeduction, byCosts,
+      better: byCosts < byDeduction ? "costs" : "deduction",
+      base,
+      tax: this.progressive(base, p.scale),
+    };
+  },
+
+  /* --- Пособия по материнству ---
+
+     Средний дневной заработок ограничен сверху предельными базами
+     и снизу МРОТ. Оба предела обязательны: без верхнего пособие
+     завышается втрое, без нижнего — занижается у тех, кто работал
+     мало или неофициально. */
+  maternityPay({ pay1 = 0, pay2 = 0, days = 140, excluded = 0 } = {}) {
+    const s = this.sickLeave, m = this.maternity;
+    const capped = Math.min(pay1, s.bases[0]) + Math.min(pay2, s.bases[1]);
+    /* Из знаменателя вычитаются дни болезней и прошлых декретов —
+       иначе пособие занижается за то, что человек болел. */
+    const divisor = Math.max(1, s.days - excluded);
+    const daily = capped / divisor;
+
+    const maxDaily = (s.bases[0] + s.bases[1]) / s.days;
+    const minDaily = s.minWageMonth * 24 / s.days;
+    const used = Math.min(Math.max(daily, minDaily), maxDaily);
+
+    /* Упёрлись в потолок — это про ИСХОДНЫЙ заработок, а не про
+       посчитанный. Сравнивать было не с чем: заработок обрезается
+       предельными базами строкой выше, и после обрезки он никогда не
+       окажется больше потолка. Признак всегда молчал, и человек с
+       зарплатой втрое выше базы не понимал, почему пособие такое. */
+    const overBase = pay1 > s.bases[0] || pay2 > s.bases[1];
+
+    const care = used * m.careMonthDays * m.careShare;
+    return {
+      daily: used, atMax: overBase, atMin: daily < minDaily,
+      maxDaily, minDaily,
+      birth: used * days,          // пособие по беременности и родам
+      careMonthly: care,           // по уходу до 1,5 лет, в месяц
+      careMax: maxDaily * m.careMonthDays * m.careShare,
+    };
+  },
+
+  /* --- Алименты, СК РФ ст. 81 ---
+     Доля берётся от дохода после НДФЛ. */
+  alimonyPay({ income = 0, kids = 1, alreadyNet = false } = {}) {
+    const a = this.alimony;
+    const net = alreadyNet ? income : income - this.ndfl(income * 12) / 12;
+    const share = a.shares[Math.min(3, Math.max(1, kids))];
+    const sum = net * share;
+    const cap = net * a.maxWithholding;
+    return {
+      net, share, sum: Math.min(sum, cap),
+      capped: sum > cap, cap,
+    };
+  },
+
+  /* --- Исковая давность, ГК РФ ст. 196 и 200 ---
+     Считаем от дня, когда человек узнал о нарушении, а не от самого
+     нарушения: это разные даты, и путаница в них стоит иска. */
+  limitationEnds({ knownAt = null, brokenAt = null, claimDays = 0 } = {}) {
+    const L = this.limitation;
+    const day = 86400000;
+    const known = knownAt ? new Date(knownAt) : null;
+    if (!known || Number.isNaN(known.getTime())) return null;
+
+    const pause = Math.min(claimDays, L.claimPauseDays) * day;
+    const ends = new Date(known.getTime() + L.generalYears * 365.25 * day + pause);
+
+    /* Предельный срок: сколько бы ни тянулось «узнал позже»,
+       через десять лет от нарушения защиты нет. */
+    let absolute = null;
+    if (brokenAt) {
+      const b = new Date(brokenAt);
+      if (!Number.isNaN(b.getTime())) absolute = new Date(b.getTime() + L.absoluteYears * 365.25 * day);
+    }
+    const real = absolute && absolute < ends ? absolute : ends;
+    return {
+      ends, absolute, real,
+      cutByAbsolute: Boolean(absolute && absolute < ends),
+      daysLeft: Math.ceil((real - Date.now()) / day),
+    };
+  },
+
+  /* --- НДФЛ с процентов по вкладам, НК РФ ст. 214.2 --- */
+  depositTax({ interest = 0, maxKeyRate = null } = {}) {
+    const d = this.deposits;
+    const rate = (maxKeyRate ?? this.keyRate.percent) / 100;
+    const free = d.base * rate;
+    const base = Math.max(0, interest - free);
+    return { free, base, tax: this.progressive(base, d.scale) };
+  },
 
   /* Максимальное дневное пособие по больничному. */
   maxSickDaily() {

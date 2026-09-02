@@ -323,11 +323,56 @@ const THEMES = {
 
 /* Применяем всю палитру, а не один акцент: тема меняет фон, поверхности,
    текст, границы и градиенты — иначе это просто перекрашенная кнопка. */
+/* ---------- Цвет ссылок ----------
+
+   Палитры задают «primary» — цвет кнопок. Как фон кнопки он хорош:
+   текст на нём белый. Как цвет текста-ссылки на светлом фоне он часто
+   слишком светел: у основной палитры контраст выходит 3.6 при норме
+   WCAG AA 4.5. Читаемо для здорового глаза и мутно для пожилого, а
+   сервисом пользуются люди всех возрастов.
+
+   Дописывать двадцать значений руками в десять палитр не будем: их
+   считает генератор, и рукописная правка разошлась бы с ним при
+   следующем выпуске. Вместо этого затемняем цвет ссылки ровно настолько,
+   насколько не хватает контраста, — и только если не хватает.       */
+
+const hex2rgb = h => {
+  const v = h.replace("#", "");
+  const n = v.length === 3 ? v.split("").map(c => c + c).join("") : v;
+  return [0, 2, 4].map(i => parseInt(n.slice(i, i + 2), 16));
+};
+const rgb2hex = a => "#" + a.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("");
+
+/* Относительная яркость по формуле WCAG. */
+function luminance([r, g, b]) {
+  const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+function contrast(a, b) {
+  const l1 = luminance(a), l2 = luminance(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+/* Подгоняем цвет ссылки под фон: в светлой теме темним, в тёмной
+   осветляем, пока контраст не дотянет до 4.5. Шаг маленький, чтобы
+   цвет остался узнаваемо тем же, а не превратился в чёрный. */
+function readableLink(primaryHex, bgHex) {
+  let c = hex2rgb(primaryHex);
+  const bg = hex2rgb(bgHex);
+  const darken = luminance(bg) > 0.5;      // светлый фон — темним
+  for (let i = 0; i < 40 && contrast(c, bg) < 4.5; i++) {
+    c = c.map(v => darken ? v * 0.94 : v + (255 - v) * 0.06);
+  }
+  return rgb2hex(c);
+}
+
 function applyThemePalette(id, mode) {
   const t = THEMES[id] || THEMES.default;
   const side = t[mode === "dark" ? "dark" : "light"];
   const r = document.documentElement;
   for (const [k, v] of Object.entries(side)) r.style.setProperty("--" + k, v);
+  /* Ссылки — после остальных: цвет считается от primary и bg этой же палитры. */
+  if (side.primary && side.bg) r.style.setProperty("--link", readableLink(side.primary, side.bg));
   r.setAttribute("data-palette", id);
 }
 

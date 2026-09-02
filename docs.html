@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Документы — ЭкоФин</title>
+<!-- seo:start -->
+<meta name="description" content="32 готовых документа: договоры, акты, претензии, иски, приказы по работникам и заявления для физлиц. Заполните поля — документ соберётся сам, без ИИ и без ограничений.">
+<link rel="canonical" href="https://divine-guest.github.io/ecofin/docs.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Документы — ЭкоФин">
+<meta property="og:description" content="32 готовых документа: договоры, акты, претензии, иски, приказы по работникам и заявления для физлиц. Заполните поля — документ соберётся сам.">
+<meta property="og:url" content="https://divine-guest.github.io/ecofin/docs.html">
+<meta property="og:image" content="https://divine-guest.github.io/ecofin/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ЭкоФин — финансы, налоги и право в одном сервисе">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<!-- seo:end -->
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css?v=105">
+<style>
+  /* Плитка документа. Название крупно, пояснение мелко: выбирают
+     по названию, а читают пояснение только при сомнении. */
+  .doc-card {
+    display: flex; flex-direction: column; gap: 4px; text-align: left;
+    padding: 14px 16px; min-height: 44px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--surface); color: var(--text);
+    font: inherit; cursor: pointer; width: 100%;
+    transition: border-color .2s, transform .15s;
+  }
+  .doc-card:hover { border-color: var(--primary); transform: translateY(-1px); }
+  .doc-card b { font-size: .95rem; }
+  .doc-card span { color: var(--muted); font-size: var(--t-xs); }
+  .doc-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+
+  .doc-group { margin-bottom: 26px; }
+  .doc-group h3 { margin-bottom: 2px; }
+  .doc-group > p { color: var(--muted); font-size: var(--t-sm); margin-bottom: 12px; }
+
+  /* Готовый документ — моноширинным: в договоре важны отступы и
+     колонки подписей, пропорциональный шрифт их разваливает. */
+  .doc-out {
+    white-space: pre-wrap; font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
+    font-size: .84rem; line-height: 1.6;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px; margin-top: 16px;
+    max-height: 60vh; overflow: auto;
+  }
+  .official { border-left: 3px solid var(--gold); padding-left: 14px; margin: 12px 0; }
+  .official b { display: block; }
+  .official span { color: var(--muted); font-size: var(--t-sm); }
+</style>
+</head>
+<body>
+<main class="section tint-green">
+  <div class="container">
+    <div class="section-title">
+      <h1>Готовые <span>документы</span></h1>
+      <div class="line"></div>
+      <p class="subtitle">Заполните поля — документ соберётся сам · без ИИ, без лимитов и без подписки</p>
+    </div>
+
+    <div class="form-group" style="max-width:460px;margin:0 auto 22px">
+      <input type="search" id="docFind" placeholder="Найти документ: претензия, аренда, увольнение…"
+             oninput="renderList()" autocomplete="off">
+    </div>
+
+    <div id="docList"></div>
+
+    <div class="card" style="margin-top:8px">
+      <h3>Чего здесь нет — и где это взять</h3>
+      <p style="color:var(--muted);margin-bottom:14px">
+        Декларации и отчётность — не текстовые бумаги, а машиночитаемые формы
+        с контрольными соотношениями. Красиво набранный «бланк» выглядит
+        убедительно и не принимается никуда: время потрачено, срок пропущен.
+        Поэтому вместо подделок — прямой путь туда, где их подают бесплатно.
+      </p>
+      <div id="officialList"></div>
+    </div>
+  </div>
+</main>
+
+<script src="js/themes.js?v=105"></script>
+<script src="js/api.js?v=105"></script>
+<script src="js/app.js?v=105"></script>
+<script src="js/progress.js?v=105"></script>
+<script src="js/palette.js?v=105"></script>
+<script src="js/ai.js?v=105"></script>
+<script src="js/templates.js?v=105"></script>
+<script>
+initPage("docs.html");
+
+/* Что документ решает — одной строкой. Название говорит, ЧТО это,
+   а человек выбирает по тому, ЗАЧЕМ. Без этой строки библиотека
+   превращается в оглавление, по которому невозможно выбрать. */
+const DOC_WHY = {
+  "Договор оказания услуг": "Работы без предмета и сроков — половина всех споров",
+  "Договор подряда": "Когда есть овеществлённый результат, а не просто услуга",
+  "Договор поставки товара": "Приёмка, качество, сроки — и кто отвечает за порчу",
+  "Договор аренды помещения": "Кто платит за ремонт и как расторгнуть",
+  "Договор с самозанятым": "Чтобы налоговая не переквалифицировала в трудовой",
+  "Договор поручения (представление интересов)": "Кто-то действует от вашего имени",
+  "Договор займа между физлицами": "Без письменной формы долг доказать почти нечем",
+  "Соглашение о конфиденциальности (NDA)": "До того, как показали цифры и клиентов",
+  "Дополнительное соглашение к договору": "Менять условия на словах нельзя",
+  "Соглашение о расторжении договора": "Разойтись без суда и без взаимных требований",
+  "Акт выполненных работ": "Без подписанного акта оплату не взыскать",
+  "Акт сверки взаиморасчётов": "Обнуляет срок исковой давности — три года заново",
+  "Расписка в получении денег": "Единственное доказательство передачи наличных",
+  "Гарантийное письмо об оплате": "Должник признаёт долг и называет срок",
+  "Заявление о зачёте встречных требований": "Долги гасятся друг о друга без денег",
+  "Претензия контрагенту": "Обязательный шаг перед арбитражным иском",
+  "Претензия потребителя (товар)": "Возврат, обмен, деньги назад",
+  "Уведомление о расторжении договора": "Отказ вступает в силу с момента получения",
+  "Заявление о выдаче судебного приказа": "Быстро и вдвое дешевле иска, если долг бесспорный",
+  "Возражение на судебный приказ": "Десять дней — и приказ отменят без объяснений",
+  "Исковое заявление о взыскании долга": "Когда приказ отменили или сумма больше 500 тысяч",
+  "Трудовой договор": "Обязателен с первого дня работы человека",
+  "Приказ о приёме на работу": "Основание для кадрового учёта и выплат",
+  "Приказ о премировании": "Чтобы премия попала в расходы и в расчёт отпускных",
+  "Приказ об увольнении": "И полный расчёт в последний рабочий день",
+  "Заявление об увольнении по собственному желанию": "Две недели отсчитываются со следующего дня",
+  "Заявление на отпуск за свой счёт": "Без сохранения зарплаты, по соглашению",
+  "Заявление приставу о сохранении прожиточного минимума": "Пока не подашь — не сохранят",
+  "Заявление в банк о снятии ограничений по счёту": "Когда счёт заблокировали по 115-ФЗ",
+  "Заявление о преступлении (мошенничество)": "С талоном-уведомлением, без него не докажешь",
+  "Доверенность на представление интересов": "Без даты выдачи документ ничтожен",
+  "Согласие на обработку персональных данных": "Нужно всем, кто собирает данные клиентов",
+};
+
+let CURRENT = null;   // выбранный шаблон
+
+/* ---------- Список ---------- */
+
+function renderList() {
+  const q = (document.getElementById("docFind").value || "").trim().toLowerCase();
+  const box = document.getElementById("docList");
+
+  const match = title =>
+    !q || title.toLowerCase().includes(q) || (DOC_WHY[title] || "").toLowerCase().includes(q);
+
+  let html = "", found = 0;
+  for (const [name, hint, titles] of TEMPLATE_GROUPS) {
+    const items = titles.filter(match);
+    if (!items.length) continue;
+    found += items.length;
+    html += `
+      <div class="doc-group">
+        <h3>${escapeHtml(name)}</h3>
+        <p>${escapeHtml(hint)}</p>
+        <div class="doc-grid">
+          ${items.map(t => `
+            <button class="doc-card" onclick="openDoc(${JSON.stringify(t).replace(/"/g, "&quot;")})">
+              <b>${escapeHtml(t)}</b>
+              <span>${escapeHtml(DOC_WHY[t] || "")}</span>
+            </button>`).join("")}
+        </div>
+      </div>`;
+  }
+
+  box.innerHTML = found ? html : `
+    <div class="card" style="text-align:center">
+      <p style="margin-bottom:10px">Такого документа в библиотеке нет.</p>
+      <p style="color:var(--muted);margin-bottom:14px">Его можно составить с ИИ —
+        опишите словами, что нужно, и получите готовый текст.</p>
+      <a class="btn" href="${PF.href("tools.html")}">Составить с ИИ</a>
+    </div>`;
+}
+
+function renderOfficial() {
+  document.getElementById("officialList").innerHTML = OFFICIAL_FORMS.map(f => `
+    <div class="official">
+      <b>${escapeHtml(f.title)}</b>
+      <span>${escapeHtml(f.why)}<br>
+      Где: ${f.url
+        ? `<a href="${escapeHtml(f.url)}" target="_blank" rel="noopener">${escapeHtml(f.where)}</a>`
+        : escapeHtml(f.where)}</span>
+    </div>`).join("");
+}
+
+/* ---------- Заполнение ---------- */
+
+function openDoc(title) {
+  CURRENT = title;
+  const tpl = TEMPLATES[title];
+  if (!tpl) return;
+
+  const box = document.getElementById("docList");
+  box.innerHTML = `
+    <div class="card">
+      <button class="btn small secondary" onclick="renderList();window.scrollTo({top:0,behavior:'smooth'})"
+              style="margin-bottom:14px">← Ко всем документам</button>
+      <h3 style="margin-bottom:4px">${escapeHtml(title)}</h3>
+      <p style="color:var(--muted);font-size:var(--t-sm);margin-bottom:16px">
+        ${escapeHtml(DOC_WHY[title] || "")}</p>
+
+      <div class="grid cols-2" id="docFields">
+        ${tpl.fields.map(([id, label]) => `
+          <div class="form-group">
+            <label>${escapeHtml(label)}</label>
+            <input type="text" id="f_${id}" oninput="buildDoc()" autocomplete="off">
+          </div>`).join("")}
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <button class="btn small secondary" onclick="copyDoc()">Скопировать</button>
+        <button class="btn small secondary" onclick="printDoc()">Скачать / печать</button>
+        <button class="btn small secondary" onclick="saveDoc()">В «Мои документы»</button>
+      </div>
+
+      <div class="doc-out" id="docOut"></div>
+
+      <p style="color:var(--muted);font-size:var(--t-xs);margin-top:12px">
+        Незаполненные поля останутся прочерками — их можно вписать от руки.
+        Это рабочая заготовка: под конкретную сделку условия стоит проверить,
+        а для крупных сумм — показать юристу.</p>
+    </div>`;
+  buildDoc();
+}
+
+function values() {
+  const tpl = TEMPLATES[CURRENT];
+  const v = {};
+  for (const [id] of tpl.fields) v[id] = document.getElementById("f_" + id)?.value || "";
+  return v;
+}
+
+function buildDoc() {
+  document.getElementById("docOut").textContent = fillTemplate(TEMPLATES[CURRENT].body, values());
+}
+
+const docText = () => document.getElementById("docOut").textContent;
+
+function copyDoc() {
+  navigator.clipboard.writeText(docText())
+    .then(() => toast("Скопировано — вставьте в Word или письмо"))
+    .catch(() => toast("Не удалось скопировать", "error"));
+}
+
+/* Печатаем в отдельном окне, а не текущую страницу: документу нужен
+   свой лист без шапки сайта, полей формы и подсказок. */
+function printDoc() {
+  const w = window.open("", "_blank");
+  if (!w) return toast("Браузер заблокировал окно печати");
+  const esc = s => s.replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
+  w.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8">
+    <title>${esc(CURRENT)}</title><style>
+      @page { margin: 20mm 18mm; }
+      body { font: 12pt/1.55 "Times New Roman", Georgia, serif; color: #000; }
+      pre { white-space: pre-wrap; font: inherit; }
+    </style></head><body><pre>${esc(docText())}</pre></body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 300);
+  trackEvent("doc_print", { doc: CURRENT });
+}
+
+function saveDoc() {
+  if (!PF.user()) {
+    toast("Войдите, чтобы сохранять документы");
+    return setTimeout(() => (location.href = PF.href("auth.html")), 1200);
+  }
+  PF.saveDoc(CURRENT + " — " + new Date().toLocaleDateString("ru-RU"), docText());
+  toast("Сохранено в «Мои документы» в кабинете");
+  trackEvent("doc_save", { doc: CURRENT });
+}
+
+renderList();
+renderOfficial();
+
+/* Ссылка вида docs.html#Претензия контрагенту открывает документ сразу:
+   так на него можно сослаться из статьи, из разбора ситуации и из чата. */
+const wanted = decodeURIComponent(location.hash.slice(1));
+if (wanted && TEMPLATES[wanted]) openDoc(wanted);
+</script>
+</body>
+</html>

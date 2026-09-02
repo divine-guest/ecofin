@@ -23,6 +23,18 @@
   --violet: #0e8f86;
   --danger: #b3392c;
   --accent: #0e8f86;
+  /* Цвет ссылок отдельно от акцента.
+
+     Акцент #0e8f86 хорош на кнопке — там он фон, а текст поверх белый.
+     Но как цвет текста на светлом фоне он даёт контраст 3.6 при норме
+     4.5 (WCAG AA): читаемо для здорового глаза и мутно для пожилого.
+     А сервисом пользуются люди всех возрастов — это прямое требование
+     владельца, и ссылки в подвале и в тексте статей проходят мимо него.
+
+     Более тёмный оттенок того же цвета даёт 5.5 и на глаз почти
+     не отличается. В тёмной теме наоборот: там фон почти чёрный,
+     и светлее — лучше, поэтому ниже цвет переопределён. */
+  --link: #0a6f68;
   --border: #d3ded8;
   --shadow: 0 1px 2px rgba(13, 40, 36, .05);
   --shadow-lg: 0 12px 32px -18px rgba(13, 40, 36, .45);
@@ -63,6 +75,8 @@
   /* Этих трёх не было: тёмная тема тянула их из светлой. --accent в итоге
      оставался тёмно-бирюзовым и почти сливался с тёмным фоном. */
   --accent: #2dd4bf;
+  /* В тёмной теме читаемость даёт светлый оттенок: 9+ против 5.5. */
+  --link: #2dd4bf;
   --grad-hero: linear-gradient(155deg, #04120f 0%, #073630 48%, #0a4436 100%);
 }
 
@@ -99,7 +113,7 @@ body::after {
   to { transform: translate(-60px, 50px) scale(1.15); }
 }
 
-a { color: var(--primary); text-decoration: none; }
+a { color: var(--link, var(--primary)); text-decoration: none; }
 a:hover { text-decoration: none; }
 img { max-width: 100%; }
 ::selection { background: var(--primary); color: #fff; }
@@ -157,7 +171,7 @@ img { max-width: 100%; }
 }
 .nav-links a:hover { color: var(--text); text-decoration: none; }
 .nav-links a:hover::after, .nav-links a.active::after { transform: scaleX(1); }
-.nav-links a.active { color: var(--primary); }
+.nav-links a.active { color: var(--link, var(--primary)); }
 
 /* ============ Кнопки ============ */
 .btn {
@@ -265,7 +279,7 @@ img { max-width: 100%; }
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; opacity: .35; z-index: 0;
 }
-.hero-scales {
+.hero-mark {
   position: absolute; right: -30px; bottom: -20px; width: min(620px, 55vw);
   opacity: .78; z-index: 0; pointer-events: none;
   filter: drop-shadow(0 0 46px rgba(211, 178, 60, .4));
@@ -300,13 +314,10 @@ img { max-width: 100%; }
 }
 .hero-stats .hs span { color: rgba(240, 247, 243, .7); font-size: .86rem; }
 
-/* Анимация весов */
-.scales-sway { transform-box: fill-box; transform-origin: 50% 0%; animation: sway 7s ease-in-out infinite; }
-@keyframes sway {
-  0%, 100% { transform: rotate(-4.5deg); }
-  50% { transform: rotate(4.5deg); }
-}
-.scales-glow { animation: glowPulse 7s ease-in-out infinite; }
+/* Дыхание знака. Качания больше нет: у весов оно было оправдано —
+   чаши и должны качаться, — а монета, которая шатается, выглядит
+   поломкой. Остаётся только мягкое свечение. */
+.mark-glow { animation: glowPulse 7s ease-in-out infinite; }
 @keyframes glowPulse { 0%, 100% { opacity: .55; } 50% { opacity: .8; } }
 .hero-particle {
   position: absolute; border-radius: 50%; background: rgba(238, 214, 136, .55);
@@ -578,13 +589,13 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
   }
   .mobile-menu a { padding: 13px 6px; font-size: 1rem; border-bottom: 1px solid var(--border); }
   .mobile-menu a::after { display: none; }
-  .mobile-menu a.active { color: var(--primary); font-weight: 800; }
+  .mobile-menu a.active { color: var(--link, var(--primary)); font-weight: 800; }
 }
 
 @media (max-width: 640px) {
   .grid.cols-2, .grid.cols-3, .grid.cols-4 { grid-template-columns: 1fr; }
   .hero { min-height: auto; padding: 64px 0 56px; }
-  .hero-scales {
+  .hero-mark {
     width: min(430px, 98vw); right: auto; left: 50%;
     transform: translateX(-50%); bottom: -24px; opacity: .28;
   }
@@ -674,7 +685,7 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
   color: var(--muted); font-size: .88rem; text-align: center;
   background: linear-gradient(180deg, transparent, rgba(20, 184, 166, .05));
 }
-.site-footer a { color: var(--primary); }
+.site-footer a { color: var(--link, var(--primary)); }
 
 /* Личный чат в кабинете */
 .chat-panel {
@@ -841,6 +852,15 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
     align-items: center;
   }
   .nav-burger { min-height: 44px; padding-inline: 14px; }
+  /* Подсказки под полем вопроса на главной и метки тем в базе знаний.
+     Оба ряда — из самых нажимаемых на телефоне (подсказка в герое вообще
+     первое, к чему тянется палец), а высота у них была 34–36 пикселей:
+     в перечень выше их просто не внесли, когда его составляли. */
+  .hero-hints button, .qa-chip { min-height: 44px; }
+  /* Таблетки в шапке — «Уведомления», «Поиск», смена темы. На телефоне
+     у них остаётся только значок, и высота падала до 36 пикселей:
+     в перечне выше их просто забыли. */
+  .header-pill, .theme-toggle { min-height: 44px; min-width: 44px; }
   .avatar-option { width: 52px; height: 52px; }
 
   /* Ссылки внутри текста получают запас по вертикали, чтобы не промахиваться */
@@ -1168,10 +1188,10 @@ input, select, textarea { border-radius: 10px; }
 }
 .btn.gold:hover { filter: brightness(1.07); }
 
-/* Герой: весы становятся водяным знаком, а не действующим лицом.
-   Качающийся элемент рядом с заголовком перетягивает взгляд с текста. */
-.hero-scales { opacity: .14; }
-.scales-sway { animation: none !important; }
+/* Герой: знак остаётся водяным знаком, а не действующим лицом.
+   Крупный элемент рядом с заголовком перетягивает взгляд с текста,
+   а читать человек пришёл заголовок. */
+.hero-mark { opacity: .14; }
 .hero::after { opacity: .7; }
 
 /* Шапка: тонкая линия вместо размытого стекла — так видно границу
@@ -1196,9 +1216,12 @@ input, select, textarea { border-radius: 10px; }
   background: var(--grad-primary);
 }
 
-/* Ссылки в тексте должны быть видны как ссылки */
+/* Ссылки в тексте должны быть видны как ссылки.
+   Цвет — из --link, а не --primary: на светлом фоне акцент даёт контраст
+   3.6 при норме 4.5, и ссылка внутри абзаца — как раз то место, где это
+   заметнее всего. Подробнее у определения --link выше. */
 .card a:not(.btn), main p a:not(.btn) {
-  color: var(--primary);
+  color: var(--link, var(--primary));
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
@@ -1214,7 +1237,7 @@ input, select, textarea { border-radius: 10px; }
 .nav-links a:hover,
 .mobile-menu a:hover { color: var(--text); }
 .nav-links a.active,
-.mobile-menu a.active { color: var(--primary); }
+.mobile-menu a.active { color: var(--link, var(--primary)); }
 
 /* ===== Баллы ===== */
 .points-banner {
@@ -1534,7 +1557,7 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
 /* Поле ключевой ставки: она меняется несколько раз в год, поэтому
    рядом всегда стоит ссылка на первоисточник. */
 .rate-hint { margin-top: 5px; line-height: 1.5; }
-.rate-hint a { color: var(--primary); text-decoration: underline; }
+.rate-hint a { color: var(--link, var(--primary)); text-decoration: underline; }
 
 /* Сумма прописью — её копируют в договор, поэтому текст выделяемый
    и крупнее обычного. */
@@ -1949,7 +1972,7 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
   font-size: var(--t-xs); color: var(--muted); margin-bottom: 16px;
 }
 .crumbs a { color: var(--muted); }
-.crumbs a:hover { color: var(--primary); }
+.crumbs a:hover { color: var(--link, var(--primary)); }
 
 .kb-article h1 {
   font-family: "Onest", Georgia, serif; font-size: var(--t-xl);
@@ -2249,7 +2272,11 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
     scroll-snap-align: start;
     padding: 9px 15px;
     font-size: .84rem;
-    min-height: 40px;
+    /* 44, а не 40. Правило «не меньше 44» задано выше для сенсорных
+       экранов, но эта строка идёт позже и перебивала его. Ряд выбора
+       калькулятора — самая нажимаемая вещь на телефоне: девятнадцать
+       кнопок подряд, и промах по любой открывает не тот расчёт. */
+    min-height: 44px;
     white-space: nowrap;
   }
 }
@@ -2282,7 +2309,12 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
      16px у поля обязателен, иначе iPhone приближает страницу при вводе
      и человек оказывается на увеличенном экране, не понимая почему. */
   .btn { min-height: 46px; padding: 12px 20px; }
-  .btn.small { min-height: 40px; }
+  /* Было 40. Правило «не меньше 44» задано выше, в блоке для сенсорных
+     экранов, но эта строка идёт позже и молча его перебивала — на телефоне
+     маленькие кнопки выходили на четыре пикселя ниже обещанного.
+     Заметно это не на глаз, а по промахам: «удалить» стоит рядом с
+     «сохранить», и лишний промах здесь стоит записи. */
+  .btn.small { min-height: 44px; }
   input, select, textarea { font-size: 16px; min-height: 46px; }
   textarea { min-height: 92px; }
   label { font-size: .9rem; }
@@ -2333,6 +2365,17 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
   .tabbar-item { font-size: .74rem; letter-spacing: -.01em; }
   .tabbar-item span { white-space: nowrap; }
 
+  /* Разделов внизу пять, и на узком экране подписи вставали вплотную —
+     ряд читался как одна сплошная строка. Минимальный зазор разводит их
+     обратно, а на совсем узких экранах подпись чуть уменьшается: лучше
+     на полпикселя мельче, чем слипшаяся.  */
+  .tabbar-item { padding-left: 4px; padding-right: 4px; }
+}
+
+@media (max-width: 360px) {
+  .tabbar-item { font-size: .68rem; padding-left: 2px; padding-right: 2px; }
+  .tabbar-item .tabbar-icon { width: 21px; height: 21px; }
+
   /* Полоски прокрутки в рядах и таблицах на телефоне не видно вовсе,
      поэтому край содержимого делаем заметным: видно, что есть куда
      листать. */
@@ -2348,3 +2391,157 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
     }
   }
 }
+
+/* ============ Печать и сохранение в PDF ============
+
+   Две беды, из-за которых распечатанный расчёт выходил пустым или
+   рваным. Обе не видны на экране — только на бумаге.
+
+   1. ГЛАВНОЕ ЧИСЛО ИСЧЕЗАЛО.
+      Крупные суммы нарисованы приёмом «градиент, обрезанный по буквам»:
+      фон градиентный, а сам текст прозрачный (background-clip: text,
+      color: transparent). Браузер по умолчанию НЕ печатает фоны — и от
+      числа не остаётся ничего. Со стороны это выглядит так, будто из
+      суммы пропали цифры: «съело нули».
+
+   2. ТЁМНАЯ ТЕМА ПЕЧАТАЛАСЬ СВЕТЛЫМ ПО БЕЛОМУ.
+      Фон бумаги всегда белый, а фоны браузер не печатает. Значит светлый
+      текст тёмной темы уходил белым по белому — лист выходил почти
+      пустым. А тёмную тему включает добрая половина.
+
+   Поэтому на печати мы принудительно возвращаемся к чёрному по белому,
+   независимо от выбранной темы и палитры. Бумага — не место для
+   оформления, ей нужна читаемость.                                    */
+
+@media print {
+  /* Цвета — только те, что видны на белом. Перекрываем и тему, и палитру:
+     переменные заданы на :root и на [data-theme], поэтому переопределяем
+     на том же уровне и с !important. */
+  :root, :root[data-theme="dark"], :root[data-theme="light"] {
+    --bg: #fff !important;
+    --bg-2: #fff !important;
+    --surface: #fff !important;
+    --surface-2: #fff !important;
+    --text: #111 !important;
+    --muted: #444 !important;
+    --border: #bbb !important;
+    --primary: #0a6f68 !important;
+    --primary-2: #0a6f68 !important;
+    --link: #0a6f68 !important;
+    --gold: #7a5a12 !important;
+    --danger: #9c2f24 !important;
+    --shadow: none !important;
+    --shadow-lg: none !important;
+  }
+
+  html, body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  /* Светящиеся сферы на фоне: на экране украшение, на бумаге — ничего,
+     но они умеют съедать целую страницу пустотой. */
+  body::before, body::after { display: none !important; }
+
+  /* Блоки проявляются по мере прокрутки — до них надо долистать.
+     На печать уходит вся страница разом, и всё, до чего человек не
+     дошёл глазами, печаталось пустым местом. Особенно обидно с
+     пояснениями под расчётом: цифра есть, объяснения нет. */
+  .reveal, .game-stage, [class*="reveal"] {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+    visibility: visible !important;
+  }
+
+  /* Возвращаем цвет тексту, нарисованному градиентом. Перечисляем и
+     общий случай, и точечные места: приём используется в шести местах,
+     и новое наверняка появится — общее правило по атрибуту ловит их все. */
+  .logo b,
+  .hero h1 em,
+  .hero-stats .hs b,
+  .section-title h1 span,
+  .section-title h2 span,
+  .stat-value,
+  .calc-result .big,
+  .money-in,
+  [style*="background-clip"] {
+    background: none !important;
+    background-image: none !important;
+    -webkit-background-clip: border-box !important;
+    background-clip: border-box !important;
+    color: #111 !important;
+  }
+
+  /* Карточки на бумаге — рамка вместо заливки и тени. */
+  .card, .calc-result, .op-row, .lim-track {
+    background: #fff !important;
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+
+  /* Таблицы расчётов: линии обязаны быть видны, иначе столбцы сливаются. */
+  .calc-table td, .calc-table th,
+  .cmp-table td, .cmp-table th {
+    border-color: #bbb !important;
+    color: #111 !important;
+  }
+
+  /* Поля ввода печатаются вместе со своим значением. Разрешаем им
+     занять столько, сколько нужно: узкое поле обрезает длинное число
+     без всякого предупреждения — те же «съеденные» цифры, только
+     по другой причине. */
+  input, select, textarea {
+    background: #fff !important;
+    color: #111 !important;
+    border: 1px solid #ccc !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+  }
+
+  /* Длинные суммы не должны переноситься посреди числа. */
+  .calc-result .big, .money-in, .op-sum, .calc-table td:last-child {
+    white-space: nowrap !important;
+    overflow: visible !important;
+  }
+
+  /* Ряды выбора и кнопки на бумаге не нужны. */
+  .tabs, .tabbar, .chat-widget, .no-print,
+  .site-header, .site-footer, .result-actions { display: none !important; }
+
+  /* Ссылку без адреса на бумаге невозможно проверить, а расчёт
+     со ссылкой на первоисточник — можно. */
+  .calc-result a[href^="http"]::after,
+  .kb-article a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 90%;
+    word-break: break-all;
+  }
+
+  /* Разрывы страниц по смыслу, а не по случайности. */
+  .card, .calc-result, table { break-inside: avoid; page-break-inside: avoid; }
+  h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+}
+
+/* ===== Приём файла в любое поле =====
+   Кнопка стоит НАД полем, а не под ним: человек с бумагой на руках
+   должен увидеть её раньше, чем решит, что придётся перепечатывать. */
+.scan-box { margin-bottom: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.scan-pick {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 14px; min-height: 44px;
+  border: 1px dashed var(--border); border-radius: 10px;
+  background: var(--surface-2); color: var(--text);
+  font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+.scan-pick:hover { border-color: var(--primary); color: var(--link, var(--primary)); }
+.scan-ico { font-size: 1rem; line-height: 1; }
+.scan-hint { color: var(--muted); font-size: var(--t-xs); }
+.scan-status { flex-basis: 100%; font-size: var(--t-sm); color: var(--muted); }
+.scan-status.ok { color: var(--primary); }
+.scan-status.err { color: var(--danger); }
+/* Подсветка поля, когда на него тянут файл. */
+textarea.scan-over, input.scan-over { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14, 143, 134, .18); }

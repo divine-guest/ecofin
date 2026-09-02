@@ -37,6 +37,9 @@ const PALETTE = {
       { kind: "Раздел", title: "Что делать: разбор ситуаций", href: "situations.html" },
       { kind: "Раздел", title: "Кабинет", href: "dashboard.html" },
       { kind: "Раздел", title: "ИИ-инструменты", href: "tools.html" },
+      { kind: "Раздел", title: "Моё дело: учёт выручки и налог", href: "book.html" },
+      { kind: "Раздел", title: "Мои дела: несколько ИП и клиентов", href: "clients.html" },
+      { kind: "Раздел", title: "Документы: готовые бланки", href: "docs.html" },
       { kind: "Раздел", title: "Калькуляторы", href: "calc.html" },
       { kind: "Раздел", title: "Практикум", href: "games.html" },
       { kind: "Раздел", title: "База знаний", href: "knowledge.html" },
@@ -63,6 +66,12 @@ const PALETTE = {
       { kind: "Калькулятор", title: "НДС на УСН: 5%, 7% или 20%", href: "calc.html", tab: 16 },
       { kind: "Калькулятор", title: "Кредит: платёж и переплата", href: "calc.html", tab: 17 },
       { kind: "Калькулятор", title: "Сумма прописью для договора", href: "calc.html", tab: 18 },
+      { kind: "Калькулятор", title: "Взносы за работников и стоимость найма", href: "calc.html", tab: 19 },
+      { kind: "Калькулятор", title: "Налог с продажи квартиры и машины", href: "calc.html", tab: 20 },
+      { kind: "Калькулятор", title: "Декретные и пособие по уходу", href: "calc.html", tab: 21 },
+      { kind: "Калькулятор", title: "Алименты: сколько платить", href: "calc.html", tab: 22 },
+      { kind: "Калькулятор", title: "Налог с процентов по вкладу", href: "calc.html", tab: 23 },
+      { kind: "Калькулятор", title: "Срок исковой давности: когда истекает", href: "calc.html", tab: 24 },
 
       { kind: "Инструмент", title: "Составить документ", href: "tools.html", tab: 0 },
       { kind: "Инструмент", title: "Разобрать договор по файлу или фото", href: "tools.html", tab: 1 },
@@ -72,6 +81,12 @@ const PALETTE = {
       { kind: "Инструмент", title: "Налоговый помощник", href: "tools.html", tab: 5 },
       { kind: "Инструмент", title: "Чек-листы", href: "tools.html", tab: 6 },
       { kind: "Инструмент", title: "Шаблоны без ИИ", href: "tools.html", tab: 7 },
+      { kind: "Инструмент", title: "Чем это грозит: оценка последствий", href: "tools.html", tab: 8 },
+      { kind: "Инструмент", title: "Объяснение в банк по 115-ФЗ", href: "tools.html", tab: 9 },
+      { kind: "Инструмент", title: "Что изменилось в новой редакции договора", href: "tools.html", tab: 10 },
+      { kind: "Инструмент", title: "Подбор кодов ОКВЭД", href: "tools.html", tab: 11 },
+      { kind: "Инструмент", title: "Аудит карточки товара на маркетплейсе", href: "tools.html", tab: 12 },
+      { kind: "Инструмент", title: "Сверка с налоговой: сальдо ЕНС", href: "tools.html", tab: 13 },
 
       { kind: "Действие", title: "Задать вопрос консультанту", act: "chat" },
       { kind: "Действие", title: "Добавить напоминание о сроке", href: "dashboard.html#tasks" },
@@ -79,6 +94,19 @@ const PALETTE = {
       { kind: "Действие", title: "Тарифы и подписка", act: "pay" },
       { kind: "Действие", title: "Сменить тему оформления", act: "theme" },
     ];
+
+    /* Документы — тем же способом, что и статьи: перечислять тридцать
+       названий руками означает однажды забыть про новый бланк, и он
+       перестанет находиться поиском. Список берём из самой библиотеки. */
+    if (typeof TEMPLATES !== "undefined") {
+      for (const title of Object.keys(TEMPLATES)) {
+        list.push({
+          kind: "Документ", title,
+          note: "заполнить и распечатать",
+          href: "docs.html#" + encodeURIComponent(title),
+        });
+      }
+    }
 
     /* Статьи подхватываем, если база знаний загружена на этой странице. */
     if (typeof ARTICLES !== "undefined") {

@@ -111,6 +111,25 @@ OK((await call("/api/billing/webhook", { method: "POST", body: { object: { id: "
    !(await call("/api/auth/me", { token: at })).data.user?.plan?.includes("pro"),
    "поддельный вебхук оплаты НЕ включает Pro");
 
+console.log("\n— Аварийный ключ владельца не перебирается —");
+/* Этот единственный запрос отдаёт полный контроль над сервисом: меняет
+   пароль владельца и ставит роль owner. Пока ограничения не было, ключ
+   подбирался со скоростью в сотни попыток в секунду, и стойкость всего
+   сервиса упиралась в длину одной строки в настройках.
+
+   Бьём по выдуманному адресу, а не по настоящему владельцу: счётчик
+   срабатывает раньше проверки, чей это адрес, и трогать живой аккаунт
+   незачем. */
+let recTries = 0, recBlocked = false;
+for (let i = 0; i < 25; i++) {
+  const rr = await call("/api/auth/owner-recover", { method: "POST",
+    body: { email: `nobody${stamp}@t.ru`, secret: "podbor" + i, newPassword: "parol12345" } });
+  recTries++;
+  if (rr.status === 429) { recBlocked = true; break; }
+}
+OK(recBlocked, `перебор ключа восстановления останавливается (попыток до отказа: ${recTries})`);
+OK(recTries <= 10, `и останавливается быстро, а не через сотни попыток: ${recTries}`);
+
 console.log("\n— Заголовки ответа —");
 const hh = (await call("/api/health")).headers;
 OK(hh.get("cache-control")?.includes("no-store"), "ответы API не кэшируются");

@@ -18,6 +18,9 @@ import { runDigest } from "./digest.js";
 import * as points from "./points.js";
 import * as courses from "./courses.js";
 import * as telegram from "./telegram.js";
+import * as book from "./book.js";
+import * as registry from "./registry.js";
+import * as clients from "./clients.js";
 
 /* Маршруты: [метод, путь, обработчик, доступ] */
 const ROUTES = [
@@ -34,6 +37,9 @@ const ROUTES = [
 
   ["POST", "/api/ai", ai.handleAI, "user"],
   ["POST", "/api/analyze", ai.handleAnalyze, "user"],
+  /* Распознать фото в текст — чтобы файл принимал любой инструмент,
+     а не только разбор договора. */
+  ["POST", "/api/ocr", ai.handleOcr, "user"],
   ["GET", "/api/quota", ai.handleQuota, "user"],
   ["GET", "/api/referral", referral.status, "user"],
   ["GET", "/api/points", points.status, "user"],
@@ -62,6 +68,25 @@ const ROUTES = [
   ["POST", "/api/progress", progress.put, "user"],
   ["POST", "/api/progress/clear", progress.clear, "user"],
   ["POST", "/api/competencies", saved.saveComp, "user"],
+
+  /* «Моё дело»: учёт выручки и трат. Всё под входом — это личные деньги. */
+  ["GET", "/api/book", book.list, "user"],
+  ["POST", "/api/book/op", book.addOp, "user"],
+  ["POST", "/api/book/op/delete", book.removeOp, "user"],
+  ["POST", "/api/book/profile", book.saveProfile, "user"],
+  /* Чек с фотографии — сразу разобранными полями, а не текстом. */
+  ["POST", "/api/book/scan", book.scanReceipt, "user"],
+  ["GET", "/api/book/export", book.exportBook, "user"],
+
+  /* Государственные реестры. Статус самозанятого — открытый сервис ФНС;
+     выписка из ЕГРЮЛ работает, только если подключён платный ключ. */
+  /* Несколько дел в одном кабинете: бухгалтеру и тем, у кого ИП и ООО. */
+  ["GET", "/api/clients", clients.list, "user"],
+  ["POST", "/api/clients", clients.save, "user"],
+  ["POST", "/api/clients/delete", clients.remove, "user"],
+
+  ["POST", "/api/registry/npd", registry.npdStatus, "user"],
+  ["POST", "/api/registry/company", registry.companyInfo, "user"],
 
   ["GET", "/api/qa", qa.list, "public"],
   ["GET", "/api/qa/one", qa.one, "public"],
@@ -124,6 +149,9 @@ const THROTTLED = {
   "/api/billing/promo": "promo",
   "/api/billing/trial": "promo",
   "/api/admin/reset-password": "reset",
+  /* Аварийный ключ владельца. Без ограничения он подбирался со скоростью
+     сотен попыток в секунду — а успех означает полный захват сервиса. */
+  "/api/auth/owner-recover": "recover",
 };
 
 async function throttle(request, env, origin, path) {
@@ -132,7 +160,7 @@ async function throttle(request, env, origin, path) {
 
   /* Ключ второго уровня достаём из тела, не ломая его для обработчика. */
   let key = "";
-  if (action === "login" || action === "register" || action === "promo") {
+  if (action === "login" || action === "register" || action === "promo" || action === "recover") {
     const clone = request.clone();
     const body = await clone.json().catch(() => ({}));
     key = String(body.email || body.code || "").trim().toLowerCase().slice(0, 120);
@@ -150,7 +178,9 @@ async function throttle(request, env, origin, path) {
     ? `Слишком много попыток входа. Попробуйте через ${minutes} мин. Забыли пароль — напишите в поддержку`
     : action === "register"
       ? `С этого адреса уже создано много аккаунтов. Попробуйте через ${minutes} мин.`
-      : `Слишком много попыток. Попробуйте через ${minutes} мин.`;
+      : action === "recover"
+        ? `Слишком много попыток восстановления. Следующая через ${minutes} мин.`
+        : `Слишком много попыток. Попробуйте через ${minutes} мин.`;
 
   const res = fail(env, origin, message, 429);
   res.headers.set("Retry-After", String(retryAfter));

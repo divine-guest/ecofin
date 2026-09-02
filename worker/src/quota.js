@@ -71,6 +71,40 @@ export async function spendTool(env, user) {
   return { ...q, left: q.left === Infinity ? Infinity : q.left - 1, spent: q.spent + 1 };
 }
 
+/* ---------- Возврат списанного ----------
+
+   Лимит списывается ДО обращения к провайдеру: иначе человек мог бы
+   запускать разбор параллельно в десяти вкладках и уложиться в один
+   пробный запуск. Но если провайдер не ответил, получается несправедливо:
+   ответа нет, а попытка сгорела. У бесплатного тарифа она вообще одна —
+   и первое знакомство с сервисом заканчивается словами «пробный запуск
+   израсходован» после того, как он ничего не показал.
+
+   Поэтому при сбое возвращаем списанное обратно. Ниже нуля не уходим:
+   счётчик мог обнулиться сменой суток между списанием и возвратом. */
+
+async function unbump(env, email, kind, day) {
+  await env.DB.prepare(
+    "UPDATE usage SET n = MAX(0, n - 1) WHERE email = ? AND day = ? AND kind = ?"
+  ).bind(email, day, kind).run().catch(() => {});
+}
+
+export async function refundAI(env, user) {
+  await unbump(env, user.email, "ai", mskDay());
+}
+
+export async function refundAnalyze(env, user) {
+  await unbump(env, user.email, "analyze", mskDay());
+}
+
+export async function refundTool(env, user) {
+  await unbump(env, user.email, "tool", mskDay());
+  /* Пробные запуски считаются за всю жизнь аккаунта, отдельным полем. */
+  await env.DB.prepare(
+    "UPDATE users SET tool_uses = MAX(0, tool_uses - 1) WHERE email = ?"
+  ).bind(user.email).run().catch(() => {});
+}
+
 /* Подписка: продлеваем от текущей даты окончания, если она ещё не прошла. */
 export function extendUntil(current, days) {
   const base = current && current > now() ? current : now();
