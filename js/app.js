@@ -301,6 +301,12 @@ const MOBILE_MORE = [
   ]],
 ];
 
+function scrollToTop(e) {
+  e.preventDefault();
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+window.scrollToTop = scrollToTop;
+
 function renderMobileNav(active, u) {
   document.querySelector(".tabbar")?.remove();
   document.querySelector(".sheet-backdrop")?.remove();
@@ -313,8 +319,12 @@ function renderMobileNav(active, u) {
   const inSheet = MOBILE_MORE.some(([, items]) => items.some(([h]) => h === active))
     || active === "admin.html";
 
+  /* Нажатие на раздел, в котором уже находишься, поднимает страницу
+     наверх — так ведут себя все приложения, и рука тянется к этому сама.
+     Иначе после долгой прокрутки надо листать обратно вручную. */
   const tab = ([href, label, icon]) => `
-    <a href="${PF.href(href)}" class="tabbar-item${active === href ? " active" : ""}">
+    <a href="${PF.href(href)}" class="tabbar-item${active === href ? " active" : ""}"
+       ${active === href ? 'onclick="scrollToTop(event)"' : ""}>
       ${tabIcon(icon)}<span>${label}</span>
     </a>`;
 
@@ -364,12 +374,39 @@ function renderMobileNav(active, u) {
 /* Лист открывается и закрывается сменой класса на body: так заодно
    блокируется прокрутка страницы под ним — иначе палец листает фон,
    а не список, и это выглядит поломкой. */
+/* «Назад» должна закрывать лист, а не уводить со страницы.
+ *
+ * На телефоне это главная кнопка, и человек жмёт её рефлекторно, чтобы
+ * закрыть то, что открылось поверх. Если она вместо этого уносит на
+ * предыдущую страницу, ощущение — будто сайт «выкинул». Поэтому при
+ * открытии добавляем шаг в историю и снимаем его при закрытии.
+ *
+ * Флаг нужен, чтобы не запутаться: закрытие бывает и по кнопке «Назад»
+ * (шаг уже снят системой), и по крестику (шаг надо снять самим). */
+let sheetInHistory = false;
+
 function openMoreSheet() {
+  if (document.body.classList.contains("sheet-open")) return;
   document.body.classList.add("sheet-open");
+  history.pushState({ sheet: true }, "");
+  sheetInHistory = true;
 }
+
 function closeMoreSheet() {
+  if (!document.body.classList.contains("sheet-open")) return;
   document.body.classList.remove("sheet-open");
+  if (sheetInHistory) {
+    sheetInHistory = false;
+    history.back();
+  }
 }
+
+addEventListener("popstate", () => {
+  if (document.body.classList.contains("sheet-open")) {
+    sheetInHistory = false;      // шаг уже снят системой
+    closeMoreSheet();
+  }
+});
 window.openMoreSheet = openMoreSheet;
 window.closeMoreSheet = closeMoreSheet;
 
@@ -443,7 +480,7 @@ function renderHeader(active) {
   header.className = "site-header";
   header.innerHTML = `
     <div class="container nav">
-      <a href="${PF.href("index.html")}" class="logo">${SCALES_SVG}Эко<b>Фин</b></a>
+      <a href="${PF.href("index.html")}" class="logo">${SCALES_SVG}<span class="logo-name">Эко<b>Фин</b></span></a>
       <button class="nav-burger" onclick="this.closest('.site-header').classList.toggle('menu-open')" aria-label="Меню">Меню</button>
       <nav class="nav-links">${links}</nav>
       ${u ? `<button class="header-pill notif-btn" onclick="NOTIFY.open()" title="Уведомления" aria-label="Уведомления">${BELL_SVG}<span class="pill-text">Уведомления</span></button>` : ""}

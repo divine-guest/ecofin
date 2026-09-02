@@ -119,6 +119,9 @@ img { max-width: 100%; }
   font-weight: 800; font-size: 1.35rem; color: var(--text);
   display: flex; align-items: center; gap: 9px; letter-spacing: .3px;
 }
+/* Название — один элемент строки, иначе зазор в 9 пикселей встаёт
+   и между «Эко» и «Фин», и читается это как два слова. */
+.logo-name { white-space: nowrap; }
 .logo:hover { text-decoration: none; }
 /* Знак весов — вектор, не эмодзи: наследует цвет темы, одинаков
    во всех системах и не зависит от того, как ОС рисует ⚖. */
@@ -2310,4 +2313,38 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
      а он и не нужен — всё то же есть в листе «Ещё». */
   .footer-nav { display: none; }
   .site-footer { padding: 22px 0 18px; font-size: .82rem; }
+}
+
+/* ============ Телефон: точность попадания пальцем ============
+
+   Палец — не мышь. Apple называет удобным касание от 44 пикселей,
+   Google — от 48. Всё, что меньше, человек не промахивается лишь
+   потому, что старается, — а стараться он не должен.
+
+   Увеличиваем область касания, не раздувая саму надпись: логотип
+   выглядит так же, но попасть по нему можно уверенно.                */
+
+@media (max-width: 860px) {
+  .logo { min-height: 44px; display: inline-flex; align-items: center; }
+
+  /* Подписи под значками были 10.9 пикселя. Для сервиса, которым
+     пользуются и пожилые люди, это мелко: делаем крупнее и убираем
+     лишние переносы. */
+  .tabbar-item { font-size: .74rem; letter-spacing: -.01em; }
+  .tabbar-item span { white-space: nowrap; }
+
+  /* Полоски прокрутки в рядах и таблицах на телефоне не видно вовсе,
+     поэтому край содержимого делаем заметным: видно, что есть куда
+     листать. */
+  .tabs { -webkit-mask-image: linear-gradient(to right, #000 92%, transparent); }
+}
+
+/* Экран с вырезом: содержимое не должно уезжать под скруглённые углы. */
+@supports (padding: max(0px)) {
+  @media (max-width: 860px) {
+    .container {
+      padding-left: max(16px, env(safe-area-inset-left));
+      padding-right: max(16px, env(safe-area-inset-right));
+    }
+  }
 }
