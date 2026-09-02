@@ -295,6 +295,41 @@ elif [ ! -f "$NGINX_LIVE" ] || ! cmp -s "$HERE/nginx.conf" "$NGINX_LIVE"; then
   fi
 fi
 
+# ---------- Переадресация на каноническое имя ----------
+#
+# Certbot добавляет переадресацию с http на https вида
+#     return 301 https://$host$request_uri;
+# то есть «туда же, куда стучались, но по защищённому протоколу».
+#
+# Для адреса по номеру это ломается: получается https://84.201.164.112,
+# а сертификат выписан на имя. Браузер видит несовпадение и не открывает
+# сайт вовсе — со стороны это выглядит как 404 на ровном месте, что нас
+# и озадачило.
+#
+# Поэтому переадресуем на само имя, а не на «куда стучались». Заодно это
+# делает адрес каноническим: одна страница — один адрес, и поисковики
+# не считают их разными.
+#
+# Правка точечная и повторяемая: если уже сделана, ничего не меняется.
+
+CANON=$(grep -vE '^\s*(#|$)' "$REPO/worker/node/domain.txt" 2>/dev/null | head -1 | tr -d '[:space:]')
+NGINX_LIVE=/etc/nginx/sites-available/pravofin
+
+if [ -n "$CANON" ] && grep -q 'return 301 https://\$host\$request_uri' "$NGINX_LIVE" 2>/dev/null; then
+  BACKUP=$(mktemp)
+  cp "$NGINX_LIVE" "$BACKUP"
+  sed -i "s|return 301 https://\$host\$request_uri|return 301 https://$CANON\$request_uri|" "$NGINX_LIVE"
+  if nginx -t >/dev/null 2>&1; then
+    systemctl reload nginx 2>/dev/null || systemctl restart nginx
+    log "переадресация теперь ведёт на $CANON"
+    rm -f "$BACKUP"
+  else
+    cp "$BACKUP" "$NGINX_LIVE"
+    rm -f "$BACKUP"
+    log "правка переадресации не прошла проверку, вернул как было"
+  fi
+fi
+
 # ---------- 9. Запуск ----------
 
 systemctl daemon-reload
