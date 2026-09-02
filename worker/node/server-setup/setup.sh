@@ -442,6 +442,12 @@ DIAG="$REPO/diag-8f3a2c.txt"
   echo "--- что говорила установка (последние строки) ---"
   tail -40 /var/log/pravofin-setup.log 2>/dev/null | sed 's/^/  /' || echo "  журнала нет"
   echo
+  echo "--- настройка nginx на диске ---"
+  grep -nE 'listen|server_name|return 30|ssl_certificate |root '     /etc/nginx/sites-available/pravofin 2>/dev/null | sed 's/^/  /'
+  echo "  включённые сайты: $(ls -1 /etc/nginx/sites-enabled/ 2>/dev/null | tr '
+' ' ')"
+  echo
+
   echo "--- состояние переноса ---"
   echo "  метка в репозитории: $(cat "$REPO/worker/node/IMPORT-DATA" 2>/dev/null || echo нет)"
   echo "  метка применённого:  $(cat "$DIR/import.done" 2>/dev/null || echo нет)"
