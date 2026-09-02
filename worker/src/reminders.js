@@ -1,4 +1,4 @@
-/* ПравоФин — напоминания и лента уведомлений.
+/* ЭкоФин — напоминания и лента уведомлений.
 
    Смысл функции для бизнеса: ИП боится пропустить налоговый срок и получить
    блокировку счёта. Напоминание об этом — то, ради чего возвращаются сами,
@@ -200,7 +200,7 @@ export async function addPreset(request, env, origin, user) {
     body: JSON.stringify({
       title: p.title, due, repeat: p.repeat,
       channel: isPro(user) ? "both" : "site",
-      note: "Из налогового календаря ПравоФин",
+      note: "Из налогового календаря ЭкоФин",
     }),
   });
   return create(fake, env, origin, user);

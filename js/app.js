@@ -1,4 +1,4 @@
-/* ============ ПравоФин — общая логика ============ */
+/* ============ ЭкоФин — общая логика ============ */
 
 /* Кэш пользователя нужен только чтобы шапка и кабинет рисовались без мигания.
    Все запреты живут на сервере: правка кэша в DevTools ничего не открывает. */
@@ -443,7 +443,7 @@ function renderHeader(active) {
   header.className = "site-header";
   header.innerHTML = `
     <div class="container nav">
-      <a href="${PF.href("index.html")}" class="logo">${SCALES_SVG}Право<b>Фин</b></a>
+      <a href="${PF.href("index.html")}" class="logo">${SCALES_SVG}Эко<b>Фин</b></a>
       <button class="nav-burger" onclick="this.closest('.site-header').classList.toggle('menu-open')" aria-label="Меню">Меню</button>
       <nav class="nav-links">${links}</nav>
       ${u ? `<button class="header-pill notif-btn" onclick="NOTIFY.open()" title="Уведомления" aria-label="Уведомления">${BELL_SVG}<span class="pill-text">Уведомления</span></button>` : ""}
@@ -461,7 +461,7 @@ function renderFooter() {
   f.className = "site-footer";
   const L = (href, label) => `<a href="${PF.href(href)}">${label}</a>`;
   f.innerHTML = `<div class="container">
-    <p><b>ПравоФин</b> — экосистема юридической и финансовой грамотности © 2026</p>
+    <p><b>ЭкоФин</b> — экосистема финансовой и юридической грамотности © 2026</p>
     <p class="footer-nav">
       ${L("situations.html", "Что делать")} · ${L("tools.html", "Инструменты")} · ${L("calc.html", "Калькуляторы")} ·
       ${L("knowledge.html", "База знаний")} · ${L("courses.html", "Курсы")} ·
@@ -542,7 +542,7 @@ function restoreChat() {
   if (msgs.length) {
     msgs.forEach(m => addMsg(m.role === "user" ? "user" : "bot", m.text));
   } else {
-    addMsg("bot", "Здравствуйте! Я ИИ-консультант ПравоФин. Задайте вопрос по праву, налогам или финансам — отвечу кратко и по делу.");
+    addMsg("bot", "Здравствуйте! Я ИИ-консультант ЭкоФин. Задайте вопрос по праву, налогам или финансам — отвечу кратко и по делу.");
   }
 }
 function clearChat() {
@@ -1494,7 +1494,7 @@ const NOTIF = {
       const days = Math.ceil((new Date(d.date) - new Date(today)) / 86400000);
       const id = d.date + "|" + d.title;
       if (days >= 0 && days <= 3 && !shown.includes(id)) {
-        new Notification("ПравоФин: срок на подходе", {
+        new Notification("ЭкоФин: срок на подходе", {
           body: `${d.title} — ${days === 0 ? "сегодня!" : "через " + days + " дн. (" + new Date(d.date).toLocaleDateString("ru-RU") + ")"}`,
         });
         shown.push(id);

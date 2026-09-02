@@ -1,4 +1,4 @@
-/* ============ ПравоФин — сервер на обычной машине ============
+/* ============ ЭкоФин — сервер на обычной машине ============
 
    Тот же самый код, что работает на Cloudflare Workers, запущенный под
    Node. Ни один файл из worker/src здесь не меняется: воркер отдаёт
@@ -176,7 +176,7 @@ server.headersTimeout = 190000;
 server.keepAliveTimeout = 75000;
 
 server.listen(PORT, HOST, () => {
-  console.log(`ПравоФин API слушает http://${HOST}:${PORT}`);
+  console.log(`ЭкоФин API слушает http://${HOST}:${PORT}`);
   console.log(`  база: ${DB_FILE} (${DB.driverName})`);
   console.log(`  схема: файлов ${schema.files}, выражений ${schema.applied}, уже было ${schema.skipped}`);
   console.log(`  ключ ИИ: ${cfg.AI_API_KEY ? "есть" : "НЕТ"}, Telegram: ${cfg.TELEGRAM_BOT_TOKEN ? "есть" : "НЕТ"}, ЮKassa: ${cfg.YOOKASSA_SHOP_ID ? "есть" : "нет"}`);

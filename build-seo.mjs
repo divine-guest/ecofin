@@ -102,10 +102,10 @@ function articlePage(a, all, version, updated) {
     inLanguage: "ru-RU",
     articleSection: a.area,
     dateModified: updated,
-    author: { "@type": "Organization", name: "ПравоФин" },
+    author: { "@type": "Organization", name: "ЭкоФин" },
     publisher: {
       "@type": "Organization",
-      name: "ПравоФин",
+      name: "ЭкоФин",
       logo: { "@type": "ImageObject", url: `${SITE}/icon-512.png` },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
@@ -131,14 +131,14 @@ function articlePage(a, all, version, updated) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${esc(a.title)} — ПравоФин</title>
+<title>${esc(a.title)} — ЭкоФин</title>
 <!-- Эта страница собрана скриптом build-seo.mjs из js/knowledge.js.
      Править здесь бесполезно: при следующей сборке файл перезапишется.
      Текст статьи живёт в js/knowledge.js. -->
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${url}">
 <meta property="og:type" content="article">
-<meta property="og:site_name" content="ПравоФин">
+<meta property="og:site_name" content="ЭкоФин">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:title" content="${esc(a.title)}">
 <meta property="og:description" content="${esc(desc)}">

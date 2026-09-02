@@ -1,4 +1,4 @@
-/* ПравоФин — регистрация, вход, сессии, профиль. */
+/* ЭкоФин — регистрация, вход, сессии, профиль. */
 import {
   CFG, json, fail, hashPassword, verifyPassword, newSessionToken, sha256,
   bearer, now, normEmail, validEmail, publicUser, normalizeAvatar,

@@ -1,7 +1,7 @@
-/* ПравоФин — service worker (офлайн-кэш).
+/* ЭкоФин — service worker (офлайн-кэш).
    Версию поднимаем при каждом релизе: иначе у вернувшихся посетителей
    останется старый кэш и новый фронтенд не подхватится. */
-const CACHE = "pravofin-v83";
+const CACHE = "pravofin-v88";
 
 const ASSETS = [
   "index.html", "tools.html", "calc.html", "courses.html", "games.html",

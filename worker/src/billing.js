@@ -1,4 +1,4 @@
-/* ПравоФин — оплата подписки через ЮKassa.
+/* ЭкоФин — оплата подписки через ЮKassa.
    Pro включается ТОЛЬКО после того, как статус платежа подтверждён запросом
    к API ЮKassa. Ответ браузера и тело вебхука сами по себе ничего не активируют. */
 import { CFG, json, fail, now, normEmail, publicUser, isPaid } from "./lib.js";
@@ -76,13 +76,13 @@ export async function createPayment(request, env, origin, user) {
            автосписание — три четверти. Человек видит это на витрине
            и может отключить в кабинете в один клик. */
         save_payment_method: true,
-        description: `ПравоФин — ${PLANS[planId].title}, ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`,
+        description: `ЭкоФин — ${PLANS[planId].title}, ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`,
         /* Сумму и план берём ТОЛЬКО отсюда при подтверждении: клиент их не диктует. */
         metadata: { email: user.email, plan: planId, period, pointsUsed: String(used) },
         receipt: {
           customer: { email: user.email },
           items: [{
-            description: `Подписка ПравоФин «${PLANS[planId].title}», ${period === "year" ? "12 мес." : "1 мес."}`,
+            description: `Подписка ЭкоФин «${PLANS[planId].title}», ${period === "year" ? "12 мес." : "1 мес."}`,
             quantity: "1.00",
             amount: { value: toPay.toFixed(2), currency: "RUB" },
             vat_code: 1,
@@ -405,12 +405,12 @@ async function chargeSaved(env, user) {
         amount: { value: toPay.toFixed(2), currency: "RUB" },
         capture: true,
         payment_method_id: user.auto_method,
-        description: `ПравоФин — продление «${plan.title}», ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`,
+        description: `ЭкоФин — продление «${plan.title}», ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`,
         metadata: { email: user.email, plan: planId, period, renewal: "1", pointsUsed: String(used) },
         receipt: {
           customer: { email: user.email },
           items: [{
-            description: `Подписка ПравоФин «${plan.title}», ${period === "year" ? "12 мес." : "1 мес."}`,
+            description: `Подписка ЭкоФин «${plan.title}», ${period === "year" ? "12 мес." : "1 мес."}`,
             quantity: "1.00",
             amount: { value: toPay.toFixed(2), currency: "RUB" },
             vat_code: 1,
