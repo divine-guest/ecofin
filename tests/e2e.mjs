@@ -54,12 +54,29 @@ const bobT = b.data.token;
 const admin = await makeAdmin(call);
 const ownerT = admin.token;
 
-/* Свойство «почта из OWNER_EMAILS = владелец» проверяем чтением,
-   а не регистрацией: аккаунт уже существует, и он должен быть owner. */
+/* Свойство «почта из OWNER_EMAILS = владелец» проверяем чтением:
+   на рабочей базе аккаунт владельца уже есть, трогать его нельзя.
+
+   На пустой базе (так гоняют тесты локально) его нет, и раньше проверка
+   падала на ровном месте — не потому что сайт сломан, а потому что базу
+   только что создали. Поэтому недостающий аккаунт заводим сами и сами же
+   убираем. Удаляем строго при условии, что создали её мы: иначе один
+   прогон против рабочей базы снёс бы владельцу вход. */
 const OWNER = "9034092309egor@gmail.com";
-const all = await call("/api/admin/users", { token: ownerT });
-const ownerRow = (all.data.users || []).find(u => u.email === OWNER);
+let ownerCreated = false;
+let all = await call("/api/admin/users", { token: ownerT });
+let ownerRow = (all.data.users || []).find(u => u.email === OWNER);
+if (!ownerRow) {
+  const made = await call("/api/auth/register", {
+    method: "POST",
+    body: { name: "Владелец", email: OWNER, password: "parol12345" },
+  });
+  ownerCreated = made.status === 201;
+  all = await call("/api/admin/users", { token: ownerT });
+  ownerRow = (all.data.users || []).find(u => u.email === OWNER);
+}
 ok(ownerRow?.role === "owner", `почта из OWNER_EMAILS имеет роль владельца (${ownerRow?.role})`);
+if (ownerCreated) await cleanup(OWNER);
 ok(admin.token && (await call("/api/auth/me", { token: ownerT })).data.user.isAdmin === true,
    "у админа открыта админка");
 
