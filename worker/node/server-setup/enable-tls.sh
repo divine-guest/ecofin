@@ -90,7 +90,13 @@ CERT_ARGS=""
 for n in $NAMES; do CERT_ARGS="$CERT_ARGS -d $n"; done
 
 echo "прошу сертификат на: $NAMES"
-if certbot --nginx $CERT_ARGS \
+# --cert-name обязателен. Без него certbot при каждом расхождении списка
+# имён заводит НОВЫЙ сертификат с приставкой -0001, -0002 и так далее.
+# Так на сервере уже завёлся лишний «ecofin26.ru-0001» всего на одно имя.
+# Опасность не в лишнем файле: certbot однажды подставит в настройку
+# именно его, а он покрывает только основной домен — и зеркало отвалится
+# с предупреждением о подделке.
+if certbot --nginx --cert-name "$MAIN" $CERT_ARGS \
      --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
   echo "HTTPS включён для: $NAMES"
 else
@@ -98,7 +104,7 @@ else
   # основной домен. Лучше сайт без зеркал, чем предупреждение о подделке
   # на главном адресе.
   echo "совместная попытка не удалась — беру только $MAIN"
-  certbot --nginx -d "$MAIN" \
+  certbot --nginx --cert-name "$MAIN" -d "$MAIN" \
     --non-interactive --agree-tos --register-unsafely-without-email --redirect \
     && echo "HTTPS включён для $MAIN"
 fi
