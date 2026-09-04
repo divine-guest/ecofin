@@ -114,7 +114,7 @@ export async function status(request, env, origin, user) {
 
   return json(env, origin, {
     code: codeFor(user.email),
-    link: `${env.SITE_URL || "https://divine-guest.github.io/ecofin/"}auth.html?ref=${codeFor(user.email)}`,
+    link: `${env.SITE_URL || "https://ecofin26.ru/"}auth.html?ref=${codeFor(user.email)}`,
     reward: REFERRAL_REWARD,
     balance: user.points || 0,
     invited: list,

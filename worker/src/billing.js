@@ -54,7 +54,7 @@ export async function createPayment(request, env, origin, user) {
   const plan = `${planId}:${period}`;
   const price = { rub: PLANS[planId].price[period] };
   if (!price.rub) return fail(env, origin, "Этот тариф нельзя оплатить");
-  const returnUrl = String(env.SITE_URL || "https://divine-guest.github.io/ecofin/") + "dashboard.html";
+  const returnUrl = String(env.SITE_URL || "https://ecofin26.ru/") + "dashboard.html";
 
   /* Баллы уменьшают сумму к оплате, но не больше половины: подписка
      обязана приносить живые деньги, иначе программа съедает сама себя.

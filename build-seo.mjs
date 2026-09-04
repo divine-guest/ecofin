@@ -24,7 +24,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SITE = "https://divine-guest.github.io/ecofin";
+/* Собственный домен. До покупки здесь стоял адрес GitHub Pages, и это
+   было верно: сайт там и жил. Теперь старый адрес в каноническом теге
+   был бы вреден - он говорит поисковику "настоящая страница вон там",
+   и весь вес уходил бы чужому поддомену, а свой домен считался копией. */
+const SITE = "https://ecofin26.ru";
 const OUT = join(HERE, "st");
 
 /* ---------- Вспомогательное ---------- */
