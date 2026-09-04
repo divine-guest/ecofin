@@ -226,5 +226,86 @@ for (const f of fs.readdirSync(new URL("../", import.meta.url))) {
 ok(brokenStyle.length === 0, "нет кавычки внутри кавычки в style",
    brokenStyle.join("; "));
 
+/* Библиотека шаблонов сходится сама с собой.
+
+   Испортить её можно тремя способами, и ни один не виден глазом в
+   файле на полторы тысячи строк: назвать в группе несуществующий
+   шаблон (кнопка есть, нажатие пустое), написать шаблон и не положить
+   ни в одну группу (найти нельзя), поставить в текст подстановку без
+   поля ввода (человек получает документ с двойными скобками внутри). */
+console.log("\n— Библиотека шаблонов —");
+{
+  const code = read("../js/templates.js");
+  const box = {};
+  new Function("box", code + "\nbox.T = TEMPLATES; box.G = TEMPLATE_GROUPS;")(box);
+  const { T, G } = box;
+
+  const missing = [];
+  for (const [group, , items] of G)
+    for (const name of items) if (!T[name]) missing.push(`${group} → ${name}`);
+  ok(missing.length === 0, `все ${G.flatMap(g => g[2]).length} названий в разделах имеют шаблон`,
+     missing.join("; "));
+
+  const listed = new Set(G.flatMap(g => g[2]));
+  const orphan = Object.keys(T).filter(k => !listed.has(k));
+  ok(orphan.length === 0, `все ${Object.keys(T).length} шаблонов разложены по разделам`,
+     orphan.join("; "));
+
+  const noField = [];
+  for (const [name, t] of Object.entries(T))
+    for (const m of t.body.match(/\{\{(\w+)\}\}/g) || []) {
+      const key = m.slice(2, -2);
+      if (!t.fields.some(f => f[0] === key)) noField.push(`${name}: ${key}`);
+    }
+  ok(noField.length === 0, "у каждой подстановки в тексте есть поле ввода", noField.join("; "));
+
+  /* Строка «зачем нужен документ» живёт в docs.html, а сам шаблон — в
+     templates.js. Забыть её проще всего: карточка не ломается, просто
+     выходит немой, и человек листает список названий, не понимая, что
+     из них выбрать. */
+  {
+    const html = read("../docs.html");
+    const box2 = {};
+    new Function("box", html.match(/const DOC_WHY = \{[\s\S]*?\n\};/)[0] + "\nbox.W = DOC_WHY;")(box2);
+    const mute = Object.keys(T).filter(k => !box2.W[k]);
+    ok(mute.length === 0, "у каждого шаблона есть строка «зачем он нужен»", mute.join("; "));
+    const stale = Object.keys(box2.W).filter(k => !T[k]);
+    ok(stale.length === 0, "нет подсказок к удалённым шаблонам", stale.join("; "));
+  }
+
+  /* Поле, которое некуда подставить, — тоже ошибка: человек его
+     заполняет, а в документе оно не появляется. */
+  const unused = [];
+  for (const [name, t] of Object.entries(T))
+    for (const [key] of t.fields)
+      if (!t.body.includes("{{" + key + "}}")) unused.push(`${name}: ${key}`);
+  ok(unused.length === 0, "каждое поле ввода где-то подставляется", unused.join("; "));
+}
+
+/* Разбирается ли каждый файл js вообще.
+
+   Повод: в комментарии оказался пример регулярного выражения, внутри
+   которого встретилась закрывающая последовательность комментария.
+   Комментарий оборвался посреди фразы, остаток стал кодом, и app.js
+   перестал разбираться. app.js подключён на каждой странице — упал бы
+   весь сайт разом, а остальные проверки этого не видят: они проверяют
+   сервер, а не то, как браузер читает файлы. */
+console.log("\n— Файлы js разбираются —");
+{
+  const dir = new URL("../js/", import.meta.url);
+  const broken = [];
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith(".js")) continue;
+    const code = fs.readFileSync(new URL(f, dir), "utf8");
+    try {
+      new Function(code);
+    } catch (e) {
+      broken.push(`${f}: ${e.message}`);
+    }
+  }
+  ok(broken.length === 0, `все ${fs.readdirSync(dir).filter(f => f.endsWith(".js")).length} файлов js разбираются`,
+     broken.join("; "));
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

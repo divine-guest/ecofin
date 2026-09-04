@@ -152,9 +152,26 @@ const API = {
   logoutEverywhere() { return this.request("/api/auth/logout-all", { method: "POST" }); },
 
   /* --- ИИ --- */
+
+  /* Ответ модели чистим сразу на входе, а не в каждом месте показа.
+
+     Мест показа четыре — инструменты, чат в углу, чат в кабинете и
+     распознавание, — и пятое обязательно появится. Чистка здесь
+     означает, что новому потребителю о ней думать не надо: он получает
+     уже готовый текст.
+
+     Проверка на функцию — на случай страницы, где app.js не подключён:
+     лучше показать ответ со звёздочками, чем уронить страницу. */
+  _clean(r) {
+    if (r && typeof r.text === "string" && typeof plainText === "function")
+      return { ...r, text: plainText(r.text) };
+    return r;
+  },
+
   quota() { return this.request("/api/quota"); },
   ai(prompt, { kind = "chat", system, maxTokens } = {}) {
-    return this.request("/api/ai", { method: "POST", body: { prompt, system, kind, maxTokens } });
+    return this.request("/api/ai", { method: "POST", body: { prompt, system, kind, maxTokens } })
+      .then(r => this._clean(r));
   },
 
   /* Фоновый ИИ: вопрос ставится в очередь на сервере и переживает
@@ -166,17 +183,21 @@ const API = {
         method: "POST", body: { prompt, context, system, kind, maxTokens },
       });
     },
-    status(id) { return API.request("/api/ai/job?id=" + encodeURIComponent(id)); },
+    status(id) {
+      return API.request("/api/ai/job?id=" + encodeURIComponent(id)).then(r => API._clean(r));
+    },
     list()     { return API.request("/api/ai/jobs"); },
   },
   /* Распознать фото в текст. Отдельно от analyze: тот возвращает разбор,
      а здесь нужен сам текст — дальше с ним работает нужный инструмент. */
   ocr({ images, fileName }) {
-    return this.request("/api/ocr", { method: "POST", body: { images, fileName }, timeout: 120000 });
+    return this.request("/api/ocr", { method: "POST", body: { images, fileName }, timeout: 120000 })
+      .then(r => this._clean(r));
   },
 
   analyze({ text, images, fileName }) {
-    return this.request("/api/analyze", { method: "POST", body: { text, images, fileName }, timeout: 120000 });
+    return this.request("/api/analyze", { method: "POST", body: { text, images, fileName }, timeout: 120000 })
+      .then(r => this._clean(r));
   },
 
   /* --- Оплата --- */

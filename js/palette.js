@@ -295,7 +295,16 @@ window.addEventListener("DOMContentLoaded", () => {
   const m = location.hash.match(/^#tab=(\d+)$/);
   if (!m) return;
   setTimeout(() => {
-    document.querySelectorAll(".tabs .tab")[Number(m[1])]?.click();
+    /* Ищем по номеру инструмента, а не по месту в ряду. Пока вкладки
+       шли одной строкой, место и номер совпадали. После раскладки по
+       разделам порядок кнопок изменился — и ссылка вида #tab=12
+       открывала бы совсем другой инструмент.
+
+       Запасной путь по месту оставлен для страниц, где вкладки простые
+       и номеров у них нет. */
+    const n = Number(m[1]);
+    const byId = document.querySelector('.tab[data-tool="' + n + '"]');
+    (byId || document.querySelectorAll(".tabs .tab")[n])?.click();
     document.querySelector(".tabs")?.scrollIntoView({ behavior: "smooth" });
     history.replaceState(null, "", location.pathname);
   }, 400);

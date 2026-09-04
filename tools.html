@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=105">
+<link rel="stylesheet" href="css/style.css?v=110">
 </head>
 <body>
 <main class="section tint-green">
@@ -36,25 +36,62 @@
       <p class="subtitle">Документы, анализ договоров, налоги и чек-листы — с встроенным ИИ сервиса</p>
     </div>
 
-    <div class="tabs">
-      <button class="tab active" onclick="switchTool(0,this)">Генератор документов</button>
-      <button class="tab" onclick="switchTool(1,this)">Анализ договоров</button>
-      <button class="tab" onclick="switchTool(2,this)">Ответ на документ</button>
-      <button class="tab" onclick="switchTool(3,this)">Объяснить просто</button>
-      <button class="tab" onclick="switchTool(4,this)">Проверить контрагента</button>
-      <button class="tab" onclick="switchTool(5,this)">Налоговый помощник</button>
-      <button class="tab" onclick="switchTool(6,this)">Чек-листы</button>
-      <button class="tab" onclick="switchTool(7,this)">Шаблоны без ИИ</button>
-      <button class="tab" onclick="switchTool(8,this)">Чем это грозит</button>
-      <button class="tab" onclick="switchTool(9,this)">Объяснение в банк</button>
-      <button class="tab" onclick="switchTool(10,this)">Что изменилось в договоре</button>
-      <button class="tab" onclick="switchTool(11,this)">Подбор ОКВЭД</button>
-      <button class="tab" onclick="switchTool(12,this)">Аудит карточки товара</button>
-      <button class="tab" onclick="switchTool(13,this)">Сверка с налоговой</button>
+    <!-- Четырнадцать кнопок в один ряд человек не читает — он их
+         обводит взглядом и выбирает первую понятную. Раскладываем по
+         разделам: сначала налоги, потом бухгалтерия, потом бумаги —
+         тот же порядок, что и везде на сайте.
+
+         В каждой кнопке остался её исходный номер: он же — номер
+         панели в разметке ниже и адрес глубокой ссылки #tab=N из
+         быстрого поиска. Переставить панели значило бы сломать
+         все сохранённые ссылки разом. -->
+    <!-- Остаток лимита относится ко всем инструментам сразу,
+         поэтому стоит над разделами, а не внутри первого из них. -->
+    <div id="quotaRow" class="quota-row"></div>
+
+    <div class="tool-groups">
+      <div class="tool-group">
+        <div class="tool-group-head">
+          <span class="tool-group-name">Налоги</span>
+          <span class="tool-group-hint">посчитать, сверить, выбрать режим</span>
+        </div>
+        <div class="tabs">
+          <button class="tab active" data-tool="5" onclick="switchTool(5,this)">Налоговый помощник</button>
+          <button class="tab" data-tool="13" onclick="switchTool(13,this)">Сверка с налоговой</button>
+          <button class="tab" data-tool="11" onclick="switchTool(11,this)">Подбор ОКВЭД</button>
+        </div>
+      </div>
+      <div class="tool-group">
+        <div class="tool-group-head">
+          <span class="tool-group-name">Бухгалтерия</span>
+          <span class="tool-group-hint">деньги, контрагенты, проверки</span>
+        </div>
+        <div class="tabs">
+          <button class="tab" data-tool="9" onclick="switchTool(9,this)">Объяснение в банк</button>
+          <button class="tab" data-tool="4" onclick="switchTool(4,this)">Проверить контрагента</button>
+          <button class="tab" data-tool="6" onclick="switchTool(6,this)">Чек-листы</button>
+          <button class="tab" data-tool="12" onclick="switchTool(12,this)">Аудит карточки товара</button>
+        </div>
+      </div>
+      <div class="tool-group">
+        <div class="tool-group-head">
+          <span class="tool-group-name">Юридические бумаги</span>
+          <span class="tool-group-hint">составить, разобрать, ответить</span>
+        </div>
+        <div class="tabs">
+          <button class="tab" data-tool="0" onclick="switchTool(0,this)">Генератор документов</button>
+          <button class="tab" data-tool="7" onclick="switchTool(7,this)">Шаблоны без ИИ</button>
+          <button class="tab" data-tool="1" onclick="switchTool(1,this)">Анализ договоров</button>
+          <button class="tab" data-tool="2" onclick="switchTool(2,this)">Ответ на документ</button>
+          <button class="tab" data-tool="10" onclick="switchTool(10,this)">Что изменилось в договоре</button>
+          <button class="tab" data-tool="8" onclick="switchTool(8,this)">Чем это грозит</button>
+          <button class="tab" data-tool="3" onclick="switchTool(3,this)">Объяснить просто</button>
+        </div>
+      </div>
     </div>
 
     <!-- Генератор документов -->
-    <div class="tab-panel active game-stage" id="tool0">
+    <div class="tab-panel game-stage" id="tool0">
       <div class="form-group">
         <label>Тип документа</label>
         <select id="docType">
@@ -200,7 +237,7 @@
       <div class="ai-result" id="cpResult"></div>
     </div>
 
-    <div class="tab-panel game-stage" id="tool2">
+    <div class="tab-panel active game-stage" id="tool2">
       <div class="grid cols-2">
         <div class="form-group">
           <label>Ваш статус</label>
@@ -516,15 +553,15 @@
   <div class="container"><div id="partnersTools"></div></div>
 </main>
 
-<script src="js/themes.js?v=105"></script>
-<script src="js/api.js?v=105"></script>
-<script src="js/app.js?v=105"></script>
-<script src="js/progress.js?v=105"></script>
-<script src="js/palette.js?v=105"></script>
-<script src="js/ai.js?v=105"></script>
-<script src="js/templates.js?v=105"></script>
-<script src="js/docscan.js?v=105"></script>
-<script src="js/partners.js?v=105"></script>
+<script src="js/themes.js?v=110"></script>
+<script src="js/api.js?v=110"></script>
+<script src="js/app.js?v=110"></script>
+<script src="js/progress.js?v=110"></script>
+<script src="js/palette.js?v=110"></script>
+<script src="js/ai.js?v=110"></script>
+<script src="js/templates.js?v=110"></script>
+<script src="js/docscan.js?v=110"></script>
+<script src="js/partners.js?v=110"></script>
 <script>
 initPage("tools.html");
 
@@ -556,7 +593,11 @@ function renderQuota() {
   if (!el) {
     el = document.createElement("span");
     el.id = "quotaBadge";
-    document.querySelector(".tabs").prepend(el);
+    /* Своя строка над разделами. Раньше плашка вставлялась в первый ряд
+       вкладок — после раскладки по разделам это оказался ряд налоговых
+       инструментов, и «Войдите, чтобы использовать ИИ» читалось так,
+       будто вход нужен именно для налогов. */
+    (document.getElementById("quotaRow") || document.querySelector(".tabs")).append(el);
   }
   if (!PF.user()) {
     el.className = "badge";
