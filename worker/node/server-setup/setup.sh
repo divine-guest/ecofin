@@ -521,6 +521,14 @@ DIAG="$REPO/diag-8f3a2c.txt"
   grep -nE 'listen|server_name|return 30|ssl_certificate |root '     /etc/nginx/sites-available/pravofin 2>/dev/null | sed 's/^/  /'
   echo "  включённые сайты: $(ls -1 /etc/nginx/sites-enabled/ 2>/dev/null | tr '
 ' ' ')"
+  echo "--- настройка зеркала ---"
+  if [ -f /etc/nginx/sites-available/pravofin-redirect ]; then
+    grep -nE 'listen|server_name|return 30|ssl_certificate ' /etc/nginx/sites-available/pravofin-redirect 2>/dev/null | sed 's/^/  /'
+  else
+    echo "  файла нет — зеркала не настроены"
+  fi
+  echo "--- имена в сертификате ---"
+  certbot certificates 2>/dev/null | grep -E 'Certificate Name|Domains|Expiry' | sed 's/^/  /' || echo "  certbot не ответил"
   echo
 
   echo "--- состояние переноса ---"

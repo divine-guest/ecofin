@@ -54,8 +54,33 @@ done
 PREV=""
 if [ -f "$MARK" ]; then PREV=$(cat "$MARK"); fi
 
-if [ "$WANT" = "$PREV" ] && [ -d "/etc/letsencrypt/live/$MAIN" ]; then
+# Настройка тоже может требовать починки, даже когда с именами всё в
+# порядке. Пример из жизни: после смены домена в ней осталась строка
+# «если пришли по старому имени — отправить на старое имя», а сертификата
+# для того имени больше нет, и человек по старой ссылке видит во весь
+# экран предупреждение о поддельном сайте.
+#
+# Без этой проверки исправленный enable-tls.sh лёг на сервер и не
+# запустился НИ РАЗУ: сертификат есть, имена прежние — выходим сразу.
+stale_redirect() {
+  local f
+  for f in /etc/nginx/sites-available/pravofin /etc/nginx/sites-available/pravofin-redirect; do
+    [ -f "$f" ] || continue
+    # Цель переадресации, ведущая не на основной домен и не на $host.
+    if grep -oE 'return 301 https://[^;$]+' "$f" 2>/dev/null \
+         | grep -vqF "https://$MAIN"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+if [ "$WANT" = "$PREV" ] && [ -d "/etc/letsencrypt/live/$MAIN" ] && ! stale_redirect; then
   exit 0
+fi
+
+if stale_redirect; then
+  echo "в настройке осталась переадресация на чужое имя — перенастраиваю"
 fi
 
 echo "нужен сертификат на: $WANT"
