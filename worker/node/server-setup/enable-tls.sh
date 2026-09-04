@@ -1,28 +1,107 @@
 #!/bin/bash
-# Выпуск сертификата. Обычно вызывается сам из check-domain.sh, но можно
-# и руками:  sudo /opt/pravofin/enable-tls.sh пример.ru
-set -e
-DOMAIN="$1"
-[ -z "$DOMAIN" ] && { echo "укажите домен: enable-tls.sh пример.ru"; exit 1; }
-sed -i "s/server_name _;/server_name $DOMAIN www.$DOMAIN;/" /etc/nginx/sites-available/pravofin
+# Выпуск сертификата и настройка имён сайта.
+#
+#   enable-tls.sh основной.ru [зеркало1.ru зеркало2.ru ...]
+#
+# Первый домен — основной, на нём живёт сайт. Остальные переадресуются
+# на него насовсем (301): у сайта должен быть один адрес, иначе поисковик
+# видит два одинаковых сайта и делит вес между ними, а люди пересылают
+# друг другу разные ссылки на одно и то же.
+#
+# Обычно вызывается сам из check-domain.sh, но можно и руками.
+set -uo pipefail
+
+MAIN="${1:-}"
+[ -z "$MAIN" ] && { echo "укажите домен: enable-tls.sh пример.ru [зеркало.ru]"; exit 1; }
+shift
+ALIASES="$*"
+
+SITE=/etc/nginx/sites-available/pravofin
+REDIR=/etc/nginx/sites-available/pravofin-redirect
+
+MY_IP=$(curl -s --max-time 5 https://api.ipify.org || true)
+[ -z "$MY_IP" ] && { echo "не удалось узнать свой адрес — выхожу"; exit 1; }
+
+# Имя годится для сертификата, только если оно уже показывает на нас.
+#
+# Проверять обязательно: certbot отказывает ЦЕЛИКОМ, если хоть одно имя
+# из списка не подтвердилось. Один неверно настроенный псевдоним оставил
+# бы без https основной домен — то есть весь сайт.
+points_here() {
+  local ip
+  ip=$(getent hosts "$1" 2>/dev/null | awk '{print $1}' | head -1)
+  [ -n "$ip" ] && [ "$ip" = "$MY_IP" ]
+}
+
+# --- Основной домен ------------------------------------------------------
+NAMES="$MAIN"
+SERVER_NAMES="$MAIN"
+if points_here "www.$MAIN"; then
+  NAMES="$NAMES www.$MAIN"
+  SERVER_NAMES="$SERVER_NAMES www.$MAIN"
+else
+  echo "www.$MAIN пока не показывает на нас — беру только $MAIN"
+fi
+
+# server_name правим и из состояния «_», и из прежнего имени: скрипт
+# должны переживать повторные запуски и смену домена.
+sed -i -E "s/^(\s*)server_name .*;/\1server_name $SERVER_NAMES;/" "$SITE"
+
+# --- Зеркала -------------------------------------------------------------
+REDIR_NAMES=""
+for a in $ALIASES; do
+  for n in "$a" "www.$a"; do
+    if points_here "$n"; then
+      REDIR_NAMES="$REDIR_NAMES $n"
+    else
+      echo "$n не показывает на нас — пропускаю"
+    fi
+  done
+done
+REDIR_NAMES=$(echo "$REDIR_NAMES" | xargs || true)
+
+if [ -n "$REDIR_NAMES" ]; then
+  # $request_uri экранирован: это переменная nginx, а не оболочки. Без
+  # экранирования сюда подставилась бы пустота, и все ссылки с зеркала
+  # вели бы на главную вместо нужной страницы.
+  cat > "$REDIR" <<EOF
+# Зеркала: переадресация на основной домен. Файл создаётся скриптом
+# enable-tls.sh, править руками нет смысла — перезапишется.
+server {
+  listen 80;
+  listen [::]:80;
+  server_name $REDIR_NAMES;
+  return 301 https://$MAIN\$request_uri;
+}
+EOF
+  ln -sf "$REDIR" /etc/nginx/sites-enabled/pravofin-redirect
+  NAMES="$NAMES $REDIR_NAMES"
+  echo "зеркала: $REDIR_NAMES"
+else
+  # Ни одно зеркало не настроено — убираем прежний файл, если он был:
+  # иначе nginx будет держать server_name на имя, которого нет.
+  rm -f /etc/nginx/sites-enabled/pravofin-redirect
+fi
+
 nginx -t && systemctl reload nginx
 
-# Сертификат просим сразу на два имени: голое и с www. Запись www заводят
-# почти всегда, а без сертификата на неё браузер показывает страшное
-# предупреждение о подделке — хуже, чем если бы сайт просто не открылся.
-#
-# Если www ещё не показывает на нас, certbot откажет ЦЕЛИКОМ, вместе с
-# основным именем, и сайт останется без https вовсе. Поэтому при неудаче
-# откатываемся на одно имя: лучше https без www, чем никакого.
-if certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" \
+# --- Сертификат ----------------------------------------------------------
+CERT_ARGS=""
+for n in $NAMES; do CERT_ARGS="$CERT_ARGS -d $n"; done
+
+echo "прошу сертификат на: $NAMES"
+if certbot --nginx $CERT_ARGS \
      --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
-  echo "HTTPS включён для $DOMAIN и www.$DOMAIN"
+  echo "HTTPS включён для: $NAMES"
 else
-  echo "с www не вышло — пробую только $DOMAIN"
-  sed -i "s/server_name $DOMAIN www.$DOMAIN;/server_name $DOMAIN;/" /etc/nginx/sites-available/pravofin
-  nginx -t && systemctl reload nginx
-  certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email --redirect
-  echo "HTTPS включён для $DOMAIN (без www: добавьте запись www и запустите ещё раз)"
+  # Последний рубеж: если совместная попытка не удалась, берём хотя бы
+  # основной домен. Лучше сайт без зеркал, чем предупреждение о подделке
+  # на главном адресе.
+  echo "совместная попытка не удалась — беру только $MAIN"
+  certbot --nginx -d "$MAIN" \
+    --non-interactive --agree-tos --register-unsafely-without-email --redirect \
+    && echo "HTTPS включён для $MAIN"
 fi
+
 systemctl reload nginx
 echo "продление сертификата настроится само"
