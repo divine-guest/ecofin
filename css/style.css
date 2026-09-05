@@ -384,14 +384,33 @@ img { max-width: 100%; }
   font-family: "Onest", Georgia, serif;
   font-size: clamp(1.5rem, 3.2vw, 2.2rem); margin-bottom: 10px;
 }
-.section-title h2 span {
-  background: var(--grad-primary);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
+/* Плотный цвет вместо градиента.
+
+   Градиентный текст на каждом заголовке — самый заметный признак
+   типового шаблона. И он перестаёт быть акцентом: когда выделено всё,
+   не выделено ничего. Градиент остаётся один на страницу — в шапке
+   главной, где ему и место. Плотный цвет вдобавок верно печатается. */
+.section-title h1 span,
+.section-title h2 span { color: var(--primary); }
+
 .section-title .subtitle { color: var(--muted); max-width: 560px; margin: 0 auto; }
+
+/* ЧЕРТА ПОДВЕДЕНИЯ ИТОГА — знак сервиса.
+
+   В бухгалтерской книге итог подчёркивают двойной чертой. Это узнаёт
+   каждый, кто держал в руках ведомость, и это про учёт — то есть про
+   то, чем сервис занимается. Плавающая градиентная пилюля, стоявшая
+   здесь раньше, не значила ничего и встречается у каждого второго.
+
+   Верхняя черта толще нижней — так рисуют в ведомости; две одинаковые
+   полоски читались бы просто как полоски. */
 .section-title .line {
-  width: 72px; height: 3px; margin: 14px auto 0; border-radius: 3px;
-  background: var(--grad-gold);
+  width: 84px; height: 0; margin: 16px auto 0; border-radius: 0;
+  background: none;
+  border-top: 2.5px solid var(--primary);
+  border-bottom: 1px solid var(--primary);
+  padding-top: 3px;
+  opacity: .92;
 }
 
 /* ============ Карточки ============ */
@@ -2744,6 +2763,17 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
   }
 
   /* Длинные суммы не должны переноситься посреди числа. */
+  /* Черта подведения итога на бумаге — чёрная. Цветную линию принтер
+     печатает бледно-серой, и она читается как случайная полоса. */
+  .calc-result .big {
+    border-bottom-color: #111 !important;
+    box-shadow: 0 4px 0 -2.5px #111 !important;
+  }
+  .section-title .line {
+    border-top-color: #111 !important;
+    border-bottom-color: #111 !important;
+  }
+
   .calc-result .big, .money-in, .op-sum, .calc-table td:last-child {
     white-space: nowrap !important;
     overflow: visible !important;
