@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=121">
+<link rel="stylesheet" href="css/style.css?v=123">
 </head>
 <body>
 <main class="section">
@@ -45,17 +45,17 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=121"></script>
-<script src="js/api.js?v=121"></script>
-<script src="js/app.js?v=121"></script>
-<script src="js/progress.js?v=121"></script>
-<script src="js/ai.js?v=121"></script>
+<script src="js/themes.js?v=123"></script>
+<script src="js/api.js?v=123"></script>
+<script src="js/app.js?v=123"></script>
+<script src="js/progress.js?v=123"></script>
+<script src="js/ai.js?v=123"></script>
 <!-- Библиотеку документов и базу знаний подключаем сюда специально:
      из них берутся названия для указателя, и без них страница показала
      бы разделы, но умолчала о пятидесяти документах и статьях. -->
-<script src="js/templates.js?v=121"></script>
-<script src="js/knowledge.js?v=121"></script>
-<script src="js/palette.js?v=121"></script>
+<script src="js/templates.js?v=123"></script>
+<script src="js/knowledge.js?v=123"></script>
+<script src="js/palette.js?v=123"></script>
 <script>
 initPage("features.html");
 
@@ -80,6 +80,7 @@ initPage("features.html");
    потом оформить бумагу, потом разобраться. */
 const GROUPS = [
   ["Раздел",      "Разделы сервиса",  "С чего начать"],
+  ["Действие",    "Быстрые действия", "Вызываются из поиска по Ctrl+K"],
   ["Калькулятор", "Расчёты",          "Посчитать налог, выплату, срок"],
   ["Инструмент",  "ИИ-инструменты",   "Разобрать, составить, объяснить"],
   ["Документ",    "Готовые документы","Заполнить поля — документ соберётся сам"],
@@ -98,6 +99,20 @@ function featureItems() {
   });
 }
 
+/* Сколько записей указателя витрина НЕ показывает и почему.
+
+   Часть быстрых действий вызывается обработчиком и адреса не имеет —
+   ссылкой такое не покажешь. Молча их пропустить нельзя: витрина
+   обещает «всё, что умеет сервис». Поэтому называем их числом и
+   отправляем туда, откуда они вызываются. */
+function hiddenNote(items) {
+  const noHref = items.filter(it => !it.href).length;
+  if (!noHref) return "";
+  return `<p class="feat-note">Ещё ${noHref} быстрых команд вызываются
+    из поиска по сочетанию Ctrl + K: задать вопрос консультанту,
+    открыть настройки, сменить оформление.</p>`;
+}
+
 function renderFeatures() {
   const q = (document.getElementById("featFind").value || "").trim().toLowerCase();
   const items = featureItems();
@@ -111,7 +126,7 @@ function renderFeatures() {
   let shown = 0;
 
   for (const [kind, title, hint] of GROUPS) {
-    const list = items.filter(it => it.kind === kind && match(it));
+    const list = items.filter(it => it.kind === kind && it.href && match(it));
     if (!list.length) continue;
     shown += list.length;
 
@@ -138,6 +153,7 @@ function renderFeatures() {
       Попробуйте одно слово: «пеня», «аренда», «увольнение».</p>`;
   }
 
+  if (shown && !q) html += hiddenNote(items);
   root.innerHTML = html;
 }
 

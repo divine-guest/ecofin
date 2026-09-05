@@ -556,6 +556,12 @@ textarea { min-height: 120px; resize: vertical; }
 .feat-card b { font-size: var(--t-sm); line-height: 1.35; }
 .feat-card span { font-size: var(--t-xs); color: var(--muted); }
 
+/* Честная оговорка внизу витрины: что в неё не попало и где это взять. */
+.feat-note {
+  font-size: var(--t-xs); color: var(--muted);
+  border-left: 3px solid var(--border); padding: 8px 0 8px 12px; margin-top: 8px;
+}
+
 @media (max-width: 640px) {
   /* На телефоне одна колонка: две колонки по 160 пикселей режут
      названия документов на середине слова. */
