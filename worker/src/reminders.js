@@ -95,11 +95,37 @@ export async function create(request, env, origin, user) {
   const count = countRow?.n || 0;
 
   if (count >= MAX_REMINDERS) return fail(env, origin, `Больше ${MAX_REMINDERS} напоминаний не поддерживается`);
+
+  /* Место кончилось — уступает самый дальний срок из налогового
+     календаря, а не отказывает весь запрос.
+
+     Почему так. Мастер календаря заполняет все три бесплатных места
+     сразу, и после него человек не может поставить ни одного своего
+     срока. А свой важнее: он про конкретную бумагу с конкретной
+     датой — вроде требования ФНС, где на ответ пять дней. Шаблонный
+     аванс по УСН в апреле подождёт и вернётся, когда человек снова
+     нажмёт «заполнить календарь».
+
+     Уступает именно самый дальний: ближайший может наступить уже
+     на этой неделе.                                                */
+  let displaced = null;
   if (!isPro(user) && count >= FREE_REMINDERS) {
-    return json(env, origin, {
-      error: `На бесплатном тарифе доступно ${FREE_REMINDERS} напоминания. С «Про» — сколько угодно и с доставкой в Telegram`,
-      paywall: true, kind: "reminders",
-    }, 402);
+    const far = await env.DB.prepare(
+      "SELECT id, title FROM reminders" +
+      " WHERE email = ? AND active = 1 AND source LIKE 'plan:%'" +
+      " ORDER BY due DESC LIMIT 1"
+    ).bind(user.email).first();
+
+    if (!far) {
+      return json(env, origin, {
+        error: `На бесплатном тарифе доступно ${FREE_REMINDERS} напоминания. ` +
+               "Удалите ненужное или снимите лимит подпиской «Про» — там же и доставка в Telegram",
+        paywall: true, kind: "reminders",
+      }, 402);
+    }
+    await env.DB.prepare("DELETE FROM reminders WHERE id = ?").bind(far.id).run();
+    await env.DB.prepare("DELETE FROM reminder_sent WHERE reminder_id = ?").bind(far.id).run();
+    displaced = far.title;
   }
   /* Telegram — платный канал: это и есть услуга, за которую платят. */
   const finalChannel = isPro(user) ? channel : "site";
@@ -116,6 +142,7 @@ export async function create(request, env, origin, user) {
   return json(env, origin, {
     id: res.meta?.last_row_id,
     downgraded: channel !== finalChannel,
+    displaced,
   }, 201);
 }
 

@@ -229,9 +229,13 @@ const API = {
       .then(r => this._clean(r));
   },
 
-  analyze({ text, images, fileName }) {
-    return this.request("/api/analyze", { method: "POST", body: { text, images, fileName }, timeout: 120000 })
-      .then(r => this._clean(r));
+  /* system — своя системная подсказка для инструментов, которым нужен
+     файл, но нужен не разбор: протокол разногласий, ответ на входящую
+     бумагу. Без неё зрячая модель всегда возвращала обычный разбор. */
+  analyze({ text, images, fileName, system }) {
+    return this.request("/api/analyze", {
+      method: "POST", body: { text, images, fileName, system }, timeout: 120000,
+    }).then(r => this._clean(r));
   },
 
   /* --- Реквизиты и контрагенты ---

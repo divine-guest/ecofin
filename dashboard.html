@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=144">
+<link rel="stylesheet" href="css/style.css?v=146">
 </head>
 <body>
 <main class="section">
@@ -38,17 +38,17 @@
   </div>
 </main>
 
-<script src="js/rates.js?v=144"></script>
-<script src="js/book.js?v=144"></script>
-<script src="js/themes.js?v=144"></script>
-<script src="js/api.js?v=144"></script>
-<script src="js/app.js?v=144"></script>
-<script src="js/progress.js?v=144"></script>
-<script src="js/palette.js?v=144"></script>
-<script src="js/ai.js?v=144"></script>
-<script src="js/knowledge.js?v=144"></script>
-<script src="js/competencies.js?v=144"></script>
-<script src="js/courses.js?v=144"></script>
+<script src="js/rates.js?v=146"></script>
+<script src="js/book.js?v=146"></script>
+<script src="js/themes.js?v=146"></script>
+<script src="js/api.js?v=146"></script>
+<script src="js/app.js?v=146"></script>
+<script src="js/progress.js?v=146"></script>
+<script src="js/palette.js?v=146"></script>
+<script src="js/ai.js?v=146"></script>
+<script src="js/knowledge.js?v=146"></script>
+<script src="js/competencies.js?v=146"></script>
+<script src="js/courses.js?v=146"></script>
 <script>
 initPage("dashboard.html");
 
@@ -139,9 +139,11 @@ const CAL = (() => {
     if (!title) return toast("Напишите, о чём напомнить");
     const repeat = document.getElementById("calNewRepeat").value;
     try {
-      await API.reminders.create({ title, due: dISO, repeat });
+      const r = await API.reminders.create({ title, due: dISO, repeat });
       MODAL.close();
-      toast("Срок поставлен");
+      toast(r.displaced
+        ? `Срок поставлен. Место уступил «${r.displaced}»`
+        : "Срок поставлен");
       await REM.load();
       render();
     } catch (e) { toast(e.message); }

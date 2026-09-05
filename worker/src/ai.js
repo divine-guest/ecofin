@@ -188,10 +188,20 @@ export async function handleAnalyze(request, env, origin, user) {
       ]
     : `Файл: ${fileName}\n\nТекст документа:\n${text}`;
 
+  /* Своя системная подсказка. Раньше здесь стояла одна на всё —
+     «разбери документ», — и зрячая модель годилась ровно для одного
+     инструмента. Любому другому, которому нужен файл (протокол
+     разногласий, ответ на требование), она вернула бы вместо его
+     результата обычный разбор.
+
+     Длина ограничена тем же пределом, что и в текстовой ручке: это
+     строка из браузера, и доверять её размеру нельзя. */
+  const system = (String(b.system || "").slice(0, MAX_SYSTEM) || ANALYZE_SYSTEM) + PLAIN_TEXT_RULE;
+
   try {
     const out = await callProvider(env, {
       model,
-      messages: [{ role: "system", content: ANALYZE_SYSTEM + PLAIN_TEXT_RULE }, { role: "user", content }],
+      messages: [{ role: "system", content: system }, { role: "user", content }],
       maxTokens: 3000,
     });
     await logAction(env, user.email, "Анализ документа: " + fileName);

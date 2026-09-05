@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=144">
+<link rel="stylesheet" href="css/style.css?v=146">
 </head>
 <body>
 <main class="section tint-green">
@@ -82,6 +82,7 @@
           <button class="tab" data-tool="0" onclick="switchTool(0,this)">Генератор документов</button>
           <button class="tab" data-tool="7" onclick="switchTool(7,this)">Шаблоны без ИИ</button>
           <button class="tab" data-tool="1" onclick="switchTool(1,this)">Анализ договоров</button>
+          <button class="tab" data-tool="14" onclick="switchTool(14,this)">Протокол разногласий</button>
           <button class="tab" data-tool="2" onclick="switchTool(2,this)">Ответ на документ</button>
           <button class="tab" data-tool="10" onclick="switchTool(10,this)">Что изменилось в договоре</button>
           <button class="tab" data-tool="8" onclick="switchTool(8,this)">Чем это грозит</button>
@@ -165,8 +166,31 @@
         </div>
       </div>
       <div class="form-group">
-        <label for="replyText">Текст документа</label>
-        <textarea id="replyText" rows="9" placeholder="Вставьте текст того, что вам прислали…"></textarea>
+        <label>Фотография или файл документа</label>
+        <div class="dropzone" id="replyDrop"
+             onclick="document.getElementById('replyFile').click()"
+             ondragover="event.preventDefault();this.classList.add('over')"
+             ondragleave="this.classList.remove('over')"
+             ondrop="REPLYUI.onDrop(event)">
+          <b>Сфотографируйте бумагу</b> или перетащите файл<br>
+          <span>PDF, DOCX, TXT или фото — до 15 МБ</span>
+        </div>
+        <input type="file" id="replyFile" aria-label="Файл входящего документа"
+               accept=".pdf,.docx,.txt,.md,.csv,image/*"
+               style="display:none" onchange="REPLYUI.onPick(this.files[0])">
+        <div id="replyStatus" class="doc-status"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="replyText">…либо вставьте текст того, что пришло</label>
+        <textarea id="replyText" rows="9" placeholder="Текст требования, претензии или уведомления…"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="replyGot">Когда получили</label>
+        <input type="date" id="replyGot">
+        <p class="hint">От этой даты считается срок ответа. Поставим
+          напоминание, чтобы не пропустить.</p>
       </div>
       <div class="form-group">
         <label for="replyFacts">Обстоятельства с вашей стороны (необязательно)</label>
@@ -549,19 +573,80 @@
     </div>
 
 
+
+    <!-- Протокол разногласий -->
+    <div class="tab-panel game-stage" id="toolProtocol">
+      <p style="color:var(--muted);margin-bottom:14px">
+        Разбор договора говорит, что не так. Протокол разногласий —
+        это уже бумага, которую отправляют контрагенту: ваша редакция
+        спорных пунктов вместо его. Подписанный обеими сторонами, он
+        становится частью договора.
+      </p>
+
+      <div class="form-group">
+        <label>Файл или фотография договора</label>
+        <div class="dropzone" id="protoDrop"
+             onclick="document.getElementById('protoFile').click()"
+             ondragover="event.preventDefault();this.classList.add('over')"
+             ondragleave="this.classList.remove('over')"
+             ondrop="PROTOUI.onDrop(event)">
+          <b>Перетащите файл сюда</b> или нажмите, чтобы выбрать<br>
+          <span>PDF, DOCX, TXT или фото — до 15 МБ</span>
+        </div>
+        <input type="file" id="protoFile" aria-label="Файл договора для протокола разногласий"
+               accept=".pdf,.docx,.txt,.md,.csv,image/*"
+               style="display:none" onchange="PROTOUI.onPick(this.files[0])">
+        <div id="protoStatus" class="doc-status"></div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label for="protoSide">Вы в договоре</label>
+          <select id="protoSide">
+            <option value="Исполнитель">Исполнитель / подрядчик</option>
+            <option value="Заказчик">Заказчик</option>
+            <option value="Поставщик">Поставщик</option>
+            <option value="Покупатель">Покупатель</option>
+            <option value="Арендодатель">Арендодатель</option>
+            <option value="Арендатор">Арендатор</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="protoTough">Насколько жёстко торгуемся</label>
+          <select id="protoTough">
+            <option value="soft">Мягко — только то, что реально опасно</option>
+            <option value="normal" selected>Обычно — всё невыгодное</option>
+            <option value="hard">Жёстко — по каждому спорному пункту</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="protoNum">Номер и дата договора (необязательно)</label>
+        <input type="text" id="protoNum" placeholder="Например: № 14 от 01.09.2026">
+      </div>
+
+      <div class="form-group">
+        <label for="protoText">…либо вставьте текст договора вручную</label>
+        <textarea id="protoText" rows="10" placeholder="ДОГОВОР ПОСТАВКИ..."></textarea>
+      </div>
+
+      <button class="btn" onclick="genProtocol()">Составить протокол разногласий</button>
+      <div class="ai-result" id="protoResult"></div>
+    </div>
   </div>
   <div class="container"><div id="partnersTools"></div></div>
 </main>
 
-<script src="js/themes.js?v=144"></script>
-<script src="js/api.js?v=144"></script>
-<script src="js/app.js?v=144"></script>
-<script src="js/progress.js?v=144"></script>
-<script src="js/palette.js?v=144"></script>
-<script src="js/ai.js?v=144"></script>
-<script src="js/templates.js?v=144"></script>
-<script src="js/docscan.js?v=144"></script>
-<script src="js/partners.js?v=144"></script>
+<script src="js/themes.js?v=146"></script>
+<script src="js/api.js?v=146"></script>
+<script src="js/app.js?v=146"></script>
+<script src="js/progress.js?v=146"></script>
+<script src="js/palette.js?v=146"></script>
+<script src="js/ai.js?v=146"></script>
+<script src="js/templates.js?v=146"></script>
+<script src="js/docscan.js?v=146"></script>
+<script src="js/partners.js?v=146"></script>
 <script>
 initPage("tools.html");
 
@@ -642,10 +727,23 @@ function addResultActions(el, text, id) {
   const bar = document.createElement("div");
   bar.className = "result-actions";
   bar.dataset.text = text;
+  /* Срок ответа — единственное, что из разбора действительно нужно
+     запомнить. Словами в тексте он забудется через час, поэтому
+     предлагаем поставить его в календарь прямо здесь. Кнопка
+     появляется, только если срок в разборе нашёлся и он ещё не
+     прошёл: предложить напоминание на выдуманную дату хуже, чем
+     не предложить вовсе. */
+  const due = id === "replyResult" ? replyDeadline(text) : null;
+  const dueTitle = due && REPLY_CTX
+    ? "Ответить: " + REPLY_CTX.kind.toLowerCase()
+    : "Ответить на документ";
+
   bar.innerHTML = `
     <button class="btn small secondary" onclick="copyResult(this)">Скопировать</button>
     <button class="btn small secondary" onclick="printResult(this)">Сохранить в PDF</button>
     <button class="btn small secondary" onclick="saveResultToDocs(this)">В «Мои документы»</button>
+    ${due ? `<button class="btn small" data-due="${due}" data-title="${escapeHtml(dueTitle)}"
+        onclick="replyToCalendar(this)">Срок в календарь — до ${due.split("-").reverse().join(".")}</button>` : ""}
     ${LAST[id] ? `<button class="btn small secondary" onclick="repeatLast('${id}')">Спросить ещё раз</button>` : ""}`;
   el.insertAdjacentElement("afterend", bar);
 }
@@ -1028,50 +1126,71 @@ ${typed}`,
 }
 
 /* --- Загрузка документа файлом или фотографией --- */
-const DOCUI = {
-  payload: null,   // { text, images, fileName } — результат разбора файла
+/* Приёмник файла. Раньше был написан под один инструмент и намертво
+   знал имена его полей. Второму инструменту, которому тоже нужен
+   договор, пришлось бы копировать весь код целиком — а копия
+   расходится с оригиналом при первой же правке. */
+function makeDocPicker({ statusId, dropId, fileId, textId, onReady }) {
+  return {
+    payload: null,   // { text, images, fileName } — результат разбора файла
 
-  status(msg, kind = "") {
-    const el = document.getElementById("docStatus");
-    el.className = "doc-status " + kind;
-    el.textContent = msg;
-  },
+    status(msg, kind = "") {
+      const el = document.getElementById(statusId);
+      if (!el) return;
+      el.className = "doc-status " + kind;
+      el.textContent = msg;
+    },
 
-  onDrop(e) {
-    e.preventDefault();
-    document.getElementById("docDrop").classList.remove("over");
-    const f = e.dataTransfer.files[0];
-    if (f) this.onPick(f);
-  },
+    onDrop(e) {
+      e.preventDefault();
+      document.getElementById(dropId).classList.remove("over");
+      const f = e.dataTransfer.files[0];
+      if (f) this.onPick(f);
+    },
 
-  async onPick(file) {
-    if (!file) return;
-    if (!PF.user()) {
-      toast("Войдите, чтобы разбирать документы");
-      return setTimeout(() => (location.href = "auth.html"), 1200);
-    }
-    this.payload = null;
-    this.status("Открываем файл…");
-    try {
-      const data = await DOCSCAN.read(file, msg => this.status(msg));
-      this.payload = data;
-      if (data.text) {
-        document.getElementById("contractText").value = data.text;
-        this.status(`${file.name} — распознано ${data.text.length} символов. Можно править текст и запускать разбор.`, "ok");
-      } else {
-        this.status(`${file.name} — подготовлено страниц: ${data.images.length}. Текстового слоя нет, разберём по изображению.`, "ok");
+    async onPick(file) {
+      if (!file) return;
+      if (!PF.user()) {
+        toast("Войдите, чтобы разбирать документы");
+        return setTimeout(() => (location.href = "auth.html"), 1200);
       }
-    } catch (e) {
-      this.status(e.message, "err");
-    }
-  },
+      this.payload = null;
+      this.status("Открываем файл…");
+      try {
+        const data = await DOCSCAN.read(file, msg => this.status(msg));
+        this.payload = data;
+        if (data.text) {
+          document.getElementById(textId).value = data.text;
+          this.status(`${file.name} — распознано ${data.text.length} символов. Можно править текст и запускать разбор.`, "ok");
+        } else {
+          this.status(`${file.name} — подготовлено страниц: ${data.images.length}. Текстового слоя нет, разберём по изображению.`, "ok");
+        }
+        if (onReady) onReady(data);
+      } catch (e) {
+        this.status(e.message, "err");
+      }
+    },
 
-  clear() {
-    this.payload = null;
-    document.getElementById("docFile").value = "";
-    this.status("");
-  },
-};
+    clear() {
+      this.payload = null;
+      const f = document.getElementById(fileId);
+      if (f) f.value = "";
+      this.status("");
+    },
+  };
+}
+
+const DOCUI = makeDocPicker({
+  statusId: "docStatus", dropId: "docDrop", fileId: "docFile", textId: "contractText",
+});
+
+const PROTOUI = makeDocPicker({
+  statusId: "protoStatus", dropId: "protoDrop", fileId: "protoFile", textId: "protoText",
+});
+
+const REPLYUI = makeDocPicker({
+  statusId: "replyStatus", dropId: "replyDrop", fileId: "replyFile", textId: "replyText",
+});
 
 /* Перечисляем режимы прямо в задании: без этого модель по привычке
    отвечает только про УСН, потому что о нём чаще пишут. */
@@ -1193,31 +1312,226 @@ const TOOLJOBS = {
 if (TOOLJOBS.all().length) TOOLJOBS.watch();
 
 /* --- Ответ на присланный документ --- */
-function genReply() {
+/* --- Ответ на входящий документ ---
+
+   Приходит бумага: требование из налоговой, претензия, уведомление.
+   У всякой такой бумаги есть срок ответа, и пропуск срока — это и
+   есть цена вопроса: по требованию ФНС это блокировка счёта, по
+   претензии — суд с неустойкой.
+
+   Разбор срок называет, но словами в тексте, который через час
+   забудут. Поэтому дата получения спрашивается отдельно, а из ответа
+   вынимается срок и предлагается поставить в календарь.             */
+async function genReply() {
+  if (!PF.user()) {
+    toast("Войдите, чтобы использовать ИИ-инструменты");
+    return setTimeout(() => (location.href = "auth.html"), 1200);
+  }
+
   const kind = document.getElementById("replyKind").value;
   const stance = document.getElementById("replyStance").value;
   const text = document.getElementById("replyText").value.trim();
   const facts = document.getElementById("replyFacts").value.trim();
+  const got = document.getElementById("replyGot").value;
+  const scanned = REPLYUI.payload && REPLYUI.payload.images.length ? REPLYUI.payload : null;
 
-  if (text.length < 60) {
+  if (!text && !scanned) return toast("Вставьте текст документа или сфотографируйте бумагу");
+  if (text && text.length < 60 && !scanned) {
     return toast("Вставьте текст документа — по паре строк разобрать не получится", "error");
+  }
+
+  REPLY_CTX = { kind, got };
+
+  const system =
+`Ты — юрист, который готовит ответ на входящий документ по российскому праву.
+Структура ответа строго такая:
+1. ЧТО ЭТО. Одним абзацем: что за документ и чего от вас хотят.
+2. СРОКИ. Первой строкой раздела напиши отдельно: «Ответить до: ДД.ММ.ГГГГ»${
+  got ? ` — считая от даты получения ${got.split("-").reverse().join(".")}` : ", если дату получения знаешь"
+}. Затем поясни, сколько дней даёт закон, с какой даты считать и что будет при пропуске.
+3. НАСКОЛЬКО ОБОСНОВАНО. По пунктам: какие требования законны, какие спорны, каких доказательств не хватает второй стороне.
+4. ЧЕМ ГРОЗИТ. Реальные последствия и примерные суммы.
+5. ЗАГОТОВКА ОТВЕТА. Готовый текст письма, который можно отправить после правки: шапка, суть, правовое обоснование со ссылками на статьи, требования, дата и подпись.
+6. ЧТО ПРИЛОЖИТЬ. Список документов.
+Ссылайся на конкретные статьи ГК РФ, НК РФ, ТК РФ, ЗоЗПП. Пиши по-русски, без англицизмов. Если чего-то в тексте нет — прямо скажи, что это нужно уточнить.`;
+
+  if (scanned) {
+    const el = document.getElementById("replyResult");
+    el.textContent = "Читаем документ по фотографии…";
+    el.classList.add("show");
+    try {
+      const res = await API.analyze({
+        text: `Вид документа: ${kind}. Позиция получателя: ${stance}.` +
+              (got ? ` Получено ${got}.` : "") +
+              (facts ? ` Обстоятельства: ${facts}.` : "") +
+              (text ? `\n\nРаспознанный текст:\n${text}` : ""),
+        images: scanned.images,
+        fileName: scanned.fileName,
+        system,
+      });
+      PF.quota = res.quota || PF.quota;
+      showResult("replyResult", res.text);
+      trackEvent("tool_use", { tool: "reply" });
+    } catch (e) {
+      if (e.isPaywall) { el.classList.remove("show"); showPaywall(e.message); }
+      else showResult("replyResult", "Не получилось: " + e.message);
+    }
+    renderQuota();
+    return;
   }
 
   return runAI(
     `Разбери документ и составь ответ.\n\nВид документа: ${kind}.\n` +
     `Позиция получателя: ${stance}.\n` +
+    (got ? `Дата получения: ${got}.\n` : "") +
     (facts ? `Обстоятельства со стороны получателя: ${facts}.\n` : "") +
     `\nТЕКСТ ДОКУМЕНТА:\n${text}`,
-    null, "replyResult", "Ответ на документ: " + kind,
-    `Ты — юрист, который готовит ответ на входящий документ по российскому праву.
-Структура ответа строго такая:
-1. ЧТО ЭТО. Одним абзацем: что за документ и чего от вас хотят.
-2. СРОКИ. Конкретно: сколько дней на ответ, с какой даты считать, что будет при пропуске.
-3. НАСКОЛЬКО ОБОСНОВАНО. По пунктам: какие требования законны, какие спорны, каких доказательств не хватает второй стороне.
-4. ЧЕМ ГРОЗИТ. Реальные последствия и примерные суммы.
-5. ЗАГОТОВКА ОТВЕТА. Готовый текст письма, который можно отправить после правки: шапка, суть, правовое обоснование со ссылками на статьи, требования, дата и подпись.
-6. ЧТО ПРИЛОЖИТЬ. Список документов.
-Ссылайся на конкретные статьи ГК РФ, НК РФ, ТК РФ, ЗоЗПП. Пиши по-русски, без англицизмов. Если чего-то в тексте нет — прямо скажи, что это нужно уточнить.`
+    null, "replyResult", "Ответ на документ: " + kind, system
+  );
+}
+
+/* Что за бумагу разбирали в последний раз — нужно, чтобы назвать
+   напоминание по-человечески, а не «срок из разбора». */
+let REPLY_CTX = null;
+
+/* Срок ответа из готового разбора.
+
+   Модель просят вывести его отдельной строкой «Ответить до: ДД.ММ.ГГГГ»
+   — по ней и ищем. Если строки нет, берём первую дату в разделе о
+   сроках. Не нашли — кнопки просто не будет: предлагать поставить
+   напоминание на выдуманную дату хуже, чем не предлагать вовсе.     */
+function replyDeadline(text) {
+  const m = String(text || "").match(/Ответить до:\s*(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/i);
+  if (!m) return null;
+  const [, d, mo, y] = m;
+  const iso = `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  /* Дата в прошлом — значит срок уже пропущен, и напоминание не о чем. */
+  return iso >= new Date().toISOString().slice(0, 10) ? iso : null;
+}
+
+async function replyToCalendar(btn) {
+  const due = btn.dataset.due;
+  const title = btn.dataset.title;
+  try {
+    const r = await API.reminders.create({ title, due, repeat: "once", notifyDays: "7,3,1,0" });
+    /* Если место освободилось за счёт планового срока — говорим прямо.
+       Молча убранный срок хуже отказа: человек считает, что он стоит. */
+    toast(r.displaced
+      ? `Срок в календаре. Место уступил «${r.displaced}» — вернётся, когда снимете лимит`
+      : "Срок в календаре — напомним за неделю, за три дня и накануне");
+    btn.disabled = true;
+    btn.textContent = "Срок поставлен";
+  } catch (e) {
+    if (e.isPaywall) showPaywall(e.message);
+    else toast(e.message, "error");
+  }
+}
+
+/* --- Протокол разногласий ---
+
+   Чем отличается от разбора договора. Разбор объясняет, что не так,
+   и на этом останавливается — дальше человек должен сам написать
+   контрагенту, что его не устраивает и как должно быть. Обычно он
+   не пишет ничего и подписывает как есть.
+
+   Протокол — уже бумага для второй стороны: спорный пункт, его
+   редакция, ваша редакция, обоснование. Подписанный обеими сторонами,
+   он становится частью договора. То есть совет превращается в
+   юридический факт, а это и есть то, за что платят.
+
+   Жёсткость торга спрашиваем отдельно: протокол на двадцать пунктов
+   срывает сделку, а на два — не защищает. Выбор тут за человеком,
+   и он зависит от того, насколько нужен этот контрагент.            */
+async function genProtocol() {
+  if (!PF.user()) {
+    toast("Войдите, чтобы использовать ИИ-инструменты");
+    return setTimeout(() => (location.href = "auth.html"), 1200);
+  }
+
+  const side = document.getElementById("protoSide").value;
+  const tough = document.getElementById("protoTough").value;
+  const num = document.getElementById("protoNum").value.trim();
+  const typed = document.getElementById("protoText").value.trim();
+  const scanned = PROTOUI.payload && PROTOUI.payload.images.length ? PROTOUI.payload : null;
+
+  if (!typed && !scanned) return toast("Вставьте текст договора или приложите файл");
+  if (typed && typed.length < 200 && !scanned) {
+    return toast("Для протокола нужен текст договора целиком, а не пара строк", "error");
+  }
+
+  const HOW = {
+    soft: "Включай только те пункты, где риск реальных потерь. Три-четыре позиции, не больше: " +
+          "длинный протокол по мелочам срывает сделку, ради которой всё и затевалось.",
+    normal: "Включай все невыгодные условия, но без придирок к формулировкам, которые ни на что не влияют.",
+    hard: "Включай каждый спорный пункт, в том числе формулировки с двойным толкованием.",
+  }[tough];
+
+  const system =
+`Ты — юрист, который составляет протокол разногласий к договору по российскому праву.
+
+На выходе — ГОТОВЫЙ ДОКУМЕНТ, а не советы. Структура строго такая:
+
+ПРОТОКОЛ РАЗНОГЛАСИЙ
+к договору ${num || "№ ___ от ___"}
+г. ______                                    «___» __________ 20__ г.
+
+Вводный абзац по образцу: стороны, ссылка на договор, что подписывают протокол.
+
+Далее таблица разногласий текстом, по каждому пункту в таком виде:
+
+Пункт N договора
+  Редакция второй стороны: <дословно из договора>
+  Наша редакция: <готовая формулировка, которую можно вставить как есть>
+  Почему: <одно-два предложения со ссылкой на статью закона>
+
+Порядок пунктов — по убыванию денежного риска, а не по номерам в договоре.
+
+Заканчивай подписной частью: «Настоящий протокол является неотъемлемой
+частью договора», две подписи, места для реквизитов сторон.
+
+ТРЕБОВАНИЯ.
+${HOW}
+Наша редакция должна быть готовой к вставке формулировкой — не описанием
+того, что хотелось бы. Ссылайся на конкретные статьи ГК РФ (в том числе
+ст. 314, 330, 401, 421, 431, 450, 451, 452, 453, 486, 487, 506, 702, 708,
+709, 715, 717, 720, 723, 782), а также на ЗоЗПП, если сторона — потребитель.
+Пиши по-русски, без англицизмов и без разметки: ни звёздочек, ни решёток.
+
+После документа отдельным абзацем «ЧТО ДАЛЬШЕ»: как отправить, что делать,
+если вторая сторона не подписывает, и чем грозит подписать договор без
+протокола.`;
+
+  const label = "Протокол разногласий" + (num ? " " + num : "");
+
+  /* Скан идёт в зрячую модель — там своя ручка, текстовый инструмент
+     изображения не принимает. */
+  if (scanned) {
+    const el = document.getElementById("protoResult");
+    el.textContent = "Читаем договор по изображению…";
+    el.classList.add("show");
+    try {
+      const res = await API.analyze({
+        text: `${typed}\n\nСоставь ПРОТОКОЛ РАЗНОГЛАСИЙ. Мы в договоре — ${side}. ${HOW}` +
+              (num ? `\nДоговор: ${num}.` : ""),
+        images: scanned.images,
+        fileName: scanned.fileName,
+        system,
+      });
+      PF.quota = res.quota || PF.quota;
+      showResult("protoResult", res.text);
+      trackEvent("tool_use", { tool: "protocol" });
+    } catch (e) {
+      if (e.isPaywall) { el.classList.remove("show"); showPaywall(e.message); }
+      else showResult("protoResult", "Не получилось: " + e.message);
+    }
+    renderQuota();
+    return;
+  }
+
+  return runAI(
+    `Мы в договоре — ${side}.` + (num ? ` Договор ${num}.` : "") +
+    `\n\nТЕКСТ ДОГОВОРА:\n${typed}`,
+    null, "protoResult", label, system
   );
 }
 
