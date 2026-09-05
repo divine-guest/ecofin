@@ -99,12 +99,44 @@ const RATES = {
     minWageMonth: 27093,   // МРОТ: нижняя граница пособия
   },
 
-  /* --- Вычеты по НДФЛ --- */
+  /* --- Вычеты по НДФЛ, гл. 23 НК РФ ---
+
+     Разложены по видам, потому что лимиты у них разные и складываются
+     не как попало: социальные упираются в один общий потолок, обучение
+     детей считается отдельно на каждого ребёнка, дорогостоящее лечение
+     не ограничено вовсе, а имущественный даётся один раз в жизни.
+
+     Люди не забирают эти деньги не потому, что не хотят, а потому что
+     не знают, что им положено, и думают, что уже поздно. Поэтому здесь
+     же — срок давности: три года, и первым уходит самый ранний.     */
+  deductionKinds: {
+    treatment:  { title: "Лечение и лекарства", limit: "social", rate: 0.13,
+                  need: "Договор с клиникой, лицензия, справка об оплате медуслуг с кодом 01" },
+    treatmentBig: { title: "Дорогостоящее лечение", limit: null, rate: 0.13,
+                  need: "Та же справка, но с кодом 02 — по ней лимита нет" },
+    study:      { title: "Своё обучение", limit: "social", rate: 0.13,
+                  need: "Договор с учебным заведением, лицензия, чеки об оплате" },
+    studyChild: { title: "Обучение ребёнка", limit: "child", rate: 0.13,
+                  need: "Договор на очную форму, свидетельство о рождении, чеки" },
+    sport:      { title: "Спорт и фитнес", limit: "social", rate: 0.13,
+                  need: "Договор с клубом из реестра Минспорта и чеки" },
+    pension:    { title: "Взносы в НПФ и добровольное страхование", limit: "social", rate: 0.13,
+                  need: "Договор и платёжные документы" },
+    buy:        { title: "Покупка жилья", limit: "buy", rate: 0.13, once: true,
+                  need: "Договор, выписка из ЕГРН, платёжные документы" },
+    mortgage:   { title: "Проценты по ипотеке", limit: "mortgage", rate: 0.13, once: true,
+                  need: "Кредитный договор и справка банка об уплаченных процентах" },
+    iis:        { title: "Взносы на ИИС", limit: "iis", rate: 0.13,
+                  need: "Договор с брокером и отчёт о пополнении" },
+  },
+
   deductions: {
-    socialLimit: 150000,   // социальный вычет, годовой лимит
+    socialLimit: 150000,   // общий потолок социальных вычетов за год
     educationChild: 110000,
     propertyBuy: 2000000,
     propertyMortgage: 3000000,
+    iisLimit: 400000,      // ИИС, вычет на взносы
+    yearsBack: 3,          // за сколько лет можно вернуть
   },
 
   vatRate: 0.20,
@@ -724,6 +756,83 @@ const RATES = {
   },
 
   /* Подпись «данные актуальны на …» для вывода под расчётами. */
+  /* Сколько вернут по всем вычетам сразу, НК РФ ст. 218–220 и 219.1.
+
+     Считать по одному виду бессмысленно: у человека обычно набирается
+     несколько — лечение, обучение ребёнка, ипотека, — и весь вопрос
+     в том, как они складываются. Складываются они непросто:
+
+       — социальные упираются в один общий потолок на всех вместе;
+       — обучение каждого ребёнка считается отдельно, своим лимитом;
+       — дорогостоящее лечение не ограничено вовсе;
+       — имущественные — свои потолки и один раз в жизни;
+       — и всё вместе не может превысить НДФЛ, который человек заплатил.
+
+     Последнее и есть главная причина разочарований: «мне обещали
+     260 тысяч, а вернули 40». Вернули столько, сколько удержали.    */
+  deductionPlan({ spent = {}, ndfl = 0, children = 0 } = {}) {
+    const D = this.deductions;
+    const K = this.deductionKinds;
+
+    /* Социальные складываем и обрезаем общим потолком — по закону он
+       один на все виды, а не на каждый. */
+    const socialSpent = ["treatment", "study", "sport", "pension"]
+      .reduce((s, k) => s + Math.max(0, Number(spent[k]) || 0), 0);
+    const social = Math.min(socialSpent, D.socialLimit);
+
+    /* Обучение детей: лимит на каждого ребёнка отдельно. */
+    const kidsSpent = Math.max(0, Number(spent.studyChild) || 0);
+    const kidsCap = D.educationChild * Math.max(0, children || (kidsSpent ? 1 : 0));
+    const kids = Math.min(kidsSpent, kidsCap);
+
+    const big = Math.max(0, Number(spent.treatmentBig) || 0);      // без лимита
+    const buy = Math.min(Math.max(0, Number(spent.buy) || 0), D.propertyBuy);
+    const mortgage = Math.min(Math.max(0, Number(spent.mortgage) || 0), D.propertyMortgage);
+    const iis = Math.min(Math.max(0, Number(spent.iis) || 0), D.iisLimit);
+
+    const base = social + kids + big + buy + mortgage + iis;
+    const wanted = Math.round(base * 0.13);
+    const back = Math.min(wanted, Math.max(0, Math.round(ndfl)));
+
+    /* Что не влезло — по каждому виду отдельно: человеку важно знать
+       не общую цифру потерь, а какой именно расход пропал зря. */
+    const over = [];
+    if (socialSpent > D.socialLimit)
+      over.push(`социальные вычеты вместе ограничены ${D.socialLimit.toLocaleString("ru-RU")} ₽ — ` +
+                `не учтено ${(socialSpent - D.socialLimit).toLocaleString("ru-RU")} ₽`);
+    if (kidsSpent > kidsCap && kidsCap)
+      over.push(`обучение детей — ${D.educationChild.toLocaleString("ru-RU")} ₽ на каждого ребёнка`);
+    if ((Number(spent.buy) || 0) > D.propertyBuy)
+      over.push(`покупка жилья — не больше ${D.propertyBuy.toLocaleString("ru-RU")} ₽`);
+    if ((Number(spent.mortgage) || 0) > D.propertyMortgage)
+      over.push(`проценты по ипотеке — не больше ${D.propertyMortgage.toLocaleString("ru-RU")} ₽`);
+    if ((Number(spent.iis) || 0) > D.iisLimit)
+      over.push(`ИИС — не больше ${D.iisLimit.toLocaleString("ru-RU")} ₽ в год`);
+
+    /* Остаток имущественного вычета не сгорает: он переносится на
+       следующие годы, пока не выберется весь. Об этом почти никто не
+       знает и подаёт один раз. */
+    const carry = wanted > back && (buy || mortgage) ? wanted - back : 0;
+
+    const need = Object.entries(K)
+      .filter(([k]) => Number(spent[k]) > 0)
+      .map(([, v]) => v.need);
+
+    return { base, wanted, back, over, carry, need, capped: back < wanted };
+  },
+
+  /* За какие годы ещё можно вернуть. Три года — и первым уходит самый
+     ранний: в декабре люди спохватываются и теряют целый год просто
+     потому, что не знали про срок. */
+  deductionYears(today = new Date()) {
+    const y = today.getFullYear();
+    const years = [];
+    for (let i = 1; i <= this.deductions.yearsBack; i++) years.push(y - i);
+    /* Последний день, когда ещё можно подать за самый ранний год. */
+    const lastCall = `31.12.${y}`;
+    return { years, lastCall, expiring: years[years.length - 1] };
+  },
+
   /* Налог на имущество физлиц — НК РФ гл. 32.
 
      Главное, чего не знают: часть площади налогом не облагается вовсе,

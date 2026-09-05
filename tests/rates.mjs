@@ -370,5 +370,101 @@ console.log("\n— Транспортный налог (ст. 361 и 362 НК) �
 }
 
 
+console.log("\n— Вычеты по НДФЛ: как складываются лимиты —");
+{
+  const D = R.deductions;
+
+  /* Социальные вычеты упираются в ОДИН общий потолок на все виды
+     вместе, а не в потолок на каждый. Ошибка ровно наоборот —
+     самая частая: человек считает, что за лечение вернут 19 500 и
+     столько же за фитнес. */
+  const many = R.deductionPlan({
+    spent: { treatment: 100000, study: 100000, sport: 50000 },
+    ndfl: 500000,
+  });
+  ok(many.base === D.socialLimit, `250 000 расходов обрезаны до ${D.socialLimit}`, many.base);
+  ok(many.back === Math.round(D.socialLimit * 0.13), `вернут ${many.back}`, many.back);
+  ok(many.over.length === 1 && /социальные/.test(many.over[0]),
+     "сказано, что именно не поместилось", many.over);
+
+  /* Дорогостоящее лечение — код 02 в справке — не ограничено вовсе,
+     и в общий потолок не входит. */
+  const big = R.deductionPlan({ spent: { treatmentBig: 800000 }, ndfl: 500000 });
+  ok(big.base === 800000, "дорогостоящее лечение без лимита", big.base);
+  ok(big.back === 104000, `вернут 13% со всей суммы: ${big.back}`, big.back);
+
+  const both = R.deductionPlan({
+    spent: { treatment: 200000, treatmentBig: 300000 }, ndfl: 500000,
+  });
+  ok(both.base === D.socialLimit + 300000,
+     "дорогостоящее не съедает общий потолок", both.base);
+
+  /* Обучение детей: лимит на КАЖДОГО ребёнка отдельно. */
+  const kid1 = R.deductionPlan({ spent: { studyChild: 200000 }, ndfl: 500000, children: 1 });
+  ok(kid1.base === D.educationChild, "на одного ребёнка — свой лимит", kid1.base);
+  const kid2 = R.deductionPlan({ spent: { studyChild: 200000 }, ndfl: 500000, children: 2 });
+  ok(kid2.base === 200000, "на двоих детей лимит вдвое больше", kid2.base);
+
+  /* Обучение детей не входит в общий социальный потолок. */
+  const mix = R.deductionPlan({
+    spent: { treatment: 150000, studyChild: 110000 }, ndfl: 500000, children: 1,
+  });
+  ok(mix.base === D.socialLimit + D.educationChild,
+     "обучение ребёнка считается сверх социального потолка", mix.base);
+
+  /* Имущественные: свои потолки. */
+  const buy = R.deductionPlan({ spent: { buy: 5000000 }, ndfl: 500000 });
+  ok(buy.base === D.propertyBuy, "покупка жилья обрезана до 2 млн", buy.base);
+  ok(buy.back === 260000, `максимум по покупке — 260 000: ${buy.back}`, buy.back);
+
+  const mort = R.deductionPlan({ spent: { mortgage: 5000000 }, ndfl: 500000 });
+  ok(mort.back === 390000, `максимум по процентам — 390 000: ${mort.back}`, mort.back);
+
+  const iis = R.deductionPlan({ spent: { iis: 1000000 }, ndfl: 500000 });
+  ok(iis.back === 52000, `максимум по ИИС — 52 000: ${iis.back}`, iis.back);
+}
+
+console.log("\n— Больше уплаченного НДФЛ не вернут —");
+{
+  /* Это главная причина разочарований: «обещали 260 тысяч, вернули 40».
+     Вернули столько, сколько удержали. */
+  const r = R.deductionPlan({ spent: { buy: 2000000 }, ndfl: 40000 });
+  ok(r.wanted === 260000, "положено по лимиту", r.wanted);
+  ok(r.back === 40000, "вернут не больше удержанного", r.back);
+  ok(r.capped === true, "и об этом сказано прямо", r.capped);
+
+  /* Остаток имущественного не сгорает — переносится на следующие годы.
+     Об этом почти не знают и подают один раз. */
+  ok(r.carry === 220000, `остаток переносится: ${r.carry}`, r.carry);
+
+  /* А социальный — сгорает: переносить его закон не разрешает,
+     и обещать обратное было бы враньём. */
+  const soc = R.deductionPlan({ spent: { treatment: 150000 }, ndfl: 5000 });
+  ok(soc.carry === 0, "социальный вычет не переносится", soc.carry);
+
+  const none = R.deductionPlan({ spent: { treatment: 100000 }, ndfl: 0 });
+  ok(none.back === 0, "без удержанного НДФЛ возвращать нечего", none.back);
+
+  const empty = R.deductionPlan({ spent: {}, ndfl: 100000 });
+  ok(empty.base === 0 && empty.back === 0, "пустые расходы не ломают расчёт", empty);
+  ok(R.deductionPlan().back === 0, "вызов без данных не роняет");
+}
+
+console.log("\n— Документы и срок давности —");
+{
+  const r = R.deductionPlan({ spent: { treatment: 50000, mortgage: 100000 }, ndfl: 100000 });
+  ok(r.need.length === 2, "перечислены документы по каждому вычету", r.need);
+  ok(r.need.some(t => /справка об оплате медуслуг/.test(t)), "для лечения — справка из клиники");
+  ok(r.need.some(t => /справка банка/.test(t)), "для ипотеки — справка банка");
+
+  const у = R.deductionYears(new Date("2026-09-05"));
+  ok(у.years.join() === "2025,2024,2023", "три года назад, не считая текущего", у.years);
+  ok(у.expiring === 2023, "первым сгорает самый ранний", у.expiring);
+  ok(у.lastCall === "31.12.2026", "срок подачи за него — конец этого года", у.lastCall);
+
+  const y2 = R.deductionYears(new Date("2027-01-02"));
+  ok(y2.years.join() === "2026,2025,2024", "в новом году окно сдвигается", y2.years);
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

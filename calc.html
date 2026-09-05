@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=146">
+<link rel="stylesheet" href="css/style.css?v=148">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -307,9 +307,51 @@
     </div>
     <div class="tab-panel game-stage" id="calc5">
       <div class="calc-row">
-        <div style="flex:1;min-width:240px">
-          <div class="form-group"><label for="vdExp">Расходы на лечение/обучение, ₽</label><input type="number" id="vdExp" value="100000" oninput="calcDeduction()"></div>
-          <div class="form-group"><label for="vdTax">Уплаченный НДФЛ за год, ₽</label><input type="number" id="vdTax" value="80000" oninput="calcDeduction()"></div>
+        <div style="flex:1;min-width:250px">
+          <p class="hint" style="margin-bottom:12px">
+            Отметьте, на что тратились за год. Считаем всё вместе:
+            лимиты у вычетов разные, и складываются они не как попало.
+          </p>
+
+          <div class="form-group"><label for="vdTreat">Лечение и лекарства, ₽</label>
+            <input type="number" id="vdTreat" value="60000" min="0" oninput="calcDeduction()"></div>
+
+          <div class="form-group"><label for="vdTreatBig">Дорогостоящее лечение, ₽</label>
+            <input type="number" id="vdTreatBig" value="0" min="0" oninput="calcDeduction()">
+            <p class="hint">Это то, что в справке из клиники помечено кодом 02.
+              У него лимита нет вовсе — возвращают 13% со всей суммы.</p></div>
+
+          <div class="form-group"><label for="vdStudy">Своё обучение, ₽</label>
+            <input type="number" id="vdStudy" value="0" min="0" oninput="calcDeduction()"></div>
+
+          <div class="form-group"><label for="vdStudyKid">Обучение детей, ₽ за год</label>
+            <input type="number" id="vdStudyKid" value="0" min="0" oninput="calcDeduction()"></div>
+
+          <div class="form-group"><label for="vdKids">Сколько детей учится платно</label>
+            <input type="number" id="vdKids" value="0" min="0" max="10" oninput="calcDeduction()">
+            <p class="hint">Лимит считается на каждого ребёнка отдельно,
+              а не на всех вместе.</p></div>
+
+          <div class="form-group"><label for="vdSport">Спорт и фитнес, ₽</label>
+            <input type="number" id="vdSport" value="0" min="0" oninput="calcDeduction()">
+            <p class="hint">Только если клуб есть в реестре Минспорта.</p></div>
+
+          <div class="form-group"><label for="vdBuy">Покупка жилья, ₽</label>
+            <input type="number" id="vdBuy" value="0" min="0" oninput="calcDeduction()"></div>
+
+          <div class="form-group"><label for="vdMortgage">Уплаченные проценты по ипотеке, ₽</label>
+            <input type="number" id="vdMortgage" value="0" min="0" oninput="calcDeduction()">
+            <p class="hint">Именно проценты, а не платежи по кредиту целиком —
+              сумму даёт банк справкой.</p></div>
+
+          <div class="form-group"><label for="vdIis">Внесено на ИИС, ₽</label>
+            <input type="number" id="vdIis" value="0" min="0" oninput="calcDeduction()"></div>
+
+          <div class="form-group"><label for="vdTax">Удержанный НДФЛ за год, ₽</label>
+            <input type="number" id="vdTax" value="80000" min="0" oninput="calcDeduction()">
+            <p class="hint">Строка «удержано» в справке о доходах.
+              Больше этой суммы вернуть нельзя — отсюда почти все
+              разочарования с вычетами.</p></div>
         </div>
         <div class="calc-result" id="vdOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налоговые вычеты')">Скачать / печать</button>
@@ -846,15 +888,15 @@
   </div>
 </main>
 
-<script src="js/qr.js?v=146"></script>
-<script src="js/partners.js?v=146"></script>
-<script src="js/rates.js?v=146"></script>
-<script src="js/themes.js?v=146"></script>
-<script src="js/api.js?v=146"></script>
-<script src="js/app.js?v=146"></script>
-<script src="js/progress.js?v=146"></script>
-<script src="js/palette.js?v=146"></script>
-<script src="js/ai.js?v=146"></script>
+<script src="js/qr.js?v=148"></script>
+<script src="js/partners.js?v=148"></script>
+<script src="js/rates.js?v=148"></script>
+<script src="js/themes.js?v=148"></script>
+<script src="js/api.js?v=148"></script>
+<script src="js/app.js?v=148"></script>
+<script src="js/progress.js?v=148"></script>
+<script src="js/palette.js?v=148"></script>
+<script src="js/ai.js?v=148"></script>
 <script>
 initPage("calc.html");
 
@@ -1141,15 +1183,84 @@ function calcDiv() {
     <p><b>К выплате на руки: ${fmt(s - ndfl)}</b></p>`;
 }
 
-/* --- 6. Вычеты --- */
+/* --- 6. Вычеты по НДФЛ ---
+
+   Было два поля: расходы и НДФЛ. Они знали один вид вычета из девяти
+   и не могли ответить на настоящий вопрос человека, у которого есть
+   и лечение, и обучение ребёнка, и ипотека сразу. Складываются они по
+   разным правилам, и весь вопрос именно в этом.
+
+   Деньги не забирают не потому, что не хотят, а потому что не знают,
+   что положено, и думают, что уже поздно. Поэтому здесь и лимиты, и
+   срок давности, и список документов по каждому отмеченному вычету. */
 function calcDeduction() {
-  const exp = Math.min(+document.getElementById("vdExp").value || 0, RATES.deductions.socialLimit);
-  const tax = +document.getElementById("vdTax").value || 0;
-  const ret = Math.min(exp * 0.13, tax);
-  document.getElementById("vdOut").innerHTML = `
-    <p>Социальный вычет (лимит ${RATES.deductions.socialLimit.toLocaleString("ru-RU")} ₽/год):</p><div class="big">${fmt(ret)}</div>
-    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
-      Возврат ограничен уплаченным НДФЛ (${fmt(tax)}). Подать можно за 3 предыдущих года через личный кабинет ФНС.
+  const n = id => +document.getElementById(id).value || 0;
+
+  const spent = {
+    treatment: n("vdTreat"),
+    treatmentBig: n("vdTreatBig"),
+    study: n("vdStudy"),
+    studyChild: n("vdStudyKid"),
+    sport: n("vdSport"),
+    buy: n("vdBuy"),
+    mortgage: n("vdMortgage"),
+    iis: n("vdIis"),
+  };
+  const ndfl = n("vdTax");
+  const r = RATES.deductionPlan({ spent, ndfl, children: n("vdKids") });
+  const y = RATES.deductionYears();
+
+  const el = document.getElementById("vdOut");
+  if (!r.base) {
+    el.innerHTML = `<p class="hint">Впишите расходы за год — посчитаем,
+      сколько из них вернёт налоговая.</p>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <p>Вернут деньгами:</p><div class="big">${fmt(r.back)}</div>
+    <table class="calc-table" style="margin-top:12px">
+      <tr><td>Принято к вычету</td><td>${fmt(r.base)}</td></tr>
+      <tr><td>13% от этой суммы</td><td>${fmt(r.wanted)}</td></tr>
+      <tr class="${r.capped ? "" : "best"}"><td>Удержано НДФЛ за год</td><td>${fmt(ndfl)}</td></tr>
+    </table>
+
+    ${r.capped ? `<p style="margin-top:10px"><b>Больше уплаченного НДФЛ не вернут.</b>
+      Вернуть можно ${fmt(r.back)} — ровно столько с вас удержали.
+      ${r.carry ? `Остаток ${fmt(r.carry)} по имущественному вычету не сгорает:
+        он переносится на следующие годы, пока не выберется весь. Об этом
+        почти не знают и подают один раз.` : ""}</p>` : ""}
+
+    ${r.over.length ? `<div style="margin-top:10px">
+      <p><b>Что не поместилось в лимиты:</b></p>
+      <ul style="margin:6px 0 0 18px;padding:0">
+        ${r.over.map(t => `<li style="margin-bottom:4px">${escapeHtml(t)}</li>`).join("")}
+      </ul></div>` : ""}
+
+    <div style="margin-top:12px">
+      <p><b>За какие годы ещё можно вернуть:</b> ${y.years.join(", ")}.</p>
+      <p style="color:var(--muted);font-size:var(--t-xs)">
+        Срок — три года. За ${y.expiring} год подать можно до ${y.lastCall},
+        дальше эти деньги пропадают. Возвращают по одному году за раз,
+        поэтому за каждый нужна своя декларация.
+      </p>
+    </div>
+
+    ${r.need.length ? `<div style="margin-top:12px">
+      <p><b>Что понадобится:</b></p>
+      <ul style="margin:6px 0 0 18px;padding:0">
+        ${r.need.map(t => `<li style="margin-bottom:4px">${escapeHtml(t)}</li>`).join("")}
+      </ul>
+      <p style="color:var(--muted);font-size:var(--t-xs);margin-top:6px">
+        Плюс справка о доходах за тот же год — её берут в личном кабинете
+        ФНС, у работодателя просить не нужно.
+      </p></div>` : ""}
+
+    <p style="color:var(--muted);font-size:var(--t-xs);margin-top:10px">
+      Подают через личный кабинет на сайте ФНС, декларацией 3-НДФЛ.
+      Имущественный и инвестиционный часто приходят упрощённо — предзаполненным
+      заявлением, без декларации вовсе: загляните в кабинет, прежде чем
+      собирать документы. ${RATES.disclaimer()}
     </p>`;
 }
 
@@ -2269,7 +2380,9 @@ const CALC_FIELDS = {
   dividends: { out: "dvOut", title: "Дивиденды",
                fields: ["dvSum"], run: "calcDiv" },
   deduction: { out: "vdOut", title: "Налоговые вычеты",
-               fields: ["vdExp","vdTax"], run: "calcDeduction" },
+               fields: ["vdTreat","vdTreatBig","vdStudy","vdStudyKid","vdKids",
+                        "vdSport","vdBuy","vdMortgage","vdIis","vdTax"],
+               run: "calcDeduction" },
   /* Новые расчёты. */
   taxpen:    { out: "tpOut", title: "Пени по налогам",
                fields: ["tpSum","tpDays","tpWho","tpRate"], run: "calcTaxPen" },
