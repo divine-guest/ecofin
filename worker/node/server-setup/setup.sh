@@ -102,10 +102,23 @@ fi
 # работающий сайт с недоделками, чем мёртвая машина.
 
 MISSING=""
-for pair in "git:git" "nginx:nginx" "cc:build-essential" "sqlite3:sqlite3" "ufw:ufw" "certbot:python3-certbot-nginx"; do
+# tesseract — распознавание текста с фотографий прямо здесь.
+# Без него снимок документа пришлось бы отправлять зарубежной
+# модели: паспорта, требования из налоговой, чужие договоры.
+for pair in "git:git" "nginx:nginx" "cc:build-essential" "sqlite3:sqlite3" "ufw:ufw" "certbot:python3-certbot-nginx" "tesseract:tesseract-ocr"; do
   cmd=${pair%%:*}; pkg=${pair#*:}
   command -v "$cmd" >/dev/null 2>&1 || MISSING="$MISSING $pkg"
 done
+
+# Русские языковые данные идут отдельным пакетом, и проверять их
+# наличие надо отдельно: команда tesseract существует и без них, а
+# распознавание при этом молча выдаёт латиницу вперемешку с мусором.
+# В цикле выше это не поймать — он смотрит только на имя команды.
+if command -v tesseract >/dev/null 2>&1; then
+  tesseract --list-langs 2>/dev/null | grep -qx rus || MISSING="$MISSING tesseract-ocr-rus"
+else
+  MISSING="$MISSING tesseract-ocr-rus"
+fi
 
 if [ -n "$MISSING" ]; then
   log "ставлю пакеты:$MISSING"
