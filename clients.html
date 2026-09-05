@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=126">
+<link rel="stylesheet" href="css/style.css?v=130">
 <style>
   /* Строка дела. Слева кто, справа деньги — глаз бухгалтера идёт
      по правому краю сверху вниз и ищет, где горит. */
@@ -61,14 +61,14 @@
   </div>
 </main>
 
-<script src="js/rates.js?v=126"></script>
-<script src="js/themes.js?v=126"></script>
-<script src="js/api.js?v=126"></script>
-<script src="js/app.js?v=126"></script>
-<script src="js/progress.js?v=126"></script>
-<script src="js/palette.js?v=126"></script>
-<script src="js/ai.js?v=126"></script>
-<script src="js/book.js?v=126"></script>
+<script src="js/rates.js?v=130"></script>
+<script src="js/themes.js?v=130"></script>
+<script src="js/api.js?v=130"></script>
+<script src="js/app.js?v=130"></script>
+<script src="js/progress.js?v=130"></script>
+<script src="js/palette.js?v=130"></script>
+<script src="js/ai.js?v=130"></script>
+<script src="js/book.js?v=130"></script>
 <script>
 initPage("clients.html");
 
@@ -198,17 +198,17 @@ function editClient(id) {
   <div class="card" style="margin-top:18px">
     <h3 style="margin-bottom:12px">${id ? "Правка дела" : "Новое дело"}</h3>
     <div class="grid cols-2">
-      <div class="form-group"><label>Название</label>
+      <div class="form-group"><label for="clName">Название</label>
         <input type="text" id="clName" value="${escapeHtml(c.name || "")}" placeholder="ИП Петров или ООО Ромашка"></div>
-      <div class="form-group"><label>ИНН (необязательно)</label>
+      <div class="form-group"><label for="clInn">ИНН (необязательно)</label>
         <input type="text" id="clInn" value="${escapeHtml(c.inn || "")}" maxlength="12"></div>
-      <div class="form-group"><label>Форма</label>
+      <div class="form-group"><label for="clForm">Форма</label>
         <select id="clForm">${opt("self","Физлицо / самозанятый",c.form)}${opt("ip","ИП",c.form)}${opt("ooo","ООО",c.form)}</select></div>
-      <div class="form-group"><label>Режим налогообложения</label>
+      <div class="form-group"><label for="clRegime">Режим налогообложения</label>
         <select id="clRegime">${Object.entries(BOOK.REGIMES).map(([k,v])=>opt(k,v.title,c.regime)).join("")}</select></div>
-      <div class="form-group"><label>Работников</label>
+      <div class="form-group"><label for="clWorkers">Работников</label>
         <input type="number" id="clWorkers" min="0" max="500" value="${c.workers || 0}"></div>
-      <div class="form-group"><label>Потенциальный доход по патенту, ₽</label>
+      <div class="form-group"><label for="clPsn">Потенциальный доход по патенту, ₽</label>
         <input type="number" id="clPsn" min="0" value="${c.psn || 0}"></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">

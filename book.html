@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=126">
+<link rel="stylesheet" href="css/style.css?v=130">
 <style>
   /* Полоса лимита. Отдельным правилом, а не через готовый прогресс:
      здесь важен цвет по мере приближения — зелёный, охра, красный.
@@ -75,15 +75,15 @@
   </div>
 </main>
 
-<script src="js/rates.js?v=126"></script>
-<script src="js/themes.js?v=126"></script>
-<script src="js/api.js?v=126"></script>
-<script src="js/app.js?v=126"></script>
-<script src="js/progress.js?v=126"></script>
-<script src="js/palette.js?v=126"></script>
-<script src="js/ai.js?v=126"></script>
-<script src="js/docscan.js?v=126"></script>
-<script src="js/book.js?v=126"></script>
+<script src="js/rates.js?v=130"></script>
+<script src="js/themes.js?v=130"></script>
+<script src="js/api.js?v=130"></script>
+<script src="js/app.js?v=130"></script>
+<script src="js/progress.js?v=130"></script>
+<script src="js/palette.js?v=130"></script>
+<script src="js/ai.js?v=130"></script>
+<script src="js/docscan.js?v=130"></script>
+<script src="js/book.js?v=130"></script>
 <script>
 initPage("book.html");
 
@@ -323,19 +323,19 @@ function settingsCard(p) {
   <details class="card">
     <summary style="cursor:pointer;font-weight:700">Профиль дела — форма, режим, работники</summary>
     <div class="grid cols-2" style="margin-top:14px">
-      <div class="form-group"><label>Кто вы</label>
+      <div class="form-group"><label for="pForm">Кто вы</label>
         <select id="pForm">
           ${opt("self", "Физлицо / самозанятый", p.form)}
           ${opt("ip", "ИП", p.form)}
           ${opt("ooo", "ООО", p.form)}
         </select></div>
-      <div class="form-group"><label>Режим налогообложения</label>
+      <div class="form-group"><label for="pRegime">Режим налогообложения</label>
         <select id="pRegime">
           ${Object.entries(BOOK.REGIMES).map(([id, r]) => opt(id, r.title, p.regime)).join("")}
         </select></div>
-      <div class="form-group"><label>Работников</label>
+      <div class="form-group"><label for="pWorkers">Работников</label>
         <input type="number" id="pWorkers" min="0" max="500" value="${p.workers || 0}"></div>
-      <div class="form-group"><label>Потенциальный доход по патенту, ₽ за год</label>
+      <div class="form-group"><label for="pPsn">Потенциальный доход по патенту, ₽ за год</label>
         <input type="number" id="pPsn" min="0" value="${p.psn || 0}">
         <p class="hint">Нужен только для патента. Цифру устанавливает регион —
           её даёт <a href="https://patent.nalog.ru/" target="_blank" rel="noopener">калькулятор ФНС</a>.</p></div>
@@ -353,17 +353,17 @@ function renderSetup() {
     <h3 style="margin:0 0 6px">Два вопроса — и можно начинать</h3>
     <p style="color:var(--muted);margin:0 0 16px">Без них не посчитать налог: у каждого режима
       своя ставка и свой лимит. Поменять можно в любой момент.</p>
-    <div class="form-group"><label>Кто вы</label>
-      <select id="pForm">
+    <div class="form-group"><label for="suForm">Кто вы</label>
+      <select id="suForm">
         <option value="self">Физлицо / самозанятый</option>
         <option value="ip">ИП</option>
         <option value="ooo">ООО</option>
       </select></div>
-    <div class="form-group"><label>Режим налогообложения</label>
-      <select id="pRegime">
+    <div class="form-group"><label for="suRegime">Режим налогообложения</label>
+      <select id="suRegime">
         ${Object.entries(BOOK.REGIMES).map(([id, r]) => `<option value="${id}">${r.title}</option>`).join("")}
       </select></div>
-    <input type="hidden" id="pWorkers" value="0"><input type="hidden" id="pPsn" value="0">
+    <input type="hidden" id="suWorkers" value="0"><input type="hidden" id="suPsn" value="0">
     <button class="btn wide" onclick="saveProfile()">Начать вести учёт</button>
     <p class="hint" style="margin-top:12px">Не знаете свой режим?
       <a href="${PF.href("calc.html")}">Калькулятор подберёт выгодный</a> по вашим доходам.</p>
@@ -387,7 +387,7 @@ function scanBox() {
     <p class="hint-line" style="margin:0 0 12px">Сфотографируйте чек, счёт или акт —
       сумма, дата и контрагент подставятся сами. Останется проверить и подтвердить.</p>
     <button class="btn" id="scanPick">Сфотографировать или выбрать файл</button>
-    <input type="file" id="scanFile" accept="image/*" capture="environment" style="display:none">
+    <input type="file" id="scanFile" aria-label="Фотография чека или квитанции" accept="image/*" capture="environment" style="display:none">
     <div id="scanState" class="hint-line"></div>
     <div id="scanResult"></div>
   </div>`;
@@ -435,13 +435,13 @@ function showScanned(d) {
     <div style="border:1px solid var(--primary);border-radius:12px;padding:14px;margin-top:12px">
       <p style="margin:0 0 12px"><b>Разобрали так.</b> Проверьте — особенно сумму и дату.</p>
       <div class="grid cols-2">
-        <div class="form-group"><label>Сумма, ₽</label>
+        <div class="form-group"><label for="scSum">Сумма, ₽</label>
           <input type="number" step="0.01" id="scSum" value="${d.amount}"></div>
-        <div class="form-group"><label>Дата</label>
+        <div class="form-group"><label for="scDay">Дата</label>
           <input type="date" id="scDay" value="${escapeHtml(d.day)}"></div>
-        <div class="form-group"><label>Контрагент</label>
+        <div class="form-group"><label for="scParty">Контрагент</label>
           <input type="text" id="scParty" value="${escapeHtml(d.party || "")}"></div>
-        <div class="form-group"><label>Категория</label>
+        <div class="form-group"><label for="scCat">Категория</label>
           <input type="text" id="scCat" value="${escapeHtml(d.category || "")}"></div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
@@ -570,11 +570,23 @@ async function delOp(id) {
 }
 
 async function saveProfile() {
+  /* Первичная настройка и карточка профиля — разные экраны с разными
+     полями, но обработчик один. Берём то поле, которое сейчас на
+     экране: одинаковые идентификаторы на двух экранах — недопустимая
+     разметка, а getElementById вернул бы только первое совпадение. */
+  const pick = (...ids) => {
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) return el.value;
+    }
+    return "";
+  };
+
   const body = {
-    form: val("pForm"),
-    regime: val("pRegime"),
-    workers: Number(val("pWorkers")) || 0,
-    psn: Number(val("pPsn")) || 0,
+    form: pick("pForm", "suForm"),
+    regime: pick("pRegime", "suRegime"),
+    workers: Number(pick("pWorkers", "suWorkers")) || 0,
+    psn: Number(pick("pPsn", "suPsn")) || 0,
   };
   try {
     await API.request("/api/book/profile", { method: "POST", body });

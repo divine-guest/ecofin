@@ -327,5 +327,47 @@ console.log("\n— Файлы js разбираются —");
      broken.join("; "));
 }
 
+/* Подпись поля связана с самим полем.
+
+   Визуально подпись стоит рядом, и глазами всё в порядке. Программе
+   связь не видна, если нет for="…": озвучка экрана называет такое поле
+   безымянным — «поле ввода, пусто», — и незрячий человек не знает, что
+   вводить. Плюс по клику на подпись не встаёт курсор, а это ожидают все.
+
+   Так было у 136 полей: почти все формы сайта. */
+console.log("\n— Подписи связаны с полями —");
+{
+  const loose = [];
+  for (const f of fs.readdirSync(new URL("../", import.meta.url))) {
+    if (!f.endsWith(".html")) continue;
+    const src = read("../" + f);
+    const re = /<label(?![^>]*\bfor=)[^>]*>(?:(?!<\/label>)[\s\S])*?<\/label>\s*<(?:input|select|textarea)\b[^>]*\bid="/g;
+    const n = (src.match(re) || []).length;
+    if (n) loose.push(`${f}: ${n}`);
+  }
+  ok(loose.length === 0, "у каждого поля подпись связана через for", loose.join("; "));
+}
+
+/* Идентификаторы уникальны в пределах страницы.
+
+   Повторяющийся id — недопустимая разметка, и getElementById возвращает
+   только первое совпадение. Так в «Моём деле» два экрана — первичная
+   настройка и карточка профиля — делили одни имена полей: экраны
+   взаимоисключающие, поэтому работало, но стоило показать оба, и
+   сохранилось бы не то, что человек выбрал. */
+console.log("\n— Идентификаторы не повторяются —");
+{
+  const bad = [];
+  for (const f of fs.readdirSync(new URL("../", import.meta.url))) {
+    if (!f.endsWith(".html")) continue;
+    const ids = [...read("../" + f).matchAll(/\bid="([A-Za-z0-9_\-]+)"/g)].map(m => m[1]);
+    const seen = new Set(), dup = new Set();
+    for (const i of ids) (seen.has(i) ? dup : seen).add(i);
+    if (dup.size) bad.push(`${f}: ${[...dup].join(", ")}`);
+  }
+  ok(bad.length === 0, "в каждой странице идентификаторы уникальны", bad.join("; "));
+}
+
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

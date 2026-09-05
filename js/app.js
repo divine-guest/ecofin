@@ -787,7 +787,7 @@ function renderChatWidget() {
       <div class="chat-header">ИИ-консультант <button onclick="clearChat()" title="Очистить историю" style="margin-right:10px;font-size:var(--t-sm)">Очистить</button><button onclick="chatToggle()">✕</button></div>
       <div class="chat-messages" id="chatMessages"></div>
       <div class="chat-input">
-        <input type="text" id="chatInput" placeholder="Задайте вопрос..." onkeydown="if(event.key==='Enter')chatSend()">
+        <input type="text" id="chatInput" aria-label="Вопрос ИИ-консультанту" placeholder="Задайте вопрос..." onkeydown="if(event.key==='Enter')chatSend()">
         <button class="btn" onclick="chatSend()">➤</button>
       </div>
     </div>
@@ -1345,7 +1345,7 @@ const SETTINGS = {
           <button class="btn small" onclick="document.getElementById('avatarFile').click()">Загрузить фото</button>
           ${this._avatar.startsWith("data:image/")
             ? '<button class="btn small secondary" onclick="SETTINGS.pickAvatar(\'\')">Убрать фото</button>' : ""}
-          <input type="file" id="avatarFile" accept="image/*" style="display:none" onchange="SETTINGS.onPhoto(this.files[0])">
+          <input type="file" id="avatarFile" aria-label="Фотография профиля" accept="image/*" style="display:none" onchange="SETTINGS.onPhoto(this.files[0])">
           <p class="hint">JPEG, PNG или WebP. Фото обрежется по центру в квадрат и сожмётся автоматически.</p>
         </div>
       </div>

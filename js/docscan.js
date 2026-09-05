@@ -181,6 +181,9 @@ DOCSCAN.attach = function ({ target, label = "" } = {}) {
 
   const input = document.createElement("input");
   input.type = "file";
+  /* Поле спрятано за кнопкой, но имя ему всё равно нужно: озвучка
+     экрана доходит до него по порядку обхода и называет безымянным. */
+  input.setAttribute("aria-label", "Файл или фотография документа");
   input.accept = ".pdf,.docx,.txt,.md,.csv,image/*";
   input.style.display = "none";
   box.appendChild(input);

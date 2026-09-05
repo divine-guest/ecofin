@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=126">
+<link rel="stylesheet" href="css/style.css?v=130">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -117,7 +117,7 @@
         <div style="flex:1;min-width:280px">
           <div class="grid cols-2">
             <div class="form-group">
-              <label>Кто вы</label>
+              <label for="txWho">Кто вы</label>
               <select id="txWho" onchange="calcTax()">
                 <option value="ip">ИП</option>
                 <option value="ooo">ООО</option>
@@ -125,18 +125,18 @@
               </select>
             </div>
             <div class="form-group">
-              <label>Работников</label>
+              <label for="txWorkers">Работников</label>
               <input type="number" id="txWorkers" value="0" min="0" max="200" oninput="calcTax()">
             </div>
           </div>
-          <div class="form-group"><label>Доход за год, ₽</label>
+          <div class="form-group"><label for="txIn">Доход за год, ₽</label>
             <input type="number" id="txIn" value="2000000" oninput="calcTax()"></div>
-          <div class="form-group"><label>Расходы за год, ₽</label>
+          <div class="form-group"><label for="txExp">Расходы за год, ₽</label>
             <input type="number" id="txExp" value="800000" oninput="calcTax()">
             <p class="hint">Только подтверждённые документами — иначе их не примут.</p>
           </div>
           <div class="form-group">
-            <label>Потенциальный доход по патенту, ₽ за год</label>
+            <label for="txPsn">Потенциальный доход по патенту, ₽ за год</label>
             <input type="number" id="txPsn" value="0" min="0" oninput="calcTax()">
             <p class="hint">Патент считается не от выручки, а от суммы, которую установил ваш регион.
               Точную цифру даёт калькулятор ФНС:
@@ -155,15 +155,15 @@
       <div class="calc-row">
         <div style="flex:1;min-width:260px">
           <div class="form-group">
-            <label>Зарплата «на бумаге» в месяц, ₽</label>
+            <label for="slGross">Зарплата «на бумаге» в месяц, ₽</label>
             <input type="number" id="slGross" value="80000" oninput="calcSalary()">
           </div>
           <div class="form-group">
-            <label>Детей до 18 лет (или до 24 на очной учёбе)</label>
+            <label for="slKids">Детей до 18 лет (или до 24 на очной учёбе)</label>
             <input type="number" id="slKids" value="0" min="0" max="10" oninput="calcSalary()">
           </div>
           <div class="form-group">
-            <label>Предприятие</label>
+            <label for="slSmall">Предприятие</label>
             <select id="slSmall" onchange="calcSalary()">
               <option value="1">Малое или среднее — льготные взносы</option>
               <option value="0">Крупное — обычный тариф</option>
@@ -180,16 +180,16 @@
       <div class="calc-row">
         <div style="flex:1;min-width:260px">
           <div class="form-group">
-            <label>Доход за год, ₽</label>
+            <label for="ipIncome">Доход за год, ₽</label>
             <input type="number" id="ipIncome" value="1500000" oninput="calcIpFee()">
           </div>
           <div class="form-group">
-            <label>Сколько дней в году был статус ИП</label>
+            <label for="ipDays">Сколько дней в году был статус ИП</label>
             <input type="number" id="ipDays" value="365" min="1" max="366" oninput="calcIpFee()">
             <p class="hint">При регистрации или закрытии в середине года фиксированная часть считается пропорционально.</p>
           </div>
           <div class="form-group">
-            <label>Налоговый режим</label>
+            <label for="ipMode">Налоговый режим</label>
             <select id="ipMode" onchange="calcIpFee()">
               <option value="usn6">УСН «Доходы» без работников</option>
               <option value="usn6w">УСН «Доходы» с работниками</option>
@@ -207,15 +207,15 @@
       <div class="calc-row">
         <div style="flex:1;min-width:260px">
           <div class="form-group">
-            <label>Сумма, ₽</label>
+            <label for="vtSum">Сумма, ₽</label>
             <input type="number" id="vtSum" value="120000" oninput="calcVat()">
           </div>
           <div class="form-group">
-            <label>Ставка</label>
+            <label for="vtRate">Ставка</label>
             <select id="vtRate" onchange="calcVat()"></select>
           </div>
           <div class="form-group">
-            <label>Что делаем</label>
+            <label for="vtMode">Что делаем</label>
             <select id="vtMode" onchange="calcVat()">
               <option value="extract">Выделить НДС из суммы (НДС уже внутри)</option>
               <option value="add">Начислить НДС сверху</option>
@@ -230,9 +230,9 @@
     <div class="tab-panel game-stage" id="calc1">
       <div class="calc-row">
         <div style="flex:1;min-width:240px">
-          <div class="form-group"><label>Сумма долга, ₽</label><input type="number" id="pnSum" value="100000" oninput="calcPenalty()"></div>
-          <div class="form-group"><label>Ставка, % в день</label><input type="number" step="0.01" id="pnRate" value="0.1" oninput="calcPenalty()"></div>
-          <div class="form-group"><label>Дней просрочки</label><input type="number" id="pnDays" value="30" oninput="calcPenalty()"></div>
+          <div class="form-group"><label for="pnSum">Сумма долга, ₽</label><input type="number" id="pnSum" value="100000" oninput="calcPenalty()"></div>
+          <div class="form-group"><label for="pnRate">Ставка, % в день</label><input type="number" step="0.01" id="pnRate" value="0.1" oninput="calcPenalty()"></div>
+          <div class="form-group"><label for="pnDays">Дней просрочки</label><input type="number" id="pnDays" value="30" oninput="calcPenalty()"></div>
         </div>
         <div class="calc-result" id="pnOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Пеня и неустойка')">Скачать / печать</button>
@@ -243,7 +243,7 @@
       <div class="calc-row">
         <div style="flex:1;min-width:260px">
           <div class="form-group">
-            <label>Вид иска</label>
+            <label for="gpKind">Вид иска</label>
             <select id="gpKind" onchange="calcCourtFee()">
               <option value="prop">Имущественный — есть цена иска</option>
               <option value="person">Неимущественный, подаёт человек</option>
@@ -251,7 +251,7 @@
             </select>
           </div>
           <div class="form-group" id="gpClaimBox">
-            <label>Цена иска, ₽</label>
+            <label for="gpClaim">Цена иска, ₽</label>
             <input type="number" id="gpClaim" value="250000" oninput="calcCourtFee()">
           </div>
           <p class="hint">Суд общей юрисдикции, первая инстанция. Ставки НК РФ ст. 333.19.</p>
@@ -264,8 +264,8 @@
     <div class="tab-panel game-stage" id="calc2">
       <div class="calc-row">
         <div style="flex:1;min-width:240px">
-          <div class="form-group"><label>Зарплата за 12 месяцев, ₽</label><input type="number" id="vpSum" value="840000" oninput="calcVacation()"></div>
-          <div class="form-group"><label>Дней отпуска</label><input type="number" id="vpDays" value="14" oninput="calcVacation()"></div>
+          <div class="form-group"><label for="vpSum">Зарплата за 12 месяцев, ₽</label><input type="number" id="vpSum" value="840000" oninput="calcVacation()"></div>
+          <div class="form-group"><label for="vpDays">Дней отпуска</label><input type="number" id="vpDays" value="14" oninput="calcVacation()"></div>
         </div>
         <div class="calc-result" id="vpOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Отпускные')">Скачать / печать</button>
@@ -275,15 +275,15 @@
     <div class="tab-panel game-stage" id="calc3">
       <div class="calc-row">
         <div style="flex:1;min-width:240px">
-          <div class="form-group"><label>Зарплата за 2 года, ₽</label><input type="number" id="blSum" value="1200000" oninput="calcSick()"></div>
-          <div class="form-group"><label>Страховой стаж</label>
+          <div class="form-group"><label for="blSum">Зарплата за 2 года, ₽</label><input type="number" id="blSum" value="1200000" oninput="calcSick()"></div>
+          <div class="form-group"><label for="blExp">Страховой стаж</label>
             <select id="blExp" onchange="calcSick()">
               <option value="0.6">Менее 5 лет (60%)</option>
               <option value="0.8">5–8 лет (80%)</option>
               <option value="1">Более 8 лет (100%)</option>
             </select>
           </div>
-          <div class="form-group"><label>Дней больничного</label><input type="number" id="blDays" value="10" oninput="calcSick()"></div>
+          <div class="form-group"><label for="blDays">Дней больничного</label><input type="number" id="blDays" value="10" oninput="calcSick()"></div>
         </div>
         <div class="calc-result" id="blOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Больничные')">Скачать / печать</button>
@@ -293,7 +293,7 @@
     <div class="tab-panel game-stage" id="calc4">
       <div class="calc-row">
         <div style="flex:1;min-width:240px">
-          <div class="form-group"><label>Сумма к распределению, ₽</label><input type="number" id="dvSum" value="1000000" oninput="calcDiv()"></div>
+          <div class="form-group"><label for="dvSum">Сумма к распределению, ₽</label><input type="number" id="dvSum" value="1000000" oninput="calcDiv()"></div>
         </div>
         <div class="calc-result" id="dvOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Дивиденды')">Скачать / печать</button>
@@ -303,8 +303,8 @@
     <div class="tab-panel game-stage" id="calc5">
       <div class="calc-row">
         <div style="flex:1;min-width:240px">
-          <div class="form-group"><label>Расходы на лечение/обучение, ₽</label><input type="number" id="vdExp" value="100000" oninput="calcDeduction()"></div>
-          <div class="form-group"><label>Уплаченный НДФЛ за год, ₽</label><input type="number" id="vdTax" value="80000" oninput="calcDeduction()"></div>
+          <div class="form-group"><label for="vdExp">Расходы на лечение/обучение, ₽</label><input type="number" id="vdExp" value="100000" oninput="calcDeduction()"></div>
+          <div class="form-group"><label for="vdTax">Уплаченный НДФЛ за год, ₽</label><input type="number" id="vdTax" value="80000" oninput="calcDeduction()"></div>
         </div>
         <div class="calc-result" id="vdOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налоговые вычеты')">Скачать / печать</button>
@@ -315,22 +315,34 @@
       <div class="grid cols-2 no-print">
         <div>
           <h4>Продавец</h4>
-          <div class="form-group"><input type="text" id="ivSeller" placeholder="Название / ФИО" oninput="renderInvoice()"></div>
-          <div class="form-group"><input type="text" id="ivSellerInn" placeholder="ИНН" oninput="renderInvoice()"></div>
-          <div class="form-group"><input type="text" id="ivSellerAcc" placeholder="Р/с" oninput="renderInvoice()"></div>
-          <div class="form-group"><input type="text" id="ivSellerBank" placeholder="Банк, БИК" oninput="renderInvoice()"></div>
+          <!-- Подсказка внутри поля подписью не является: она исчезает,
+               как только человек начинает печатать, и он уже не помнит,
+               куда пишет. Озвучка экрана её именем поля тоже не считает. -->
+          <div class="form-group"><label for="ivSeller">Название / ФИО</label>
+            <input type="text" id="ivSeller" placeholder="ООО «Ромашка» или ИП Иванов И. И." oninput="renderInvoice()"></div>
+          <div class="form-group"><label for="ivSellerInn">ИНН</label>
+            <input type="text" id="ivSellerInn" placeholder="10 или 12 цифр" oninput="renderInvoice()"></div>
+          <div class="form-group"><label for="ivSellerAcc">Расчётный счёт</label>
+            <input type="text" id="ivSellerAcc" placeholder="20 цифр" oninput="renderInvoice()"></div>
+          <div class="form-group"><label for="ivSellerBank">Банк и БИК</label>
+            <input type="text" id="ivSellerBank" placeholder="АО «Банк», БИК 044525225" oninput="renderInvoice()"></div>
         </div>
         <div>
           <h4>Покупатель</h4>
-          <div class="form-group"><input type="text" id="ivBuyer" placeholder="Название / ФИО" oninput="renderInvoice()"></div>
-          <div class="form-group"><input type="text" id="ivBuyerInn" placeholder="ИНН" oninput="renderInvoice()"></div>
-          <div class="form-group"><label>Номер и дата счёта</label>
+          <div class="form-group"><label for="ivBuyer">Название / ФИО</label>
+            <input type="text" id="ivBuyer" placeholder="Кому выставляете счёт" oninput="renderInvoice()"></div>
+          <div class="form-group"><label for="ivBuyerInn">ИНН</label>
+            <input type="text" id="ivBuyerInn" placeholder="10 или 12 цифр" oninput="renderInvoice()"></div>
+          <div class="form-group"><label for="ivNum">Номер и дата счёта</label>
             <div style="display:flex;gap:8px">
-              <input type="text" id="ivNum" placeholder="№ 1" oninput="renderInvoice()">
-              <input type="date" id="ivDate" onchange="renderInvoice()">
+              <!-- Два поля под одной подписью: каждому своё имя, иначе
+                   озвучка называет оба «Номер и дата» и различить их
+                   на слух невозможно. -->
+              <input type="text" id="ivNum" placeholder="№ 1" aria-label="Номер счёта" oninput="renderInvoice()">
+              <input type="date" id="ivDate" aria-label="Дата счёта" onchange="renderInvoice()">
             </div>
           </div>
-          <div class="form-group"><label>НДС 20%?</label>
+          <div class="form-group"><label for="ivVat">НДС 20%?</label>
             <select id="ivVat" onchange="renderInvoice()"><option value="no">Не облагается / УСН</option><option value="yes">Включить НДС 20%</option></select>
           </div>
         </div>
@@ -355,13 +367,13 @@
         Скажите, кто вы — и календарь покажет только ваши сроки, а не все сразу.
       </p>
       <div class="grid cols-3 no-print" style="margin-bottom:16px">
-        <div class="form-group"><label>Форма</label>
+        <div class="form-group"><label for="calWho">Форма</label>
           <select id="calWho" onchange="renderTaxCal()">
             <option value="ip">ИП</option>
             <option value="ooo">ООО</option>
             <option value="self">Самозанятый</option>
           </select></div>
-        <div class="form-group"><label>Налоговый режим</label>
+        <div class="form-group"><label for="calRegime">Налоговый режим</label>
           <select id="calRegime" onchange="renderTaxCal()">
             <option value="usn6">УСН «Доходы» 6%</option>
             <option value="usn15">УСН «Доходы минус расходы» 15%</option>
@@ -371,7 +383,7 @@
             <option value="eshn">ЕСХН</option>
             <option value="osno">ОСНО</option>
           </select></div>
-        <div class="form-group"><label>Работники</label>
+        <div class="form-group"><label for="calWorkers">Работники</label>
           <select id="calWorkers" onchange="renderTaxCal()">
             <option value="0">Нет</option>
             <option value="1">Есть</option>
@@ -398,16 +410,16 @@
     <div class="tab-panel game-stage" id="calcTaxPen">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Неуплаченный налог, ₽</label>
+          <div class="form-group"><label for="tpSum">Неуплаченный налог, ₽</label>
             <input type="number" id="tpSum" value="50000" oninput="calcTaxPen()"></div>
-          <div class="form-group"><label>Дней просрочки</label>
+          <div class="form-group"><label for="tpDays">Дней просрочки</label>
             <input type="number" id="tpDays" value="45" oninput="calcTaxPen()"></div>
-          <div class="form-group"><label>Кто должник</label>
+          <div class="form-group"><label for="tpWho">Кто должник</label>
             <select id="tpWho" onchange="calcTaxPen()">
               <option value="ip">ИП или физлицо — всегда 1/300 ставки</option>
               <option value="org">Организация — после 30 дней 1/150</option>
             </select></div>
-          <div class="form-group"><label>Ключевая ставка ЦБ, % годовых</label>
+          <div class="form-group"><label for="tpRate">Ключевая ставка ЦБ, % годовых</label>
             <input type="number" step="0.25" id="tpRate" oninput="calcTaxPen()">
             <p class="hint rate-hint">Ставка меняется несколько раз в год —
               <a href="https://cbr.ru/hd_base/KeyRate/" target="_blank" rel="noopener">проверьте на cbr.ru</a>
@@ -425,11 +437,11 @@
     <div class="tab-panel game-stage" id="calcGk">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Сумма долга, ₽</label>
+          <div class="form-group"><label for="gkSum">Сумма долга, ₽</label>
             <input type="number" id="gkSum" value="200000" oninput="calcGk()"></div>
-          <div class="form-group"><label>Дней просрочки</label>
+          <div class="form-group"><label for="gkDays">Дней просрочки</label>
             <input type="number" id="gkDays" value="90" oninput="calcGk()"></div>
-          <div class="form-group"><label>Ключевая ставка ЦБ, % годовых</label>
+          <div class="form-group"><label for="gkRate">Ключевая ставка ЦБ, % годовых</label>
             <input type="number" step="0.25" id="gkRate" oninput="calcGk()">
             <p class="hint rate-hint">Если ставка за период менялась, считайте по частям —
               <a href="https://cbr.ru/hd_base/KeyRate/" target="_blank" rel="noopener">история ставок на cbr.ru</a>.</p></div>
@@ -446,11 +458,11 @@
     <div class="tab-panel game-stage" id="calcWage">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Сумма задержанной выплаты, ₽</label>
+          <div class="form-group"><label for="wgSum">Сумма задержанной выплаты, ₽</label>
             <input type="number" id="wgSum" value="60000" oninput="calcWage()"></div>
-          <div class="form-group"><label>Дней задержки</label>
+          <div class="form-group"><label for="wgDays">Дней задержки</label>
             <input type="number" id="wgDays" value="14" oninput="calcWage()"></div>
-          <div class="form-group"><label>Ключевая ставка ЦБ, % годовых</label>
+          <div class="form-group"><label for="wgRate">Ключевая ставка ЦБ, % годовых</label>
             <input type="number" step="0.25" id="wgRate" oninput="calcWage()">
             <p class="hint rate-hint">1/150 ставки за каждый день —
               <a href="https://cbr.ru/hd_base/KeyRate/" target="_blank" rel="noopener">ставка на cbr.ru</a>.</p></div>
@@ -467,18 +479,18 @@
     <div class="tab-panel game-stage" id="calcFire">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Выплаты за 12 месяцев, ₽</label>
+          <div class="form-group"><label for="frPay">Выплаты за 12 месяцев, ₽</label>
             <input type="number" id="frPay" value="840000" oninput="calcFire()"></div>
-          <div class="form-group"><label>Отработано полных месяцев</label>
+          <div class="form-group"><label for="frMonths">Отработано полных месяцев</label>
             <input type="number" id="frMonths" value="10" oninput="calcFire()"></div>
-          <div class="form-group"><label>Дней отпуска в год по договору</label>
+          <div class="form-group"><label for="frPerYear">Дней отпуска в год по договору</label>
             <select id="frPerYear" onchange="calcFire()">
               <option value="28">28 — обычный отпуск</option>
               <option value="31">31 — ненормированный день</option>
               <option value="35">35 — вредные условия</option>
               <option value="56">56 — педагоги</option>
             </select></div>
-          <div class="form-group"><label>Уже отгуляно дней</label>
+          <div class="form-group"><label for="frUsed">Уже отгуляно дней</label>
             <input type="number" id="frUsed" value="0" oninput="calcFire()"></div>
         </div>
         <div class="calc-result" id="frOut"></div>
@@ -494,9 +506,9 @@
     <div class="tab-panel game-stage" id="calcUsnVat">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Доход за год, ₽</label>
+          <div class="form-group"><label for="uvIncome">Доход за год, ₽</label>
             <input type="number" id="uvIncome" value="90000000" oninput="calcUsnVat()"></div>
-          <div class="form-group"><label>Входной НДС от поставщиков за год, ₽</label>
+          <div class="form-group"><label for="uvInput">Входной НДС от поставщиков за год, ₽</label>
             <input type="number" id="uvInput" value="3000000" oninput="calcUsnVat()">
             <p class="hint">Сколько НДС вам предъявили поставщики. При пониженной
               ставке принять его к вычету нельзя — в этом вся разница.</p></div>
@@ -513,13 +525,13 @@
     <div class="tab-panel game-stage" id="calcLoan">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Сумма кредита, ₽</label>
+          <div class="form-group"><label for="lnSum">Сумма кредита, ₽</label>
             <input type="number" id="lnSum" value="1000000" oninput="calcLoan()"></div>
-          <div class="form-group"><label>Ставка, % годовых</label>
+          <div class="form-group"><label for="lnRate">Ставка, % годовых</label>
             <input type="number" step="0.1" id="lnRate" value="22" oninput="calcLoan()"></div>
-          <div class="form-group"><label>Срок, месяцев</label>
+          <div class="form-group"><label for="lnMonths">Срок, месяцев</label>
             <input type="number" id="lnMonths" value="36" oninput="calcLoan()"></div>
-          <div class="form-group"><label>Досрочно вносить в месяц, ₽</label>
+          <div class="form-group"><label for="lnExtra">Досрочно вносить в месяц, ₽</label>
             <input type="number" id="lnExtra" value="0" oninput="calcLoan()">
             <p class="hint">Сокращает срок: видно, сколько сэкономит каждая
               лишняя тысяча.</p></div>
@@ -535,9 +547,9 @@
     <div class="tab-panel game-stage" id="calcWords">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Сумма, ₽</label>
+          <div class="form-group"><label for="wdSum">Сумма, ₽</label>
             <input type="number" step="0.01" id="wdSum" value="125450.5" oninput="calcWords()"></div>
-          <div class="form-group"><label>Как записать</label>
+          <div class="form-group"><label for="wdCase">Как записать</label>
             <select id="wdCase" onchange="calcWords()">
               <option value="cap">С заглавной буквы — для договора</option>
               <option value="low">Со строчной — внутри предложения</option>
@@ -555,16 +567,16 @@
     <div class="tab-panel game-stage" id="calcStaff">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Зарплата до вычета НДФЛ, ₽ в месяц</label>
+          <div class="form-group"><label for="stPay">Зарплата до вычета НДФЛ, ₽ в месяц</label>
             <input type="number" id="stPay" value="80000" oninput="calcStaff()"></div>
-          <div class="form-group"><label>Месяцев</label>
+          <div class="form-group"><label for="stMonths">Месяцев</label>
             <input type="number" id="stMonths" value="12" min="1" max="12" oninput="calcStaff()"></div>
-          <div class="form-group"><label>Вы в реестре малого и среднего бизнеса?</label>
+          <div class="form-group"><label for="stSmall">Вы в реестре малого и среднего бизнеса?</label>
             <select id="stSmall" onchange="calcStaff()">
               <option value="1">Да — льготный тариф (проверить на rmsp.nalog.ru)</option>
               <option value="0">Нет — общий тариф 30%</option>
             </select></div>
-          <div class="form-group"><label>Класс профессионального риска</label>
+          <div class="form-group"><label for="stInjury">Класс профессионального риска</label>
             <select id="stInjury" onchange="calcStaff()">
               <option value="0.002">I — офис, торговля, услуги (0,2%)</option>
               <option value="0.009">VIII — производство, склад (0,9%)</option>
@@ -587,25 +599,25 @@
     <div class="tab-panel game-stage" id="calcProperty">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Что продаёте</label>
+          <div class="form-group"><label for="prKind">Что продаёте</label>
             <select id="prKind" onchange="calcProperty()">
               <option value="realty">Квартиру, дом, участок</option>
               <option value="other">Автомобиль или иное имущество</option>
             </select></div>
-          <div class="form-group" id="prSpecialBox"><label>Как получили</label>
+          <div class="form-group" id="prSpecialBox"><label for="prSpecial">Как получили</label>
             <select id="prSpecial" onchange="calcProperty()">
               <option value="0">Купил — обычный случай</option>
               <option value="1">Наследство, дар от близкого родственника, приватизация</option>
               <option value="1">Это моё единственное жильё</option>
             </select>
             <p class="hint">В этих случаях достаточно трёх лет вместо пяти.</p></div>
-          <div class="form-group"><label>Цена продажи, ₽</label>
+          <div class="form-group"><label for="prPrice">Цена продажи, ₽</label>
             <input type="number" id="prPrice" value="6000000" oninput="calcProperty()"></div>
-          <div class="form-group"><label>За сколько покупали, ₽</label>
+          <div class="form-group"><label for="prBought">За сколько покупали, ₽</label>
             <input type="number" id="prBought" value="4500000" oninput="calcProperty()">
             <p class="hint">Нужны документы: договор и подтверждение оплаты.
               Нет документов — оставьте ноль, посчитаем по вычету.</p></div>
-          <div class="form-group"><label>Сколько лет владеете</label>
+          <div class="form-group"><label for="prYears">Сколько лет владеете</label>
             <input type="number" id="prYears" value="2" min="0" max="50" step="0.5" oninput="calcProperty()"></div>
         </div>
         <div class="calc-result" id="prOut"></div>
@@ -618,19 +630,19 @@
     <div class="tab-panel game-stage" id="calcBaby">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Заработок за позапрошлый год, ₽</label>
+          <div class="form-group"><label for="bbPay1">Заработок за позапрошлый год, ₽</label>
             <input type="number" id="bbPay1" value="900000" oninput="calcBaby()"></div>
-          <div class="form-group"><label>Заработок за прошлый год, ₽</label>
+          <div class="form-group"><label for="bbPay2">Заработок за прошлый год, ₽</label>
             <input type="number" id="bbPay2" value="1100000" oninput="calcBaby()">
             <p class="hint">Всё, с чего платились взносы: оклад, премии, отпускные.
               Больничные и прошлые декретные не считаются.</p></div>
-          <div class="form-group"><label>Роды</label>
+          <div class="form-group"><label for="bbDays">Роды</label>
             <select id="bbDays" onchange="calcBaby()">
               <option value="140">Обычные — 140 дней</option>
               <option value="156">С осложнениями — 156 дней</option>
               <option value="194">Двойня и больше — 194 дня</option>
             </select></div>
-          <div class="form-group"><label>Дней болезни за два года</label>
+          <div class="form-group"><label for="bbExcl">Дней болезни за два года</label>
             <input type="number" id="bbExcl" value="0" min="0" max="600" oninput="calcBaby()">
             <p class="hint">Эти дни вычитаются из знаменателя — пособие
               не должно падать из-за того, что вы болели.</p></div>
@@ -645,14 +657,14 @@
     <div class="tab-panel game-stage" id="calcAlimony">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Доход в месяц, ₽</label>
+          <div class="form-group"><label for="alIncome">Доход в месяц, ₽</label>
             <input type="number" id="alIncome" value="100000" oninput="calcAlimony()"></div>
-          <div class="form-group"><label>Это</label>
+          <div class="form-group"><label for="alNet">Это</label>
             <select id="alNet" onchange="calcAlimony()">
               <option value="0">Начислено до НДФЛ</option>
               <option value="1">Уже на руки, после НДФЛ</option>
             </select></div>
-          <div class="form-group"><label>Детей</label>
+          <div class="form-group"><label for="alKids">Детей</label>
             <select id="alKids" onchange="calcAlimony()">
               <option value="1">Один — четверть дохода</option>
               <option value="2">Двое — треть дохода</option>
@@ -669,11 +681,11 @@
     <div class="tab-panel game-stage" id="calcDeposit">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Проценты, полученные за год, ₽</label>
+          <div class="form-group"><label for="dpInterest">Проценты, полученные за год, ₽</label>
             <input type="number" id="dpInterest" value="250000" oninput="calcDeposit()">
             <p class="hint">Именно проценты по всем вкладам и счетам во всех банках,
               а не сумма вклада.</p></div>
-          <div class="form-group"><label>Максимальная ключевая ставка за год, %</label>
+          <div class="form-group"><label for="dpRate">Максимальная ключевая ставка за год, %</label>
             <input type="number" id="dpRate" step="0.25" oninput="calcDeposit()">
             <p class="hint">Берётся наибольшее значение на 1-е число месяца в течение
               года. Текущую смотрите на
@@ -691,14 +703,14 @@
     <div class="tab-panel game-stage" id="calcLimit">
       <div class="calc-row">
         <div style="flex:1;min-width:250px">
-          <div class="form-group"><label>Когда узнали о нарушении</label>
+          <div class="form-group"><label for="lmKnown">Когда узнали о нарушении</label>
             <input type="date" id="lmKnown" oninput="calcLimit()">
             <p class="hint">Например, день, когда деньги должны были прийти и не пришли.</p></div>
-          <div class="form-group"><label>Когда нарушение произошло (если знаете)</label>
+          <div class="form-group"><label for="lmBroken">Когда нарушение произошло (если знаете)</label>
             <input type="date" id="lmBroken" oninput="calcLimit()">
             <p class="hint">Нужно для предельного срока: через десять лет
               после самого нарушения защиты нет, даже если узнали позже.</p></div>
-          <div class="form-group"><label>Сколько дней ждали ответа на претензию</label>
+          <div class="form-group"><label for="lmClaim">Сколько дней ждали ответа на претензию</label>
             <input type="number" id="lmClaim" value="0" min="0" max="365" oninput="calcLimit()">
             <p class="hint">На это время течение срока приостанавливается,
               но не больше чем на полгода.</p></div>
@@ -710,15 +722,15 @@
   </div>
 </main>
 
-<script src="js/qr.js?v=126"></script>
-<script src="js/partners.js?v=126"></script>
-<script src="js/rates.js?v=126"></script>
-<script src="js/themes.js?v=126"></script>
-<script src="js/api.js?v=126"></script>
-<script src="js/app.js?v=126"></script>
-<script src="js/progress.js?v=126"></script>
-<script src="js/palette.js?v=126"></script>
-<script src="js/ai.js?v=126"></script>
+<script src="js/qr.js?v=130"></script>
+<script src="js/partners.js?v=130"></script>
+<script src="js/rates.js?v=130"></script>
+<script src="js/themes.js?v=130"></script>
+<script src="js/api.js?v=130"></script>
+<script src="js/app.js?v=130"></script>
+<script src="js/progress.js?v=130"></script>
+<script src="js/palette.js?v=130"></script>
+<script src="js/ai.js?v=130"></script>
 <script>
 initPage("calc.html");
 
@@ -924,9 +936,9 @@ function updPos(i, f, v) { posRows[i][f] = f === "name" ? v : (+v || 0); renderI
 function renderPosInputs() {
   document.getElementById("ivPositions").innerHTML = posRows.map((p, i) => `
     <div class="inv-pos-row">
-      <input type="text" value="${escapeHtml(p.name)}" placeholder="Наименование" oninput="updPos(${i},'name',this.value)">
-      <input type="number" value="${p.qty}" placeholder="кол-во" oninput="updPos(${i},'qty',this.value)">
-      <input type="number" value="${p.price}" placeholder="цена, ₽" oninput="updPos(${i},'price',this.value)">
+      <input type="text" value="${escapeHtml(p.name)}" aria-label="Наименование позиции ${i + 1}" placeholder="Наименование" oninput="updPos(${i},'name',this.value)">
+      <input type="number" value="${p.qty}" aria-label="Количество, позиция ${i + 1}" placeholder="кол-во" oninput="updPos(${i},'qty',this.value)">
+      <input type="number" value="${p.price}" aria-label="Цена, позиция ${i + 1}" placeholder="цена, ₽" oninput="updPos(${i},'price',this.value)">
       <div style="align-self:center;font-weight:700">${fmt((p.qty || 0) * (p.price || 0))}</div>
       <button class="btn small danger no-print" onclick="delPosRow(${i})">✕</button>
     </div>`).join("");

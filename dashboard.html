@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=126">
+<link rel="stylesheet" href="css/style.css?v=130">
 </head>
 <body>
 <main class="section">
@@ -38,17 +38,17 @@
   </div>
 </main>
 
-<script src="js/rates.js?v=126"></script>
-<script src="js/book.js?v=126"></script>
-<script src="js/themes.js?v=126"></script>
-<script src="js/api.js?v=126"></script>
-<script src="js/app.js?v=126"></script>
-<script src="js/progress.js?v=126"></script>
-<script src="js/palette.js?v=126"></script>
-<script src="js/ai.js?v=126"></script>
-<script src="js/knowledge.js?v=126"></script>
-<script src="js/competencies.js?v=126"></script>
-<script src="js/courses.js?v=126"></script>
+<script src="js/rates.js?v=130"></script>
+<script src="js/book.js?v=130"></script>
+<script src="js/themes.js?v=130"></script>
+<script src="js/api.js?v=130"></script>
+<script src="js/app.js?v=130"></script>
+<script src="js/progress.js?v=130"></script>
+<script src="js/palette.js?v=130"></script>
+<script src="js/ai.js?v=130"></script>
+<script src="js/knowledge.js?v=130"></script>
+<script src="js/competencies.js?v=130"></script>
+<script src="js/courses.js?v=130"></script>
 <script>
 initPage("dashboard.html");
 
@@ -701,6 +701,7 @@ function renderDocs() {
     const f = document.createElement("input");
     f.id = "docFind";
     f.type = "search";
+    f.setAttribute("aria-label", "Поиск по сохранённым документам");
     f.placeholder = "Поиск по документам";
     f.style.cssText = "width:100%;margin-bottom:10px";
     f.oninput = e => docSearch(e.target.value);

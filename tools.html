@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=126">
+<link rel="stylesheet" href="css/style.css?v=130">
 </head>
 <body>
 <main class="section tint-green">
@@ -93,7 +93,7 @@
     <!-- Генератор документов -->
     <div class="tab-panel game-stage" id="tool0">
       <div class="form-group">
-        <label>Тип документа</label>
+        <label for="docType">Тип документа</label>
         <select id="docType">
           <option>Договор оказания услуг</option>
           <option>Договор аренды</option>
@@ -104,10 +104,10 @@
         </select>
       </div>
       <div class="grid cols-2">
-        <div class="form-group"><label>Сторона 1 (исполнитель)</label><input type="text" id="docSide1" placeholder="ИП Иванов И.И."></div>
-        <div class="form-group"><label>Сторона 2 (заказчик)</label><input type="text" id="docSide2" placeholder="ООО «Ромашка»"></div>
-        <div class="form-group"><label>Предмет договора</label><input type="text" id="docSubject" placeholder="Консультационные услуги"></div>
-        <div class="form-group"><label>Сумма (₽)</label><input type="number" id="docSum" placeholder="50000"></div>
+        <div class="form-group"><label for="docSide1">Сторона 1 (исполнитель)</label><input type="text" id="docSide1" placeholder="ИП Иванов И.И."></div>
+        <div class="form-group"><label for="docSide2">Сторона 2 (заказчик)</label><input type="text" id="docSide2" placeholder="ООО «Ромашка»"></div>
+        <div class="form-group"><label for="docSubject">Предмет договора</label><input type="text" id="docSubject" placeholder="Консультационные услуги"></div>
+        <div class="form-group"><label for="docSum">Сумма (₽)</label><input type="number" id="docSum" placeholder="50000"></div>
       </div>
       <button class="btn" onclick="genDoc()">Сгенерировать</button>
       <div class="ai-result" id="docResult"></div>
@@ -124,13 +124,13 @@
           <b>Перетащите файл сюда</b> или нажмите, чтобы выбрать<br>
           <span>PDF, DOCX, TXT или фото документа — до 15 МБ</span>
         </div>
-        <input type="file" id="docFile" accept=".pdf,.docx,.txt,.md,.csv,image/*"
+        <input type="file" id="docFile" aria-label="Файл документа для разбора" accept=".pdf,.docx,.txt,.md,.csv,image/*"
                style="display:none" onchange="DOCUI.onPick(this.files[0])">
         <div id="docStatus" class="doc-status"></div>
       </div>
 
       <div class="form-group">
-        <label>…либо вставьте текст договора вручную</label>
+        <label for="contractText">…либо вставьте текст договора вручную</label>
         <textarea id="contractText" rows="10" placeholder="ДОГОВОР ОКАЗАНИЯ УСЛУГ..."></textarea>
       </div>
       <button class="btn" onclick="analyzeContract()">Проанализировать</button>
@@ -144,7 +144,7 @@
       </p>
       <div class="grid cols-2">
         <div class="form-group">
-          <label>Что пришло</label>
+          <label for="replyKind">Что пришло</label>
           <select id="replyKind">
             <option>Претензия от контрагента</option>
             <option>Требование налоговой</option>
@@ -155,7 +155,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Ваша позиция</label>
+          <label for="replyStance">Ваша позиция</label>
           <select id="replyStance">
             <option>Не согласен полностью</option>
             <option>Согласен частично</option>
@@ -165,11 +165,11 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Текст документа</label>
+        <label for="replyText">Текст документа</label>
         <textarea id="replyText" rows="9" placeholder="Вставьте текст того, что вам прислали…"></textarea>
       </div>
       <div class="form-group">
-        <label>Обстоятельства с вашей стороны (необязательно)</label>
+        <label for="replyFacts">Обстоятельства с вашей стороны (необязательно)</label>
         <input type="text" id="replyFacts" placeholder="Например: работы сданы по акту 12.03, оплаты не было">
       </div>
       <button class="btn" onclick="genReply()">Разобрать и составить ответ</button>
@@ -182,7 +182,7 @@
         и получите объяснение обычными словами: что это, чем грозит, что делать.
       </p>
       <div class="form-group">
-        <label>Как объяснить</label>
+        <label for="plainLevel">Как объяснить</label>
         <select id="plainLevel">
           <option value="simple">Совсем просто — как будто объясняют впервые</option>
           <option value="business">По-деловому — коротко и по существу</option>
@@ -190,7 +190,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Текст</label>
+        <label for="plainText">Текст</label>
         <textarea id="plainText" rows="10" placeholder="Вставьте непонятный текст…"></textarea>
       </div>
       <button class="btn" onclick="genPlain()">Объяснить</button>
@@ -205,16 +205,16 @@
       </p>
       <div class="grid cols-2">
         <div class="form-group">
-          <label>ИНН контрагента</label>
+          <label for="cpInn">ИНН контрагента</label>
           <input type="text" id="cpInn" placeholder="7701234567" oninput="renderInnLinks()">
         </div>
         <div class="form-group">
-          <label>Название (необязательно)</label>
+          <label for="cpName">Название (необязательно)</label>
           <input type="text" id="cpName" placeholder="ООО «Ромашка»">
         </div>
       </div>
       <div class="form-group">
-        <label>Что за сделка</label>
+        <label for="cpDeal">Что за сделка</label>
         <input type="text" id="cpDeal" placeholder="Например: поставка на 2 млн с отсрочкой 30 дней">
       </div>
 
@@ -223,7 +223,7 @@
            либо его нет. Совет читают после. -->
       <div class="grid cols-2">
         <div class="form-group">
-          <label>Дата выплаты — на неё и проверяем статус</label>
+          <label for="cpDate">Дата выплаты — на неё и проверяем статус</label>
           <input type="date" id="cpDate">
         </div>
         <div class="form-group" style="display:flex;align-items:flex-end">
@@ -240,7 +240,7 @@
     <div class="tab-panel active game-stage" id="tool2">
       <div class="grid cols-2">
         <div class="form-group">
-          <label>Ваш статус</label>
+          <label for="taxRole">Ваш статус</label>
           <select id="taxRole">
             <option>Самозанятый (НПД)</option>
             <option>ИП на УСН «Доходы» 6%</option>
@@ -257,10 +257,10 @@
             <option>Ещё не выбрал — подскажите</option>
           </select>
         </div>
-        <div class="form-group"><label>Годовой доход (₽)</label><input type="number" id="taxIncome" placeholder="1200000"></div>
+        <div class="form-group"><label for="taxIncome">Годовой доход (₽)</label><input type="number" id="taxIncome" placeholder="1200000"></div>
       </div>
       <div class="form-group">
-        <label>Есть ли работники / расходы?</label>
+        <label for="taxExtra">Есть ли работники / расходы?</label>
         <textarea id="taxExtra" rows="3" placeholder="Например: 2 сотрудника, расходы ~30% дохода"></textarea>
       </div>
       <button class="btn" onclick="taxHelp()">Рассчитать и получить рекомендации</button>
@@ -269,7 +269,7 @@
 
     <div class="tab-panel game-stage" id="tool3">
       <div class="form-group">
-        <label>Тема чек-листа</label>
+        <label for="clTopic">Тема чек-листа</label>
         <select id="clTopic">
           <option>Проверка контрагента перед сделкой</option>
           <option>Регистрация ИП</option>
@@ -280,7 +280,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Уточнения (необязательно)</label>
+        <label for="clExtra">Уточнения (необязательно)</label>
         <input type="text" id="clExtra" placeholder="Например: сфера — строительство">
       </div>
       <button class="btn" onclick="genChecklist()">Сгенерировать чек-лист</button>
@@ -293,7 +293,7 @@
         Не расходуют лимит ИИ. Составленный документ можно сохранить в «Мои документы» в кабинете.
       </p>
       <div class="form-group">
-        <label>Шаблон</label>
+        <label for="tplSelect">Шаблон</label>
         <select id="tplSelect" onchange="renderTplForm()"></select>
       </div>
       <div class="grid cols-2" id="tplFields"></div>
@@ -316,7 +316,7 @@
       </p>
       <div class="grid cols-2">
         <div class="form-group">
-          <label>Кто вы</label>
+          <label for="riskWho">Кто вы</label>
           <select id="riskWho">
             <option>Самозанятый</option>
             <option>ИП</option>
@@ -327,7 +327,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Уже случилось или только собираетесь?</label>
+          <label for="riskWhen">Уже случилось или только собираетесь?</label>
           <select id="riskWhen">
             <option>Уже произошло</option>
             <option>Происходит прямо сейчас</option>
@@ -336,7 +336,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Что произошло</label>
+        <label for="riskText">Что произошло</label>
         <textarea id="riskText" rows="6" placeholder="Например: работаю с клиентами без регистрации, доход около 80 тысяч в месяц, длится второй год"></textarea>
       </div>
       <button class="btn" onclick="genRisk()">Оценить последствия</button>
@@ -355,7 +355,7 @@
       </p>
       <div class="grid cols-2">
         <div class="form-group">
-          <label>Что сделал банк</label>
+          <label for="bankWhat">Что сделал банк</label>
           <select id="bankWhat">
             <option>Запросил документы и пояснения</option>
             <option>Приостановил дистанционное обслуживание</option>
@@ -364,7 +364,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Ваш статус</label>
+          <label for="bankWho">Ваш статус</label>
           <select id="bankWho">
             <option>ИП</option>
             <option>ООО</option>
@@ -374,11 +374,11 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Какие операции вызвали вопросы</label>
+        <label for="bankOps">Какие операции вызвали вопросы</label>
         <textarea id="bankOps" rows="5" placeholder="Например: поступило 1,8 млн от нового заказчика по договору поставки, в тот же день перевёл 1,5 млн поставщику"></textarea>
       </div>
       <div class="form-group">
-        <label>Чем можете подтвердить (перечислите, что есть на руках)</label>
+        <label for="bankDocs">Чем можете подтвердить (перечислите, что есть на руках)</label>
         <textarea id="bankDocs" rows="3" placeholder="Договор с заказчиком, счета, акты, накладные от поставщика, налоговая декларация"></textarea>
       </div>
       <button class="btn" onclick="genBank()">Составить объяснение</button>
@@ -395,16 +395,16 @@
       </p>
       <div class="grid cols-2">
         <div class="form-group">
-          <label>Было — первая редакция</label>
+          <label for="diffOld">Было — первая редакция</label>
           <textarea id="diffOld" rows="12" placeholder="Вставьте текст исходного договора…"></textarea>
         </div>
         <div class="form-group">
-          <label>Стало — новая редакция</label>
+          <label for="diffNew">Стало — новая редакция</label>
           <textarea id="diffNew" rows="12" placeholder="Вставьте текст новой редакции…"></textarea>
         </div>
       </div>
       <div class="form-group">
-        <label>Чью сторону вы занимаете</label>
+        <label for="diffSide">Чью сторону вы занимаете</label>
         <select id="diffSide">
           <option>Исполнитель / поставщик — я оказываю услуги или поставляю</option>
           <option>Заказчик / покупатель — я плачу</option>
@@ -428,7 +428,7 @@
       </p>
       <div class="grid cols-2">
         <div class="form-group">
-          <label>Форма</label>
+          <label for="okvedForm">Форма</label>
           <select id="okvedForm">
             <option>Регистрирую ИП</option>
             <option>Регистрирую ООО</option>
@@ -436,7 +436,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Планы на ближайший год</label>
+          <label for="okvedPlan">Планы на ближайший год</label>
           <select id="okvedPlan">
             <option>Только то, что описал</option>
             <option>Возможно расширение — заложите запас кодов</option>
@@ -445,7 +445,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Чем занимаетесь</label>
+        <label for="okvedText">Чем занимаетесь</label>
         <textarea id="okvedText" rows="5" placeholder="Например: делаю сайты и настраиваю рекламу, иногда продаю готовые шаблоны и провожу обучение"></textarea>
       </div>
       <button class="btn" onclick="genOkved()">Подобрать коды</button>
@@ -466,7 +466,7 @@
       </p>
       <div class="grid cols-2">
         <div class="form-group">
-          <label>Где продаёте</label>
+          <label for="cardWhere">Где продаёте</label>
           <select id="cardWhere">
             <option>Wildberries</option>
             <option>Ozon</option>
@@ -476,28 +476,28 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Категория товара</label>
+          <label for="cardCat">Категория товара</label>
           <input type="text" id="cardCat" placeholder="Например: женские платья, БАДы, детские игрушки">
         </div>
         <div class="form-group">
-          <label>Цена, ₽</label>
+          <label for="cardPrice">Цена, ₽</label>
           <input type="number" id="cardPrice" placeholder="2490">
         </div>
         <div class="form-group">
-          <label>Цена у конкурентов, ₽ (необязательно)</label>
+          <label for="cardRivals">Цена у конкурентов, ₽ (необязательно)</label>
           <input type="text" id="cardRivals" placeholder="1900–3200">
         </div>
       </div>
       <div class="form-group">
-        <label>Название карточки — как оно есть сейчас</label>
+        <label for="cardTitle">Название карточки — как оно есть сейчас</label>
         <input type="text" id="cardTitle" maxlength="300" placeholder="Скопируйте название целиком, вместе со всеми словами">
       </div>
       <div class="form-group">
-        <label>Описание и характеристики</label>
+        <label for="cardText">Описание и характеристики</label>
         <textarea id="cardText" rows="9" placeholder="Вставьте описание карточки. Можно приложить снимок экрана — распознаем."></textarea>
       </div>
       <div class="form-group">
-        <label>Что известно про фотографии (необязательно)</label>
+        <label for="cardPhotos">Что известно про фотографии (необязательно)</label>
         <input type="text" id="cardPhotos" placeholder="Например: 5 фото на белом фоне, инфографики нет, видео нет">
       </div>
       <button class="btn" onclick="genCard()">Разобрать карточку</button>
@@ -518,7 +518,7 @@
       </p>
       <div class="grid cols-2">
         <div class="form-group">
-          <label>Кто вы</label>
+          <label for="rcWho">Кто вы</label>
           <select id="rcWho">
             <option>ИП на УСН «Доходы»</option>
             <option>ИП на УСН «Доходы минус расходы»</option>
@@ -530,18 +530,18 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Сальдо ЕНС по данным ФНС, ₽</label>
+          <label for="rcSaldo">Сальдо ЕНС по данным ФНС, ₽</label>
           <input type="text" id="rcSaldo" placeholder="Например: −18 400 или +5 200">
         </div>
       </div>
       <div class="form-group">
-        <label>Что вы платили и когда — по своим данным</label>
+        <label for="rcMine">Что вы платили и когда — по своим данным</label>
         <textarea id="rcMine" rows="5" placeholder="Например: 28.04 — 12 000 аванс УСН, 28.07 — 15 000 аванс УСН, 28.12 — 57 390 взносы"></textarea>
         <p class="hint">Если ведёте «Моё дело», можно нажать кнопку ниже — подставим оттуда.</p>
       </div>
       <button class="btn small secondary no-print" onclick="fillFromBook()" style="margin-bottom:14px">Взять из «Моего дела»</button>
       <div class="form-group">
-        <label>Справка из личного кабинета ФНС или скриншот сальдо</label>
+        <label for="rcText">Справка из личного кабинета ФНС или скриншот сальдо</label>
         <textarea id="rcText" rows="8" placeholder="Вставьте текст справки — или приложите файл либо снимок экрана."></textarea>
       </div>
       <button class="btn" onclick="genRecon()">Разобрать расхождение</button>
@@ -553,15 +553,15 @@
   <div class="container"><div id="partnersTools"></div></div>
 </main>
 
-<script src="js/themes.js?v=126"></script>
-<script src="js/api.js?v=126"></script>
-<script src="js/app.js?v=126"></script>
-<script src="js/progress.js?v=126"></script>
-<script src="js/palette.js?v=126"></script>
-<script src="js/ai.js?v=126"></script>
-<script src="js/templates.js?v=126"></script>
-<script src="js/docscan.js?v=126"></script>
-<script src="js/partners.js?v=126"></script>
+<script src="js/themes.js?v=130"></script>
+<script src="js/api.js?v=130"></script>
+<script src="js/app.js?v=130"></script>
+<script src="js/progress.js?v=130"></script>
+<script src="js/palette.js?v=130"></script>
+<script src="js/ai.js?v=130"></script>
+<script src="js/templates.js?v=130"></script>
+<script src="js/docscan.js?v=130"></script>
+<script src="js/partners.js?v=130"></script>
 <script>
 initPage("tools.html");
 
@@ -1105,7 +1105,7 @@ renderTplForm();
 function renderTplForm() {
   const tpl = TEMPLATES[tplSelect.value];
   document.getElementById("tplFields").innerHTML = tpl.fields.map(([id, label]) =>
-    `<div class="form-group"><label>${label}</label><input type="text" id="tpl_${id}" placeholder="Введите значение"></div>`
+    `<div class="form-group"><label for="tpl_${id}">${label}</label><input type="text" id="tpl_${id}" placeholder="Введите значение"></div>`
   ).join("");
   document.getElementById("tplResult").classList.remove("show");
   document.getElementById("tplSave").style.display = "none";

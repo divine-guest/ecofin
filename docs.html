@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=126">
+<link rel="stylesheet" href="css/style.css?v=130">
 <style>
   /* Плитка документа. Название крупно, пояснение мелко: выбирают
      по названию, а читают пояснение только при сомнении. */
@@ -89,14 +89,14 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=126"></script>
-<script src="js/api.js?v=126"></script>
-<script src="js/app.js?v=126"></script>
-<script src="js/progress.js?v=126"></script>
-<script src="js/palette.js?v=126"></script>
-<script src="js/ai.js?v=126"></script>
-<script src="js/templates.js?v=126"></script>
-<script src="js/requisites.js?v=126"></script>
+<script src="js/themes.js?v=130"></script>
+<script src="js/api.js?v=130"></script>
+<script src="js/app.js?v=130"></script>
+<script src="js/progress.js?v=130"></script>
+<script src="js/palette.js?v=130"></script>
+<script src="js/ai.js?v=130"></script>
+<script src="js/templates.js?v=130"></script>
+<script src="js/requisites.js?v=130"></script>
 <script>
 initPage("docs.html");
 
@@ -230,7 +230,7 @@ function openDoc(title) {
       <div class="grid cols-2" id="docFields">
         ${tpl.fields.map(([id, label]) => `
           <div class="form-group">
-            <label>${escapeHtml(label)}</label>
+            <label for="f_${id}">${escapeHtml(label)}</label>
             <input type="text" id="f_${id}" oninput="buildDoc()" autocomplete="off">
           </div>`).join("")}
       </div>
@@ -466,7 +466,7 @@ async function editOrg(id) {
     <div class="grid cols-2">
       ${ORG_FORM.map(([k, l]) => `
         <div class="form-group">
-          <label>${escapeHtml(l)}</label>
+          <label for="r_${k}">${escapeHtml(l)}</label>
           <input type="text" id="r_${k}" value="${escapeHtml(o[k] || "")}" autocomplete="off">
         </div>`).join("")}
     </div>

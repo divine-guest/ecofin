@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=126">
+<link rel="stylesheet" href="css/style.css?v=130">
 </head>
 <body>
 <main class="section tint-navy">
@@ -37,12 +37,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=126"></script>
-<script src="js/api.js?v=126"></script>
-<script src="js/app.js?v=126"></script>
-<script src="js/progress.js?v=126"></script>
-<script src="js/palette.js?v=126"></script>
-<script src="js/ai.js?v=126"></script>
+<script src="js/themes.js?v=130"></script>
+<script src="js/api.js?v=130"></script>
+<script src="js/app.js?v=130"></script>
+<script src="js/progress.js?v=130"></script>
+<script src="js/palette.js?v=130"></script>
+<script src="js/ai.js?v=130"></script>
 <script>
 initPage("admin.html");
 
@@ -163,18 +163,18 @@ const AD = {
         </p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
           <div class="form-group" style="margin:0;flex:1;min-width:220px">
-            <label>Email пользователя</label>
+            <label for="grantEmail">Email пользователя</label>
             <input type="text" id="grantEmail" placeholder="user@example.com">
           </div>
           <div class="form-group" style="margin:0">
-            <label>Тариф</label>
+            <label for="grantTier">Тариф</label>
             <select id="grantTier">
               <option value="pro">Про — 690 ₽/мес</option>
               <option value="basic">Базовый — 290 ₽/мес</option>
             </select>
           </div>
           <div class="form-group" style="margin:0">
-            <label>Срок</label>
+            <label for="grantPlan">Срок</label>
             <select id="grantPlan" onchange="document.getElementById('grantDaysBox').style.display=this.value==='days'?'block':'none'">
               <option value="month">Месяц (30 дн.)</option>
               <option value="year">Год (365 дн.)</option>
@@ -182,7 +182,7 @@ const AD = {
             </select>
           </div>
           <div class="form-group" id="grantDaysBox" style="margin:0;display:none">
-            <label>Дней</label>
+            <label for="grantDays">Дней</label>
             <input type="number" id="grantDays" min="1" max="3650" value="14" style="max-width:110px">
           </div>
           <button class="btn gold" onclick="AD.grant()">Выдать</button>
