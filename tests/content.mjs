@@ -412,5 +412,85 @@ console.log("\n— Числа на странице «О сервисе» —");
 }
 
 
+/* Правило оформления не должно молча перебиваться другим.
+
+   Как это выглядело. Черта подведения итога под заголовками разделов
+   написана в базовом слое, а ниже, в блоке «Переоформление 2026»,
+   осталось старое мнение о том же селекторе. Побеждало старое: черта
+   не отрисовалась НИ РАЗУ ни на одной странице, хотя стояла в файле
+   вместе с объяснением, зачем она нужна. Заметить это глазами нельзя —
+   отсутствие того, чего никогда не было, не бросается в глаза.
+
+   Проверяем ровно опасное направление: одиночный селектор задал
+   свойство, а ниже блок с ТЕМ ЖЕ селектором задаёт его иначе. Вес
+   селекторов одинаков, значит решает порядок в файле, и раннее
+   объявление — мёртвое.
+
+   Обратное направление законно и не трогается: сначала группа
+   «.hint, .badge { font-size }», потом исключение для одного из них. */
+console.log("\n— Ни одно правило оформления не перебито молча —");
+{
+  const orig = read("../css/style.css");
+  const mask = orig.replace(/\/\*[\s\S]*?\*\//g, (m) => " ".repeat(m.length));
+
+  const blocks = [];
+  let i = 0, selStart = 0;
+  while (i < mask.length) {
+    if (mask[i] === "{") {
+      const sel = mask.slice(selStart, i).trim();
+      let d = 1, j = i + 1;
+      while (j < mask.length && d > 0) { if (mask[j] === "{") d++; else if (mask[j] === "}") d--; j++; }
+      if (!sel.startsWith("@")) blocks.push({ sel, from: i + 1, to: j - 1, at: i });
+      i = j; selStart = i; continue;
+    }
+    if (mask[i] === "}") selStart = i + 1;
+    i++;
+  }
+
+  const norm = (s) => s.trim().replace(/\s+/g, " ");
+  const decls = (b) => {
+    const out = [];
+    let start = b.from;
+    const push = (raw) => {
+      const c = raw.indexOf(":");
+      if (c > 0 && raw.trim()) out.push({ prop: norm(raw.slice(0, c)), val: norm(raw.slice(c + 1)) });
+    };
+    for (let k = b.from; k < b.to; k++) if (mask[k] === ";") { push(mask.slice(start, k)); start = k + 1; }
+    push(mask.slice(start, b.to));
+    return out;
+  };
+
+  const after = [];
+  for (const b of blocks)
+    for (const d of decls(b))
+      for (const s of b.sel.split(",").map(norm).filter(Boolean))
+        after.push({ sel: s, prop: d.prop, val: d.val, at: b.at });
+
+  const dead = [];
+  for (const b of blocks) {
+    if (b.sel.includes(",")) continue;
+    const s = norm(b.sel);
+    for (const d of decls(b)) {
+      const over = after.find(x => x.at > b.at && x.sel === s && x.prop === d.prop);
+      if (!over) continue;
+      if (d.val.includes("!important") || over.val.includes("!important")) continue;
+      if (d.val === over.val) continue;
+      dead.push(`${s} { ${d.prop}: ${d.val} } — ниже переустановлено в «${over.val}»`);
+    }
+  }
+
+  ok(dead.length === 0, `мёртвых объявлений в стилях: ${dead.length}`,
+     "\n      " + dead.slice(0, 8).join("\n      "));
+
+  /* Черта итога — не декорация, а опознавательный знак сервиса:
+     так подводят итог в ведомости. Проверяем, что она осталась
+     чертой, а не превратилась обратно в градиентную пилюлю. */
+  const lineRule = orig.match(/\.section-title \.line \{[^}]*\}/g) || [];
+  const base = lineRule[0] || "";
+  ok(/border-top:/.test(base) && !/background:\s*var\(--grad/.test(base),
+     "черта под заголовком раздела — черта, а не градиентная пилюля", base.slice(0, 90));
+}
+
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);
