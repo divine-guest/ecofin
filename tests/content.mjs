@@ -610,5 +610,54 @@ console.log("\n— Партнёрскому блоку есть куда вст�
   ok(/КоАП/.test(srv), "отказ включить неполное объясняет причину");
 }
 
+/* Наборы документов ссылаются на существующие бумаги.
+
+   Набор — это список названий, и переименование любого шаблона рвёт
+   его молча: кнопка в наборе остаётся, а по нажатию ничего не
+   открывается. Заметить это можно только пройдя все наборы руками.
+
+   То же с напоминаниями: набор обещает поставить сроки в календарь,
+   и эти сроки должны существовать в налоговом календаре. */
+console.log("\n— Наборы документов не рассыпались —");
+{
+  const box = {};
+  new Function("box", read("../js/templates.js") + "\nbox.T = TEMPLATES; box.K = DOC_KITS;")(box);
+
+  ok(box.K.length >= 5, `наборов: ${box.K.length}`, box.K.length);
+
+  const ids = new Set();
+  const dup = box.K.filter(k => (ids.has(k.id) ? true : (ids.add(k.id), false)));
+  ok(dup.length === 0, "нет двух наборов с одинаковым id", dup.map(k => k.id));
+
+  const missing = [];
+  for (const k of box.K)
+    for (const [title] of k.steps)
+      if (!box.T[title]) missing.push(`${k.id}: «${title}»`);
+  ok(missing.length === 0, "каждый шаг ведёт к существующему шаблону", missing);
+
+  const thin = box.K.filter(k => k.steps.length < 3);
+  ok(thin.length === 0, "в наборе хотя бы три документа — иначе это не набор", thin.map(k => k.id));
+
+  /* Пояснение к шагу — и есть весь смысл набора: без него это просто
+     список названий, который человек и так видит в библиотеке. */
+  const noWhy = [];
+  for (const k of box.K)
+    for (const [title, why] of k.steps)
+      if (!why || why.length < 40) noWhy.push(`${k.id}: «${title}»`);
+  ok(noWhy.length === 0, "у каждого шага объяснено, зачем он и почему здесь", noWhy);
+
+  const noWhen = box.K.filter(k => !k.when);
+  ok(noWhen.length === 0, "у каждого набора сказано, когда за него браться", noWhen.map(k => k.id));
+
+  /* Сроки набора должны существовать в налоговом календаре. */
+  const rem = read("../worker/src/reminders.js");
+  const knownIds = [...rem.matchAll(/\{ id: "([^"]+)"/g)].map(m => m[1]);
+  const ghosts = [];
+  for (const k of box.K)
+    for (const r of k.reminders || [])
+      if (!knownIds.includes(r)) ghosts.push(`${k.id} → ${r}`);
+  ok(ghosts.length === 0, "обещанные сроки есть в налоговом календаре", ghosts);
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

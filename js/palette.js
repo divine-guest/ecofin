@@ -114,6 +114,19 @@ const PALETTE = {
       }
     }
 
+    /* Наборы под задачу. В поиске они важнее отдельных бланков: человек
+       ищет «нанимаю работника», а не «штатное расписание», — и именно
+       поэтому оформляет один документ из шести. */
+    if (typeof DOC_KITS !== "undefined") {
+      for (const k of DOC_KITS) {
+        list.push({
+          kind: "Набор", title: k.title,
+          note: `${k.steps.length} ${plural(k.steps.length, "документ", "документа", "документов")} по порядку`,
+          href: "docs.html#kit=" + encodeURIComponent(k.id),
+        });
+      }
+    }
+
     /* Статьи подхватываем, если база знаний загружена на этой странице. */
     if (typeof ARTICLES !== "undefined") {
       for (const a of ARTICLES) {

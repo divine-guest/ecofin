@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=152">
+<link rel="stylesheet" href="css/style.css?v=155">
 <style>
   /* Плитка документа. Название крупно, пояснение мелко: выбирают
      по названию, а читают пояснение только при сомнении. */
@@ -41,6 +41,63 @@
   .doc-card b { font-size: .95rem; }
   .doc-card span { color: var(--muted); font-size: var(--t-xs); }
   .doc-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+
+  /* Наборы под задачу. Выглядят иначе, чем плитки документов, и это
+     намеренно: это не «ещё один документ», а другой способ входа —
+     от задачи, а не от названия бумаги. */
+  .kits-lead { color: var(--muted); font-size: var(--t-sm); margin-bottom: 12px; }
+  .kits-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .kit-card {
+    display: flex; flex-direction: column; gap: 5px; text-align: left;
+    padding: 16px 18px;
+    border: 1px solid var(--border); border-left: 3px solid var(--primary);
+    border-radius: 12px; background: var(--surface-2); color: var(--text);
+    font: inherit; cursor: pointer; width: 100%;
+    transition: border-color .2s, transform .15s;
+  }
+  .kit-card:hover { border-color: var(--primary); transform: translateY(-1px); }
+  .kit-card b { font-size: 1rem; }
+  .kit-card span { color: var(--muted); font-size: var(--t-xs); }
+  .kit-card em {
+    font-style: normal; color: var(--primary);
+    font-size: var(--t-xs); font-weight: 700; margin-top: 2px;
+  }
+
+  .kit-open h2 { margin: 14px 0 4px; }
+  .kit-when { font-size: var(--t-sm); margin-bottom: 14px; }
+
+  /* Нумерованный список: порядок здесь и есть содержание набора,
+     поэтому номера крупные и видны, а не служебные. */
+  .kit-steps { counter-reset: kit; list-style: none; padding: 0; margin: 0; }
+  .kit-steps li {
+    counter-increment: kit; position: relative;
+    padding: 0 0 16px 42px; margin: 0;
+    border-left: 1px solid var(--border); margin-left: 13px;
+  }
+  .kit-steps li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .kit-steps li::before {
+    content: counter(kit);
+    position: absolute; left: -14px; top: 0;
+    width: 27px; height: 27px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--primary); color: #fff;
+    font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums;
+  }
+  .kit-step {
+    background: none; border: none; padding: 2px 0; margin: 0;
+    font: inherit; font-weight: 700; font-size: 1rem;
+    color: var(--link); cursor: pointer; text-align: left;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .kit-step:hover { color: var(--primary); }
+  .kit-steps p { color: var(--muted); font-size: var(--t-sm); margin: 4px 0 0; }
+
+  .kit-after {
+    margin-top: 16px; padding: 14px 16px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--surface-2); font-size: var(--t-sm); line-height: 1.6;
+  }
+  .kit-after .btn { margin-top: 10px; }
 
   .doc-group { margin-bottom: 26px; }
   .doc-group h3 { margin-bottom: 2px; }
@@ -69,6 +126,12 @@
       <p class="subtitle">Заполните поля — документ соберётся сам · без ИИ, без лимитов и без подписки</p>
     </div>
 
+    <!-- Наборы под задачу идут перед поиском намеренно: человек, который
+         знает название нужной бумаги, всё равно воспользуется поиском, а
+         тот, кто не знает, увидит подсказку раньше, чем растеряется
+         в списке из 58 документов. -->
+    <div id="docKits" style="margin-bottom:26px"></div>
+
     <div class="form-group" style="max-width:460px;margin:0 auto 22px">
       <input type="search" id="docFind" aria-label="Поиск по документам" placeholder="Найти документ: претензия, аренда, увольнение…"
              oninput="renderList()" autocomplete="off">
@@ -89,14 +152,14 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=152"></script>
-<script src="js/api.js?v=152"></script>
-<script src="js/app.js?v=152"></script>
-<script src="js/progress.js?v=152"></script>
-<script src="js/palette.js?v=152"></script>
-<script src="js/ai.js?v=152"></script>
-<script src="js/templates.js?v=152"></script>
-<script src="js/requisites.js?v=152"></script>
+<script src="js/themes.js?v=155"></script>
+<script src="js/api.js?v=155"></script>
+<script src="js/app.js?v=155"></script>
+<script src="js/progress.js?v=155"></script>
+<script src="js/palette.js?v=155"></script>
+<script src="js/ai.js?v=155"></script>
+<script src="js/templates.js?v=155"></script>
+<script src="js/requisites.js?v=155"></script>
 <script>
 initPage("docs.html");
 
@@ -165,6 +228,79 @@ const DOC_WHY = {
 };
 
 let CURRENT = null;   // выбранный шаблон
+
+/* ---------- Наборы под задачу ----------
+
+   Человек приходит не за «трудовым договором», а с задачей «нанимаю
+   первого работника». Из шести обязательных бумаг он находит одну —
+   ту, название которой знает, — и оформляет только её. Остальные пять
+   спрашивают при проверке, и штраф идёт за каждую отдельно.
+
+   Ценность набора не в документах: они и так открыты и бесплатны.
+   Ценность в порядке и полноте — что за чем и что нельзя пропустить. */
+
+let KIT = null;
+
+function renderKits() {
+  const box = document.getElementById("docKits");
+  if (!box) return;
+
+  if (!KIT) {
+    box.innerHTML = `
+      <p class="kits-lead">Пришли с задачей, а не за конкретной бумагой?
+        Вот что понадобится и в каком порядке.</p>
+      <div class="kits-grid">
+        ${DOC_KITS.map(k => `
+          <button class="kit-card" onclick="openKit('${k.id}')">
+            <b>${escapeHtml(k.title)}</b>
+            <span>${escapeHtml(k.lead)}</span>
+            <em>${k.steps.length} ${plural(k.steps.length, "документ", "документа", "документов")}</em>
+          </button>`).join("")}
+      </div>`;
+    return;
+  }
+
+  const k = KIT;
+  box.innerHTML = `
+    <div class="kit-open">
+      <button class="btn small secondary" onclick="closeKit()">← Все наборы</button>
+      <h2>${escapeHtml(k.title)}</h2>
+      <p class="kits-lead">${escapeHtml(k.lead)}</p>
+      <p class="kit-when"><b>Когда:</b> ${escapeHtml(k.when)}</p>
+
+      <ol class="kit-steps">
+        ${k.steps.map(([title, why]) => `
+          <li>
+            <button class="kit-step" onclick="openDoc(${JSON.stringify(title).replace(/"/g, "&quot;")})">
+              ${escapeHtml(title)}
+            </button>
+            <p>${escapeHtml(why)}</p>
+          </li>`).join("")}
+      </ol>
+
+      ${k.after ? `<div class="kit-after"><b>И ещё:</b> ${escapeHtml(k.after)}</div>` : ""}
+
+      ${k.reminders.length ? `
+        <div class="kit-after">
+          <b>Сроки, которые пойдут дальше.</b> После этого набора появляются
+          повторяющиеся обязанности — отчётность и выплаты. Их можно поставить
+          в календарь, чтобы не держать в голове.
+          <br><a class="btn small" href="${PF.href("dashboard.html")}">Открыть календарь в кабинете</a>
+        </div>` : ""}
+    </div>`;
+}
+
+function openKit(id) {
+  KIT = DOC_KITS.find(k => k.id === id) || null;
+  renderKits();
+  document.getElementById("docKits").scrollIntoView({ block: "start", behavior: "smooth" });
+  trackEvent("doc_kit", { kit: id });
+}
+
+function closeKit() {
+  KIT = null;
+  renderKits();
+}
 
 /* ---------- Список ---------- */
 
@@ -547,6 +683,13 @@ function saveDoc() {
   trackEvent("doc_save", { doc: CURRENT });
 }
 
+/* Набор открывается сразу, если пришли по ссылке из поиска: иначе
+   человек, нажавший «Нанимаю первого работника», попадал бы на общий
+   список и искал бы его глазами заново. */
+const kitHash = (location.hash.match(/kit=([^&]+)/) || [])[1];
+if (kitHash) KIT = DOC_KITS.find(k => k.id === decodeURIComponent(kitHash)) || null;
+
+renderKits();
 renderList();
 renderOfficial();
 
