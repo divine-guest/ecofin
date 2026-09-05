@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=113">
+<link rel="stylesheet" href="css/style.css?v=115">
 <style>
   /* Плитка документа. Название крупно, пояснение мелко: выбирают
      по названию, а читают пояснение только при сомнении. */
@@ -89,13 +89,14 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=113"></script>
-<script src="js/api.js?v=113"></script>
-<script src="js/app.js?v=113"></script>
-<script src="js/progress.js?v=113"></script>
-<script src="js/palette.js?v=113"></script>
-<script src="js/ai.js?v=113"></script>
-<script src="js/templates.js?v=113"></script>
+<script src="js/themes.js?v=115"></script>
+<script src="js/api.js?v=115"></script>
+<script src="js/app.js?v=115"></script>
+<script src="js/progress.js?v=115"></script>
+<script src="js/palette.js?v=115"></script>
+<script src="js/ai.js?v=115"></script>
+<script src="js/templates.js?v=115"></script>
+<script src="js/requisites.js?v=115"></script>
 <script>
 initPage("docs.html");
 
@@ -221,6 +222,11 @@ function openDoc(title) {
       <p style="color:var(--muted);font-size:var(--t-sm);margin-bottom:16px">
         ${escapeHtml(DOC_WHY[title] || "")}</p>
 
+      <!-- Подстановка. Стоит НАД полями намеренно: человек должен
+           увидеть, что вводить руками не обязательно, ДО того как
+           начнёт вводить руками. Под полями кнопка бесполезна. -->
+      <div class="fill-bar" id="fillBar"></div>
+
       <div class="grid cols-2" id="docFields">
         ${tpl.fields.map(([id, label]) => `
           <div class="form-group">
@@ -243,6 +249,158 @@ function openDoc(title) {
         а для крупных сумм — показать юристу.</p>
     </div>`;
   buildDoc();
+  renderFillBar(tpl);
+}
+
+/* ---------- Подстановка реквизитов ---------- */
+
+async function renderFillBar(tpl) {
+  const bar = document.getElementById("fillBar");
+  if (!bar) return;
+
+  if (!PF.user()) {
+    bar.innerHTML = `<p class="fill-hint">
+      <a href="${PF.href("auth.html")}">Войдите</a>, и реквизиты будут подставляться сами —
+      вводить их в каждый документ не придётся.</p>`;
+    return;
+  }
+
+  await REQ.load();
+
+  /* Номер занимаем сразу при открытии: если только показать, человек,
+     открывший форму дважды, выставит два счёта с одним номером. */
+  REQ.putNumber(CURRENT, tpl.fields);
+
+  /* И дату — но только собственную дату документа, не «дату
+     расторжения» и не «дату увольнения». Список подписей закрытый. */
+  if (REQ.putDate(tpl.fields)) buildDoc();
+
+  const hasMine = tpl.fields.some(([k, l]) => REQ.role(k, l) === "mine" || k === "inn" || k === "bank");
+  const hasOther = tpl.fields.some(([k, l]) => REQ.role(k, l) === "other");
+  if (!hasMine && !hasOther) { bar.innerHTML = ""; return; }
+
+  const btns = [];
+  if (hasMine) {
+    btns.push(REQ.ready()
+      ? `<button class="btn small secondary" onclick="fillMine()">Подставить мои реквизиты</button>`
+      : `<button class="btn small" onclick="editRequisites()">Заполнить свои реквизиты</button>`);
+  }
+  if (hasOther) {
+    btns.push(`<button class="btn small secondary" onclick="pickParty()">Выбрать контрагента</button>`);
+  }
+  if (REQ.ready()) {
+    btns.push(`<button class="btn small ghost" onclick="editRequisites()">Изменить реквизиты</button>`);
+  }
+
+  bar.innerHTML = `<div class="fill-row">${btns.join("")}</div>`;
+}
+
+function fillMine() {
+  const n = REQ.fill(TEMPLATES[CURRENT].fields, "mine");
+  buildDoc();
+  toast(n ? `Подставлено полей: ${n}` : "Все подходящие поля уже заполнены");
+}
+
+async function pickParty() {
+  await REQ.load(true);
+  const list = REQ.parties;
+  const rows = list.map(c => `
+    <button class="party-row" onclick="useParty(${c.id})">
+      <b>${escapeHtml(c.name)}</b>
+      ${c.inn ? `<span>ИНН ${escapeHtml(c.inn)}</span>` : ""}
+    </button>`).join("");
+
+  MODAL.open("Контрагент", `
+    ${list.length ? rows : `<p class="hint">Пока никого нет. Заполните поля контрагента руками —
+       и сохраните, чтобы в следующий раз подставить одной кнопкой.</p>`}
+    <button class="btn small secondary" style="margin-top:12px" onclick="saveCurrentParty()">
+      Сохранить контрагента из формы</button>`);
+}
+
+async function useParty(id) {
+  const c = REQ.parties.find(x => x.id === id);
+  if (!c) return;
+  MODAL.close();
+  const n = REQ.fill(TEMPLATES[CURRENT].fields, "other", c);
+  buildDoc();
+  API.touchCounterparty(id).catch(() => {});
+  toast(n ? `Подставлено полей: ${n}` : "Все подходящие поля уже заполнены");
+}
+
+/* Сохраняем контрагента прямо из заполненной формы: заводить его
+   отдельно человек не пойдёт, а вот «запомнить того, с кем работаю
+   прямо сейчас» — естественно. */
+async function saveCurrentParty() {
+  const fields = TEMPLATES[CURRENT].fields;
+  let name = "";
+  for (const [k, l] of fields) {
+    if (REQ.role(k, l) !== "other") continue;
+    const v = document.getElementById("f_" + k)?.value.trim();
+    if (v) { name = v; break; }
+  }
+  if (!name) return toast("Сначала впишите контрагента в поле формы", "error");
+
+  /* Из строки «ООО «Ромашка», ИНН 7701234567, Москва…» вынимаем ИНН:
+     человек ввёл всё одной строкой, и заставлять его разбирать её
+     обратно по полям — верный способ, чтобы он этого не сделал. */
+  const inn = (name.match(/\b(\d{10}|\d{12})\b/) || [])[1] || "";
+  try {
+    await API.saveCounterparty({ name: name.slice(0, 300), inn });
+    await REQ.load(true);
+    MODAL.close();
+    toast("Контрагент сохранён — в следующий раз подставится кнопкой");
+  } catch (e) {
+    toast(e.message || "Не удалось сохранить", "error");
+  }
+}
+
+/* ---------- Свои реквизиты ---------- */
+
+const REQ_FORM = [
+  ["name", "Наименование (ИП Иванов И. И. или ООО «Ромашка»)"],
+  ["inn", "ИНН"],
+  ["ogrn", "ОГРН или ОГРНИП"],
+  ["kpp", "КПП (только у организаций)"],
+  ["address", "Адрес"],
+  ["phone", "Телефон"],
+  ["bank", "Банк"],
+  ["bik", "БИК"],
+  ["account", "Расчётный счёт"],
+  ["corr", "Корреспондентский счёт"],
+  ["signer", "Кто подписывает (ФИО)"],
+  ["post", "Должность подписанта"],
+];
+
+async function editRequisites() {
+  await REQ.load();
+  const r = REQ.mine || {};
+  MODAL.open("Мои реквизиты", `
+    <p class="hint" style="margin-bottom:12px">Вводятся один раз и подставляются
+       во все документы. Хранятся только у вас в аккаунте.</p>
+    <div class="grid cols-2">
+      ${REQ_FORM.map(([k, l]) => `
+        <div class="form-group">
+          <label>${escapeHtml(l)}</label>
+          <input type="text" id="r_${k}" value="${escapeHtml(r[k] || "")}" autocomplete="off">
+        </div>`).join("")}
+    </div>
+    <button class="btn" onclick="saveRequisites()">Сохранить</button>`);
+}
+
+async function saveRequisites() {
+  const body = {};
+  for (const [k] of REQ_FORM) body[k] = document.getElementById("r_" + k)?.value || "";
+  try {
+    const res = await API.saveRequisites(body);
+    REQ.mine = res.requisites;
+    MODAL.close();
+    toast("Реквизиты сохранены");
+    if (CURRENT && TEMPLATES[CURRENT]) renderFillBar(TEMPLATES[CURRENT]);
+  } catch (e) {
+    /* Сервер отказывает при неверной контрольной сумме — показываем
+       причину дословно, иначе человек будет жать «Сохранить» и гадать. */
+    toast(e.message || "Не удалось сохранить", "error");
+  }
 }
 
 function values() {

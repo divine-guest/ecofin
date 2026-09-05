@@ -21,6 +21,7 @@ import * as telegram from "./telegram.js";
 import * as book from "./book.js";
 import * as registry from "./registry.js";
 import * as clients from "./clients.js";
+import * as requisites from "./requisites.js";
 
 /* Маршруты: [метод, путь, обработчик, доступ] */
 const ROUTES = [
@@ -84,6 +85,20 @@ const ROUTES = [
   ["GET", "/api/clients", clients.list, "user"],
   ["POST", "/api/clients", clients.save, "user"],
   ["POST", "/api/clients/delete", clients.remove, "user"],
+
+  /* Реквизиты и контрагенты: один раз ввёл — работает во всех документах.
+
+     Открыто всем тарифам намеренно. Это не отдельная возможность, за
+     которую платят, а то, что делает пользуемой библиотеку документов:
+     закрыть подстановку реквизитов — значит оставить бесплатному тарифу
+     пятьдесят бумаг, которые каждый раз заполняются с нуля. */
+  ["GET", "/api/requisites", requisites.getRequisites, "user"],
+  ["POST", "/api/requisites", requisites.saveRequisites, "user"],
+  ["GET", "/api/counterparties", requisites.listCounterparties, "user"],
+  ["POST", "/api/counterparties", requisites.saveCounterparty, "user"],
+  ["POST", "/api/counterparties/delete", requisites.removeCounterparty, "user"],
+  ["POST", "/api/counterparties/touch", requisites.touchCounterparty, "user"],
+  ["POST", "/api/docnumber", requisites.nextNumber, "user"],
 
   ["POST", "/api/registry/npd", registry.npdStatus, "user"],
   ["POST", "/api/registry/company", registry.companyInfo, "user"],

@@ -200,6 +200,16 @@ const API = {
       .then(r => this._clean(r));
   },
 
+  /* --- Реквизиты и контрагенты ---
+     Один раз ввёл — подставляется во все документы. */
+  requisites()     { return this.request("/api/requisites"); },
+  saveRequisites(r){ return this.request("/api/requisites", { method: "POST", body: r }); },
+  counterparties() { return this.request("/api/counterparties"); },
+  saveCounterparty(c) { return this.request("/api/counterparties", { method: "POST", body: c }); },
+  removeCounterparty(id) { return this.request("/api/counterparties/delete", { method: "POST", body: { id } }); },
+  touchCounterparty(id)  { return this.request("/api/counterparties/touch", { method: "POST", body: { id } }); },
+  docNumber(kind)  { return this.request("/api/docnumber", { method: "POST", body: { kind } }); },
+
   /* --- Оплата --- */
   billing: {
     plans() { return API.request("/api/billing/plans"); },

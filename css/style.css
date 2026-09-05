@@ -465,6 +465,46 @@ textarea { min-height: 120px; resize: vertical; }
    иначе над заголовком «Налоги» висит необъяснимая дыра. */
 .quota-row:not(:empty) { margin-bottom: 18px; }
 
+/* ============ Подстановка реквизитов ============
+
+   Панель стоит над полями документа. Это её главное свойство: человек
+   должен увидеть, что вводить руками не обязательно, ДО того как начнёт
+   вводить руками. Под полями такая кнопка бесполезна — её найдут, когда
+   всё уже набрано. */
+.fill-bar:not(:empty) { margin-bottom: 16px; }
+.fill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.fill-hint {
+  font-size: var(--t-sm); color: var(--muted);
+  background: var(--surface-2); border-radius: 10px; padding: 10px 13px;
+  border-left: 3px solid var(--primary);
+}
+
+/* Контрагент в списке: имя крупно, ИНН тускло. Выбирают по имени,
+   а ИНН нужен только чтобы различить два похожих. */
+.party-row {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  width: 100%; text-align: left; cursor: pointer;
+  padding: 11px 14px; margin-bottom: 8px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); color: var(--text);
+  font-family: inherit; font-size: var(--t-sm);
+  transition: border-color .2s;
+}
+.party-row:hover { border-color: var(--primary); }
+.party-row span { color: var(--muted); font-size: var(--t-xs); }
+
+/* Крестик общего окна. Размер не меньше 44 — окно часто закрывают
+   с телефона, и промах по крестику означает случайный выбор того,
+   что под ним. */
+.modal-x {
+  position: absolute; top: 10px; right: 10px;
+  width: 44px; height: 44px; line-height: 1;
+  border: none; background: none; cursor: pointer;
+  color: var(--muted); font-size: 1.6rem; font-family: inherit;
+  border-radius: 10px;
+}
+.modal-x:hover { color: var(--text); background: var(--surface-2); }
+
 /* ============ Разделы инструментов ============
    Четырнадцать одинаковых кнопок подряд человек не читает: он видит
    стену и жмёт первую понятную. Заголовок раздела даёт глазу опору и
@@ -724,6 +764,9 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
 }
 .modal-backdrop.open { display: flex; }
 .modal {
+  /* Точка отсчёта для крестика закрытия: без неё он уезжает считать
+     координаты от окна браузера и оказывается не в том углу. */
+  position: relative;
   background: var(--surface); border-radius: var(--radius); padding: 28px;
   max-width: 520px; width: 100%; max-height: 85vh; overflow-y: auto;
   box-shadow: var(--shadow-lg); animation: fadeIn .3s;

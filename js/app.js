@@ -523,6 +523,44 @@ document.addEventListener("click", e => {
   if (e.target.closest(".tabs .tab")) setTimeout(scrollActiveTabIntoView, 0);
 });
 
+/* ============ Общее модальное окно ============
+
+   Окно с затемнением собиралось в коде трижды, каждый раз заново:
+   создать подложку, повесить закрытие по клику, поставить overflow на
+   body и не забыть его вернуть. Четвёртый раз писать то же самое —
+   значит забыть одну из мелочей, обычно Esc или возврат прокрутки.
+
+   Закрытие по Esc здесь не «приятная мелочь»: окно накрывает страницу
+   целиком, и человек, не нашедший крестик, оказывается заперт. */
+const MODAL = {
+  open(title, html) {
+    let bd = document.getElementById("appModal");
+    if (!bd) {
+      bd = document.createElement("div");
+      bd.id = "appModal";
+      bd.className = "modal-backdrop";
+      document.body.appendChild(bd);
+      bd.addEventListener("click", e => { if (e.target === bd) MODAL.close(); });
+      document.addEventListener("keydown", e => {
+        if (e.key === "Escape" && bd.classList.contains("open")) MODAL.close();
+      });
+    }
+    bd.innerHTML = `<div class="modal">
+      <button class="modal-x" onclick="MODAL.close()" aria-label="Закрыть">&times;</button>
+      <h3 style="margin-bottom:12px">${escapeHtml(title)}</h3>
+      ${html}
+    </div>`;
+    bd.classList.add("open");
+    document.body.style.overflow = "hidden";
+  },
+
+  close() {
+    const bd = document.getElementById("appModal");
+    if (bd) { bd.classList.remove("open"); bd.innerHTML = ""; }
+    document.body.style.overflow = "";
+  },
+};
+
 /* ============ Шапка (вставляется на каждую страницу) ============ */
 function renderHeader(active) {
   const u = PF.user();
