@@ -538,10 +538,14 @@ console.log("\n— Срок ответа из разбора —");
   const body = src.match(/function replyDeadline\(text\) \{[\s\S]*?\n\}/)[0];
   const replyDeadline = new Function("return " + body)();
 
+  /* Дату строим целиком в UTC. Смешивать getDate() с toISOString()
+     нельзя: первое возвращает местный день, второе — день по UTC, и
+     при разнице часовых поясов они расходятся. Проверка ломалась не
+     от изменений в коде, а просто оттого, что наступил новый день. */
   const future = new Date(Date.now() + 30 * 86400000);
-  const f = `${String(future.getDate()).padStart(2, "0")}.${
-    String(future.getMonth() + 1).padStart(2, "0")}.${future.getFullYear()}`;
   const fIso = future.toISOString().slice(0, 10);
+  const [fy, fm, fd] = fIso.split("-");
+  const f = `${fd}.${fm}.${fy}`;
 
   ok(replyDeadline(`2. СРОКИ.\nОтветить до: ${f}\nЗакон даёт 10 дней.`) === fIso,
      "дата из строки «Ответить до» разобрана", replyDeadline(`Ответить до: ${f}`));
@@ -550,8 +554,9 @@ console.log("\n— Срок ответа из разбора —");
      "разделители через косую черту тоже понимаются");
 
   /* Однозначный день и месяц без нуля — обычное дело в тексте. */
-  const short = `1.3.${future.getFullYear() + 1}`;
-  ok(replyDeadline("Ответить до: " + short) === `${future.getFullYear() + 1}-03-01`,
+  const nextYear = Number(fy) + 1;
+  const short = `1.3.${nextYear}`;
+  ok(replyDeadline("Ответить до: " + short) === `${nextYear}-03-01`,
      "день и месяц без ведущего нуля дополняются", replyDeadline("Ответить до: " + short));
 
   /* Прошедший срок — не повод ставить напоминание: он уже пропущен,
@@ -657,6 +662,53 @@ console.log("\n— Наборы документов не рассыпались
     for (const r of k.reminders || [])
       if (!knownIds.includes(r)) ghosts.push(`${k.id} → ${r}`);
   ok(ghosts.length === 0, "обещанные сроки есть в налоговом календаре", ghosts);
+}
+
+console.log("\n— За границу не уходит лишнего —");
+{
+  /* Структурная проверка каналов.
+
+     Изображения уходят к модели только одним способом — через
+     image_url в теле запроса. Такой вызов допустим ровно в одном
+     файле, vision.js, где он стоит запасным путём на время, пока не
+     выдан ключ российского распознавания. Появление его где-то ещё
+     означает, что фотография документа снова уезжает за границу — а
+     политика обещает обратное, и это обещание пойдёт в уведомление
+     Роскомнадзору. */
+  const dir = new URL("../worker/src/", import.meta.url);
+  const withImages = [];
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith(".js") || f === "vision.js") continue;
+    if (fs.readFileSync(new URL(f, dir), "utf8").includes("image_url")) withImages.push(f);
+  }
+  ok(withImages.length === 0,
+     "изображения отправляет только vision.js", withImages);
+
+  /* Текст к модели обязан проходить обезличивание. Вызовов провайдера
+     немного, и каждый должен быть рядом с redact — иначе появился
+     новый путь мимо защиты. Ровно так и было с фоновой очередью:
+     через неё идут все ИИ-инструменты, и первая версия обезличивания
+     её не покрывала. */
+  const callers = [];
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith(".js") || f === "vision.js" || f === "ai.js") continue;
+    const src = fs.readFileSync(new URL(f, dir), "utf8");
+    if (src.includes("callProvider(") && !src.includes("redact")) callers.push(f);
+  }
+  ok(callers.length === 0, "каждый вызов модели проходит обезличивание", callers);
+
+  /* В самом ai.js — то же самое, но там есть и определение
+     callProvider, поэтому проверяем по обработчикам. */
+  const ai = read("../worker/src/ai.js");
+  ok(/redact\(prompt\)/.test(ai), "вопрос консультанту обезличивается");
+  ok(/redact\(full\)/.test(ai), "разбор документа обезличивается");
+  ok(/restore\(/.test(ai), "ответ восстанавливается перед выдачей");
+
+  /* Ключ российского распознавания не должен быть зашит в код. */
+  const vision = read("../worker/src/vision.js");
+  ok(/env\.YC_OCR_KEY/.test(vision) && !/Api-Key [A-Za-z0-9]{10}/.test(vision),
+     "ключ распознавания берётся из окружения, а не из кода");
+  ok(/ocr\.api\.cloud\.yandex\.net/.test(vision), "распознавание идёт на российский адрес");
 }
 
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);

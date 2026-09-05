@@ -4,6 +4,8 @@ import { json, fail, isPro } from "./lib.js";
 import { aiQuota, toolQuota, spendAI, spendTool, analyzeQuota, spendAnalyze,
          refundAI, refundTool, refundAnalyze } from "./quota.js";
 import { logAction } from "./auth.js";
+import { recognize, ocrReady } from "./vision.js";
+import { redact, restore, redactOn } from "./redact.js";
 import { rewardIfEarned } from "./referral.js";
 
 const MAX_PROMPT = 12000;
@@ -43,7 +45,7 @@ export const DEFAULT_SYSTEM = `Ты — старший ИИ-консультан
    опечатки, дописывает недостающее, переставляет пункты. Для документа
    это яд: человек потом сошлётся на пункт, которого в бумаге нет.
    Поэтому запрет на додумывание стоит первым и повторён дважды. */
-const OCR_SYSTEM = `Ты распознаёшь текст с фотографий и сканов документов.
+export const OCR_SYSTEM = `Ты распознаёшь текст с фотографий и сканов документов.
 
 ПРАВИЛА:
 1. Перепечатай текст ДОСЛОВНО. Ничего не пересказывай, не сокращай, не исправляй и не дополняй.
@@ -66,11 +68,15 @@ const ANALYZE_SYSTEM = `Ты — юрист-аналитик сервиса «Э
 Если текст обрывочный или скан читается плохо — прямо скажи, какие места не разобрал, и не выдумывай их содержание.
 В конце одной строкой: разбор информационный, не заменяет юридическую консультацию.`;
 
-/* Какая модель отвечает. Разбор картинок требует зрячей модели,
-   всё остальное идёт на обычную — она дешевле и быстрее. */
-export const MODEL_FOR = (env, kind) =>
-  kind === "vision" ? (env.AI_VISION_MODEL || "gpt-4o-mini")
-                    : (env.AI_MODEL || "deepseek-chat");
+/* Какая модель отвечает.
+
+   Ветка со зрячей моделью убрана намеренно. Изображения теперь
+   распознаются в России (vision.js), и к модели уходит уже текст.
+   Оставленный «на всякий случай» путь для картинок был бы дырой в
+   том самом месте, которое мы закрывали: политика обещает, что
+   распознавание идёт внутри страны, и в коде не должно быть тихого
+   обхода этого обещания. */
+export const MODEL_FOR = (env) => env.AI_MODEL || "deepseek-chat";
 
 export async function callProvider(env, { model, messages, maxTokens }) {
   const base = env.AI_BASE_URL || "https://api.aitunnel.ru/v1";
@@ -126,12 +132,24 @@ export async function handleAI(request, env, origin, user) {
       : "На сегодня вопросы закончились. В тарифе «Базовый» их 300 в день — это 290 ₽ в месяц", kind);
   }
 
+  /* Обезличиваем перед отправкой. Вычисления идут за пределами
+     России, и пока в тексте есть опознаватели человека — это
+     трансграничная передача персональных данных. После замены
+     передавать нечего.
+
+     Соответствие меток и настоящих значений остаётся здесь, в памяти
+     этого запроса, и никуда не записывается. */
+  const hide = redactOn(env) ? redact(prompt) : { text: prompt, map: new Map() };
+
   try {
-    const text = await callProvider(env, {
+    let text = await callProvider(env, {
       model: env.AI_MODEL || "deepseek-chat",
-      messages: [{ role: "system", content: system }, { role: "user", content: prompt }],
+      messages: [{ role: "system", content: system }, { role: "user", content: hide.text }],
       maxTokens: Math.min(3000, Math.max(200, Number(b.maxTokens) || 1500)),
     });
+    /* Возвращаем настоящие значения: иначе человек прочитает
+       «[ФИО-1] обязан уплатить» и решит, что сервис сломался. */
+    text = restore(text, hide.map);
     /* Приглашение окупилось: человек не просто зарегистрировался, а поработал.
        Награду начисляем тихо — на ответ она не влияет. */
     await rewardIfEarned(env, user.email).catch(() => {});
@@ -177,16 +195,33 @@ export async function handleAnalyze(request, env, origin, user) {
       "Пробный запуск израсходован. Разбор документов входит в платные тарифы", "tool");
   }
 
-  /* Со сканами работает только зрячая модель; чистый текст отдаём дешёвой текстовой. */
-  const vision = images.length > 0;
-  const model = vision ? (env.AI_VISION_MODEL || "gpt-4o-mini") : (env.AI_MODEL || "deepseek-chat");
+  /* Изображения сначала превращаются в текст, и только потом идут в
+     разбор. Раньше картинка уходила прямо в зрячую модель за границей —
+     это тот самый канал, который нельзя прикрыть маскированием.
 
-  const content = vision
-    ? [
-        { type: "text", text: `Файл: ${fileName}\n${text ? "Распознанный текст:\n" + text + "\n\n" : ""}Разбери документ на изображениях ниже.` },
-        ...images.map(url => ({ type: "image_url", image_url: { url } })),
-      ]
-    : `Файл: ${fileName}\n\nТекст документа:\n${text}`;
+     Заодно разбор стал дешевле: текстовая модель на порядок дешевле
+     зрячей, а распознавание тарифицируется как страница. */
+  let full = text;
+  if (images.length) {
+    try {
+      const r = await recognize(env, images, { callProvider, fileName });
+      full = [text, r.text].filter(Boolean).join("\n\n");
+    } catch (e) {
+      await (isPro(user) ? refundAnalyze(env, user) : refundTool(env, user));
+      return upstreamError(env, origin, e);
+    }
+  }
+  if (!full.trim()) {
+    await (isPro(user) ? refundAnalyze(env, user) : refundTool(env, user));
+    return fail(env, origin, "Не удалось прочитать документ: страница пустая или снимок нечёткий");
+  }
+
+  const model = env.AI_MODEL || "deepseek-chat";
+  /* Распознанный текст документа обезличивается так же, как вопрос:
+     в договоре и в требовании из налоговой опознавателей больше, чем
+     где-либо ещё. */
+  const hide = redactOn(env) ? redact(full) : { text: full, map: new Map() };
+  const content = `Файл: ${fileName}\n\nТекст документа:\n${hide.text}`;
 
   /* Своя системная подсказка. Раньше здесь стояла одна на всё —
      «разбери документ», — и зрячая модель годилась ровно для одного
@@ -205,7 +240,10 @@ export async function handleAnalyze(request, env, origin, user) {
       maxTokens: 3000,
     });
     await logAction(env, user.email, "Анализ документа: " + fileName);
-    return json(env, origin, { text: out, quota: await quotaSnapshot(env, user) });
+    return json(env, origin, {
+      text: restore(out, hide.map),
+      quota: await quotaSnapshot(env, user),
+    });
   } catch (e) {
     await (isPro(user) ? refundAnalyze(env, user) : refundTool(env, user));
     return upstreamError(env, origin, e);
@@ -259,18 +297,12 @@ export async function handleOcr(request, env, origin, user) {
   }
 
   try {
-    const text = await callProvider(env, {
-      model: env.AI_VISION_MODEL || "gpt-4o-mini",
-      messages: [
-        { role: "system", content: OCR_SYSTEM },
-        { role: "user", content: [
-          { type: "text", text: `Файл: ${fileName}. Перепечатай текст со страниц ниже.` },
-          ...images.map(url => ({ type: "image_url", image_url: { url } })),
-        ] },
-      ],
-      maxTokens: 3000,
-    });
-    await logAction(env, user.email, "Распознан документ: " + fileName);
+    const { text, where } = await recognize(env, images, { callProvider, fileName });
+    /* В журнале видно, кто распознавал. Политика обещает, что это
+       происходит в России, и запасной путь не должен уходить за
+       границу незаметно. */
+    await logAction(env, user.email,
+      `Распознан документ: ${fileName}` + (where === "ru" ? "" : " (зарубежная модель)"));
     return json(env, origin, { text, quota: await quotaSnapshot(env, user) });
   } catch (e) {
     await (isPro(user) ? refundAnalyze(env, user) : refundTool(env, user));

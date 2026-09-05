@@ -19,6 +19,7 @@
 import { json, fail } from "./lib.js";
 import { spendAI, spendTool } from "./quota.js";
 import { callProvider, DEFAULT_SYSTEM, MODEL_FOR } from "./ai.js";
+import { redact, restore, redactOn } from "./redact.js";
 import { logAction } from "./auth.js";
 import { rewardIfEarned } from "./referral.js";
 
@@ -62,14 +63,28 @@ const publicJob = row => ({
 /* Сама работа. Выполняется уже после того, как браузер получил номер. */
 async function work(env, row) {
   try {
-    const text = await callProvider(env, {
-      model: MODEL_FOR(env, row.kind),
+    /* Обезличиваем перед отправкой — как и прямой вызов.
+
+       Через эту очередь идут ВСЕ ИИ-инструменты: разбор договора,
+       протокол разногласий, ответ на требование. То есть основной
+       поток текста за границу — здесь, и пропустить это место
+       значило бы оставить защиту только на чате в углу.
+
+       Ответ восстанавливаем ДО записи в базу: база в России, и
+       настоящим значениям там место. */
+    const asked = row.context || row.prompt;
+    const hide = redactOn(env) ? redact(asked) : { text: asked, map: new Map() };
+
+    const raw = await callProvider(env, {
+      model: MODEL_FOR(env),
       messages: [
         { role: "system", content: row.system || DEFAULT_SYSTEM },
-        { role: "user", content: row.context || row.prompt },
+        { role: "user", content: hide.text },
       ],
       maxTokens: row.max_tokens || 1500,
     });
+    const text = restore(raw, hide.map);
+
     await env.DB.prepare(
       "UPDATE ai_jobs SET status = 'done', answer = ?, done_at = ? WHERE id = ?"
     ).bind(text, now(), row.id).run();

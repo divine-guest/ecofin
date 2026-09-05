@@ -303,17 +303,33 @@ export async function scanReceipt(request, env, origin, user) {
   }
 
   try {
-    const raw = await callProvider(env, {
-      model: env.AI_VISION_MODEL || "gpt-4o-mini",
+    /* Сначала распознаём в России, потом разбираем текстовой моделью.
+       Раньше снимок уходил прямо в зарубежную зрячую модель — а на
+       чеке бывают и адрес, и фамилия кассира, и хвост номера карты. */
+    const { recognize } = await import("./vision.js");
+    const { text: scanned } = await recognize(env, images, { callProvider, fileName: "чек" });
+
+    if (!String(scanned || "").trim()) {
+      await (paid ? refundAnalyze(env, user) : refundTool(env, user));
+      return fail(env, origin, "На снимке не удалось разобрать текст. Попробуйте крупнее и без бликов", 422);
+    }
+
+    /* Обезличиваем распознанный чек: там бывают адрес, фамилия
+       кассира и хвост номера карты. Разбор по полям от этого не
+       страдает — суммы и даты остаются на месте. */
+    const { redact, restore, redactOn } = await import("./redact.js");
+    const hide = redactOn(env) ? redact(scanned) : { text: scanned, map: new Map() };
+
+    const rawMasked = await callProvider(env, {
+      model: env.AI_MODEL || "deepseek-chat",
       messages: [
         { role: "system", content: SCAN_SYSTEM },
-        { role: "user", content: [
-          { type: "text", text: `Сегодня ${new Date().toISOString().slice(0, 10)}. Разбери документ.` },
-          ...images.map(url => ({ type: "image_url", image_url: { url } })),
-        ] },
+        { role: "user", content:
+          `Сегодня ${new Date().toISOString().slice(0, 10)}. Разбери документ.\n\n${hide.text}` },
       ],
       maxTokens: 700,
     });
+    const raw = restore(rawMasked, hide.map);
 
     const parsed = parseScan(raw);
     if (!parsed) {
