@@ -23,6 +23,7 @@ import * as registry from "./registry.js";
 import * as clients from "./clients.js";
 import * as requisites from "./requisites.js";
 import * as documents from "./documents.js";
+import * as partners from "./partners.js";
 
 /* Маршруты: [метод, путь, обработчик, доступ] */
 const ROUTES = [
@@ -117,6 +118,16 @@ const ROUTES = [
   ["POST", "/api/documents", documents.save, "user"],
   ["POST", "/api/documents/status", documents.setStatus, "user"],
   ["POST", "/api/documents/delete", documents.remove, "user"],
+
+  /* Партнёрские предложения. Список открыт всем — это часть страницы;
+     настройка только админу. Решение о показе принимает сервер: в
+     браузере правило обходится правкой в консоли, а цена ошибки —
+     штраф за рекламу без маркировки. */
+  ["GET",  "/api/partners", partners.list, "public"],
+  ["POST", "/api/partners/click", partners.click, "public"],
+  ["POST", "/api/partners/shown", partners.shown, "public"],
+  ["GET",  "/api/admin/partners", partners.adminList, "admin"],
+  ["POST", "/api/admin/partners", partners.adminSave, "admin"],
 
   ["POST", "/api/registry/npd", registry.npdStatus, "user"],
   ["POST", "/api/registry/company", registry.companyInfo, "user"],

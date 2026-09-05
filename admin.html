@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=148">
+<link rel="stylesheet" href="css/style.css?v=152">
 </head>
 <body>
 <main class="section tint-navy">
@@ -37,14 +37,121 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=148"></script>
-<script src="js/api.js?v=148"></script>
-<script src="js/app.js?v=148"></script>
-<script src="js/progress.js?v=148"></script>
-<script src="js/palette.js?v=148"></script>
-<script src="js/ai.js?v=148"></script>
+<script src="js/themes.js?v=152"></script>
+<script src="js/api.js?v=152"></script>
+<script src="js/app.js?v=152"></script>
+<script src="js/progress.js?v=152"></script>
+<script src="js/palette.js?v=152"></script>
+<script src="js/ai.js?v=152"></script>
+<!-- Тексты партнёрских предложений: админка соединяет их с настройками
+     с сервера, чтобы владелец видел, что именно включает. -->
+<script src="js/partners.js?v=152"></script>
 <script>
 initPage("admin.html");
+
+/* ============ Партнёрские предложения ============
+
+   Почему это в админке, а не в файле с кодом. Чтобы включить
+   партнёрку, владельцу нужно было открыть js/partners.js, вписать три
+   поля и выкатить сайт. Он не разработчик — значит отложит, и
+   заготовка останется заготовкой навсегда.
+
+   Тексты предложений остаются в коде: они часть страницы. Здесь
+   только то, что берётся из партнёрского договора и меняется без
+   участия разработчика.                                             */
+const PART = {
+  offers: [],
+
+  async load() {
+    const box = document.getElementById("partnerList");
+    if (!box) return;
+    try {
+      const d = await API.request("/api/admin/partners");
+      /* Тексты знает клиентский модуль, состояние — сервер.
+         Соединяем, чтобы админ видел, что именно он включает. */
+      /* Модуль объявлен через const, а не присвоен window: в глобальный
+         объект такие имена не попадают, и проверять через window.PARTNERS
+         бессмысленно — список молча выходил пустым. */
+      const all = typeof PARTNERS !== "undefined" ? PARTNERS.offers : [];
+      const texts = Object.fromEntries(all.map(o => [o.id, o]));
+      const known = all.map(o => o.id);
+      const saved = Object.fromEntries((d.offers || []).map(o => [o.id, o]));
+      this.offers = known.map(id => ({
+        id,
+        title: (texts[id] || {}).title || id,
+        lead: (texts[id] || {}).lead || "",
+        ...(saved[id] || { url: "", advertiser: "", erid: "", enabled: false, clicks: 0, shows: 0 }),
+      }));
+      this.render();
+    } catch (e) {
+      box.innerHTML = `<p class="hint">Не удалось загрузить: ${escapeHtml(e.message)}</p>`;
+    }
+  },
+
+  render() {
+    const box = document.getElementById("partnerList");
+    box.innerHTML = this.offers.map(o => {
+      const ready = o.url && o.advertiser && o.erid;
+      return `
+      <div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+          <b>${escapeHtml(o.title)}</b>
+          <span>
+            ${o.enabled ? '<span class="badge ok">Показывается</span>'
+                        : ready ? '<span class="badge">Готово, но выключено</span>'
+                                : '<span class="badge">Не заполнено</span>'}
+            <span class="hint">показов ${o.shows} · переходов ${o.clicks}</span>
+          </span>
+        </div>
+        <p class="hint" style="margin:4px 0 10px">${escapeHtml(o.lead)}</p>
+
+        <div class="form-group">
+          <label for="pu_${o.id}">Партнёрская ссылка</label>
+          <input type="url" id="pu_${o.id}" value="${escapeHtml(o.url)}" placeholder="https://...">
+        </div>
+        <div class="form-group">
+          <label for="pa_${o.id}">Рекламодатель: наименование и ИНН из договора</label>
+          <input type="text" id="pa_${o.id}" value="${escapeHtml(o.advertiser)}"
+                 placeholder="ООО «Банк», ИНН 7700000000">
+        </div>
+        <div class="form-group">
+          <label for="pe_${o.id}">Токен erid</label>
+          <input type="text" id="pe_${o.id}" value="${escapeHtml(o.erid)}" placeholder="2Vfnxw...">
+          <p class="hint">Выдаёт оператор рекламных данных. Часть партнёров
+            выдаёт его сама — спросите у них раньше, чем идти в ОРД.</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn small" onclick="PART.save('${o.id}', false)">Сохранить</button>
+          ${o.enabled
+            ? `<button class="btn small secondary" onclick="PART.save('${o.id}', false, true)">Выключить показ</button>`
+            : `<button class="btn small secondary" onclick="PART.save('${o.id}', true)">Сохранить и включить</button>`}
+        </div>
+      </div>`;
+    }).join("") + `
+      <p class="hint">Показ без маркировки — штраф до 500 000 ₽ по ст. 14.3 КоАП,
+      поэтому включить можно только полностью заполненное предложение.
+      Это проверяет сервер, а не форма.</p>`;
+  },
+
+  async save(id, enable, disable) {
+    const v = pref => (document.getElementById(pref + "_" + id) || {}).value || "";
+    const cur = this.offers.find(o => o.id === id) || {};
+    try {
+      await API.request("/api/admin/partners", {
+        method: "POST",
+        body: {
+          id,
+          url: v("pu"), advertiser: v("pa"), erid: v("pe"),
+          enabled: disable ? false : (enable || cur.enabled),
+        },
+      });
+      toast(disable ? "Показ выключен" : enable ? "Включено — предложение показывается" : "Сохранено");
+      await this.load();
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  },
+};
 
 const AD = {
   stats: null,
@@ -205,6 +312,16 @@ const AD = {
         </p>
         <button class="btn small secondary" onclick="AD.runReminders()">Прогнать рассылку сейчас</button>
         <div id="remRun" style="margin-top:10px;color:var(--muted);font-size:var(--t-sm)"></div>
+      </div>
+
+      <div class="card" style="margin-top:20px" id="partners">
+        <h3 style="margin-bottom:6px">Партнёрские предложения</h3>
+        <p style="color:var(--muted);font-size:var(--t-sm);margin-bottom:12px">
+          Доход, который не требует подписчиков: банк платит за одного
+          приведённого ИП больше, чем стоит годовая подписка. Раньше
+          ссылки правились в файле с кодом и требовали выкатки сайта.
+        </p>
+        <div id="partnerList"><p class="hint">Загружаем…</p></div>
       </div>
 
       <div class="card" style="margin-top:20px">
@@ -467,6 +584,7 @@ document.addEventListener("pf:ready", async ({ detail }) => {
   }
   try {
     await AD.load();
+    PART.load();
   } catch (e) {
     document.getElementById("content").innerHTML = e.status === 403
       ? denied
