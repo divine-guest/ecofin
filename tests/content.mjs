@@ -369,5 +369,48 @@ console.log("\n— Идентификаторы не повторяются —"
 }
 
 
+/* Числа на странице «О сервисе» — не только на главной.
+
+   Там годами стояло 19 калькуляторов, 42 статьи и 32 документа при
+   настоящих 30, 49 и 50: проверка смотрела одну главную, а расхождение
+   росло с каждым добавлением. Это то место, куда идут решать, стоит ли
+   доверять, — втрое заниженные числа работают против нас. */
+console.log("\n— Числа на странице «О сервисе» —");
+{
+  const about = read("../about.html");
+  const num = (re) => {
+    const m = about.match(re);
+    return m ? Number(m[1]) : null;
+  };
+
+  const calcCount = (read("../calc.html").match(/class="tab-panel/g) || []).length;
+  const artCount = fs.readdirSync(new URL("../st/", import.meta.url)).filter(f => f.endsWith(".html")).length;
+
+  const tplBox = {};
+  new Function("box", read("../js/templates.js") + "\nbox.T = TEMPLATES;")(tplBox);
+  const docCount = Object.keys(tplBox.T).length;
+
+  const toolCount = (read("../tools.html").match(/data-tool="/g) || []).length;
+
+  const shownCalc = num(/(\d+)<\/div><div class="stat-label">калькулятор/);
+  const shownArt = num(/(\d+)<\/div><div class="stat-label">стат/);
+  const shownDoc = num(/(\d+)<\/div><div class="stat-label">готовых документ/);
+  const shownTool = num(/(\d+)<\/div><div class="stat-label">ИИ-инструмент/);
+
+  ok(shownCalc === calcCount, `калькуляторов: на «О сервисе» ${shownCalc}, в calc.html ${calcCount}`);
+  ok(shownArt === artCount, `статей: на «О сервисе» ${shownArt}, страниц в st/ ${artCount}`);
+  ok(shownDoc === docCount, `документов: на «О сервисе» ${shownDoc}, в templates.js ${docCount}`);
+  ok(shownTool === toolCount, `инструментов: на «О сервисе» ${shownTool}, вкладок в tools.html ${toolCount}`);
+
+  /* И в перечне возможностей ниже — те же числа, а не свои. */
+  const listCalc = num(/✓ (\d+) калькулятор/);
+  const listArt = num(/✓ (\d+) стат/);
+  const listDoc = num(/✓ (\d+) готовых документ/);
+  ok(listCalc === calcCount, `в перечне калькуляторов: ${listCalc}`, listCalc);
+  ok(listArt === artCount, `в перечне статей: ${listArt}`, listArt);
+  ok(listDoc === docCount, `в перечне документов: ${listDoc}`, listDoc);
+}
+
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

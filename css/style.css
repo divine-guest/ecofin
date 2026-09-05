@@ -684,10 +684,20 @@ textarea { min-height: 120px; resize: vertical; }
 }
 
 /* ============ Кабинет ============ */
+
+/* Числа — плотным цветом и с чертой подведения итога, как везде.
+
+   Градиент на них был третьим местом, где он «выделял»: когда выделено
+   всё, не выделено ничего. Плюс градиентный текст не печатается —
+   браузеры не печатают фон, а буквы у него прозрачные. */
 .stat-value {
   font-size: 1.9rem; font-weight: 800;
-  background: var(--grad-primary);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--primary);
+  box-shadow: 0 3px 0 -2px var(--primary);
 }
 .stat-label { color: var(--muted); font-size: .86rem; }
 
