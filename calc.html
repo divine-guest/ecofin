@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Калькуляторы и счета — ЭкоФин</title>
 <!-- seo:start -->
-<meta name="description" content="28 калькуляторов: сравнение всех налоговых режимов, штрафы налоговой, взносы за неполный год, выходное пособие, налог с продажи квартиры и авто, декретные, алименты, пени, госпошлина и счёт с QR-кодом СБП.">
+<meta name="description" content="30 калькуляторов: сравнение всех налоговых режимов, штрафы налоговой, взносы за неполный год, выходное пособие, налог с продажи квартиры и авто, декретные, алименты, пени, госпошлина и счёт с QR-кодом СБП.">
 <link rel="canonical" href="https://ecofin26.ru/calc.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ЭкоФин">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:title" content="Калькуляторы и счета — ЭкоФин">
-<meta property="og:description" content="28 калькуляторов: сравнение всех налоговых режимов, штрафы налоговой, взносы за неполный год, выходное пособие, налог с продажи квартиры и авто, декретные, алименты, пени, госпошлина и счёт с QR-кодом СБП.">
+<meta property="og:description" content="30 калькуляторов: сравнение всех налоговых режимов, штрафы налоговой, взносы за неполный год, выходное пособие, налог с продажи квартиры и авто, декретные, алименты, пени, госпошлина и счёт с QR-кодом СБП.">
 <meta property="og:url" content="https://ecofin26.ru/calc.html">
 <meta property="og:image" content="https://ecofin26.ru/og-cover.png">
 <meta property="og:image:width" content="1200">
@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=133">
+<link rel="stylesheet" href="css/style.css?v=134">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -112,6 +112,8 @@
       <button class="tab" data-panel="calcPartYear" onclick="switchCalc(25,this)">Взносы за неполный год</button>
       <button class="tab" data-panel="calcFines" onclick="switchCalc(26,this)">Штрафы налоговой</button>
       <button class="tab" data-panel="calcSeverance" onclick="switchCalc(27,this)">Пособие при сокращении</button>
+      <button class="tab" data-panel="calcPropTax" onclick="switchCalc(28,this)">Налог на квартиру</button>
+      <button class="tab" data-panel="calcTransport" onclick="switchCalc(29,this)">Транспортный налог</button>
     </div>
 
     <!-- 1. Налоговые режимы -->
@@ -787,18 +789,72 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Пособие при сокращении')">Скачать / печать</button>
       </div>
     </div>
+
+    <!-- 29. Налог на имущество физлиц -->
+    <div class="tab-panel game-stage" id="calcPropTax">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="ptKind">Что за объект</label>
+            <select id="ptKind" onchange="calcPropTax()">
+              <option value="flat">Квартира или часть дома</option>
+              <option value="room">Комната или часть квартиры</option>
+              <option value="house">Жилой дом</option>
+            </select></div>
+          <div class="form-group"><label for="ptCad">Кадастровая стоимость, ₽</label>
+            <input type="number" id="ptCad" value="6000000" min="0" oninput="calcPropTax()">
+            <p class="hint">Не рыночная и не та, за которую купили. Смотрят
+              в личном кабинете ФНС или на публичной кадастровой карте.</p></div>
+          <div class="form-group"><label for="ptArea">Площадь, м²</label>
+            <input type="number" id="ptArea" value="60" min="0" step="0.1" oninput="calcPropTax()"></div>
+          <div class="form-group"><label for="ptShare">Ваша доля</label>
+            <select id="ptShare" onchange="calcPropTax()">
+              <option value="1">Целиком моё</option>
+              <option value="0.5">Половина</option>
+              <option value="0.3333">Треть</option>
+              <option value="0.25">Четверть</option>
+            </select></div>
+          <div class="form-group"><label for="ptKids">Детей (для многодетных)</label>
+            <input type="number" id="ptKids" value="0" min="0" max="10" oninput="calcPropTax()">
+            <p class="hint">С третьего ребёнка положен дополнительный вычет
+              за каждого — ст. 403 п. 6.1 НК.</p></div>
+        </div>
+        <div class="calc-result" id="ptOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налог на квартиру')">Скачать / печать</button>
+      </div>
+    </div>
+
+    <!-- 30. Транспортный налог -->
+    <div class="tab-panel game-stage" id="calcTransport">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="trHp">Мощность, л.с.</label>
+            <input type="number" id="trHp" value="120" min="0" oninput="calcTransport()">
+            <p class="hint">Из ПТС или свидетельства о регистрации.</p></div>
+          <div class="form-group"><label for="trMonths">Месяцев владения в году</label>
+            <input type="number" id="trMonths" value="12" min="0" max="12" oninput="calcTransport()">
+            <p class="hint">Месяц считается целиком, если машина была ваша
+              больше половины месяца.</p></div>
+          <div class="form-group"><label for="trPrice">Стоимость машины, ₽</label>
+            <input type="number" id="trPrice" value="0" min="0" oninput="calcTransport()">
+            <p class="hint">Нужна только чтобы проверить повышающий
+              коэффициент — он применяется от 10 млн ₽.</p></div>
+        </div>
+        <div class="calc-result" id="trOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Транспортный налог')">Скачать / печать</button>
+      </div>
+    </div>
   </div>
 </main>
 
-<script src="js/qr.js?v=133"></script>
-<script src="js/partners.js?v=133"></script>
-<script src="js/rates.js?v=133"></script>
-<script src="js/themes.js?v=133"></script>
-<script src="js/api.js?v=133"></script>
-<script src="js/app.js?v=133"></script>
-<script src="js/progress.js?v=133"></script>
-<script src="js/palette.js?v=133"></script>
-<script src="js/ai.js?v=133"></script>
+<script src="js/qr.js?v=134"></script>
+<script src="js/partners.js?v=134"></script>
+<script src="js/rates.js?v=134"></script>
+<script src="js/themes.js?v=134"></script>
+<script src="js/api.js?v=134"></script>
+<script src="js/app.js?v=134"></script>
+<script src="js/progress.js?v=134"></script>
+<script src="js/palette.js?v=134"></script>
+<script src="js/ai.js?v=134"></script>
 <script>
 initPage("calc.html");
 
@@ -909,6 +965,61 @@ function calcPenalty() {
 }
 
 /* --- 3. Отпускные --- */
+/* --- Налог на имущество физлиц, НК РФ гл. 32 --- */
+function calcPropTax() {
+  const kind = document.getElementById("ptKind").value;
+  const cadastral = +document.getElementById("ptCad").value || 0;
+  const area = +document.getElementById("ptArea").value || 0;
+  const share = +document.getElementById("ptShare").value || 1;
+  const children = +document.getElementById("ptKids").value || 0;
+
+  const r = RATES.propertyOwnTax({ cadastral, area, kind, share, children });
+
+  document.getElementById("ptOut").innerHTML = `
+    <p>Налог за год:</p><div class="big">${fmt(r.tax)}</div>
+    ${r.zeroByDeduction
+      ? `<p style="margin-top:10px"><b>Налога нет.</b> Вычет покрыл всю площадь —
+           квитанции и не должно быть.</p>`
+      : `<table class="calc-table" style="margin-top:12px">
+           <tr><td>Не облагается (вычет)</td><td>${r.freeM2} м²</td></tr>
+           <tr><td>Облагается</td><td>${r.taxedM2} м²</td></tr>
+           <tr><td>Кадастровая за м²</td><td>${fmt(r.perM2)}</td></tr>
+           <tr><td>Налоговая база</td><td>${fmt(r.base)}</td></tr>
+           <tr><td>Ставка</td><td>${(r.rate * 100).toFixed(2).replace(".00", "")}%</td></tr>
+         </table>`}
+    <p style="color:var(--muted);font-size:var(--t-xs);margin-top:8px">
+      Вычет применяется САМ, заявление не нужно, и даётся на каждый объект.
+      Ставку устанавливает муниципалитет: 0,1% — типовая, до 0,3% — предел
+      по общему правилу. Точную ставку своего города смотрите на сайте ФНС
+      в справочнике ставок. ${RATES.disclaimer()}
+    </p>`;
+}
+
+/* --- Транспортный налог, НК РФ ст. 361 и 362 --- */
+function calcTransport() {
+  const hp = +document.getElementById("trHp").value || 0;
+  const months = +document.getElementById("trMonths").value || 0;
+  const price = +document.getElementById("trPrice").value || 0;
+
+  const r = RATES.transportTax({ hp, months, price });
+
+  document.getElementById("trOut").innerHTML = `
+    <p>По федеральной ставке:</p><div class="big">${fmt(r.base)}</div>
+    <table class="calc-table" style="margin-top:12px">
+      <tr><td>Базовая ставка</td><td>${r.rate} ₽ за л.с.</td></tr>
+      ${r.luxury > 1 ? `<tr><td>Повышающий коэффициент (от 10 млн ₽)</td><td>×${r.luxury}</td></tr>` : ""}
+      <tr class="best"><td>Сколько может выйти в вашем регионе</td>
+          <td>${fmt(r.min)} — ${fmt(r.max)}</td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:var(--t-xs);margin-top:8px">
+      Федеральная ставка — ориентир, а не итог: регион вправе изменить её
+      не более чем в десять раз в любую сторону, поэтому налог на одну и ту
+      же машину в разных регионах отличается в разы. Точную ставку своего
+      региона смотрите в справочнике ставок на сайте ФНС.
+      ${RATES.disclaimer()}
+    </p>`;
+}
+
 /* --- Взносы ИП за неполный год, НК РФ ст. 430 п. 5 --- */
 function calcPartYear() {
   const from = document.getElementById("pyFrom").value || null;
@@ -2156,6 +2267,10 @@ const CALC_FIELDS = {
                fields: ["fnSum","fnMonths","fnIntent","fnMit"], run: "calcFines" },
   severance: { out: "svOut", title: "Пособие при сокращении",
                fields: ["svAvg","svMonths"], run: "calcSeverance" },
+  proptax:   { out: "ptOut", title: "Налог на квартиру",
+               fields: ["ptKind","ptCad","ptArea","ptShare","ptKids"], run: "calcPropTax" },
+  transport: { out: "trOut", title: "Транспортный налог",
+               fields: ["trHp","trMonths","trPrice"], run: "calcTransport" },
 };
 
 function readFields(kind) {

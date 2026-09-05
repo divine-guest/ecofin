@@ -313,5 +313,62 @@ console.log("\n— Выходное пособие при сокращении (
 }
 
 
+console.log("\n— Налог на имущество физлиц (гл. 32 НК) —");
+{
+  /* Квартира 60 м² за 6 млн: вычет 20 м², облагается 40 м².
+     100 000 ₽ за метр × 40 м² × 0,1% = 4 000 ₽. */
+  const a = R.propertyOwnTax({ cadastral: 6000000, area: 60, kind: "flat" });
+  ok(a.tax === 4000, `квартира 60 м² за 6 млн: ${a.tax}`, a.tax);
+  ok(a.taxedM2 === 40, "вычет 20 м² вычтен из площади", a.taxedM2);
+
+  /* Маленькая квартира не облагается вовсе — про это не знают, ждут
+     квитанцию и волнуются, что она не пришла. */
+  const b = R.propertyOwnTax({ cadastral: 2000000, area: 20, kind: "flat" });
+  ok(b.tax === 0 && b.zeroByDeduction, "квартира 20 м² — налога нет вовсе", b.tax);
+
+  /* Дом: вычет 50 м², а не 20. */
+  const h = R.propertyOwnTax({ cadastral: 10000000, area: 100, kind: "house" });
+  ok(h.taxedM2 === 50, "у дома вычет 50 м²", h.taxedM2);
+
+  /* Комната: вычет 10 м². */
+  const rm = R.propertyOwnTax({ cadastral: 1500000, area: 15, kind: "room" });
+  ok(rm.taxedM2 === 5, "у комнаты вычет 10 м²", rm.taxedM2);
+
+  const half = R.propertyOwnTax({ cadastral: 6000000, area: 60, kind: "flat", share: 0.5, months: 6 });
+  ok(half.tax === 1000, "половина доли за полгода — четверть налога", half.tax);
+
+  /* Многодетным дополнительно 5 м² на ребёнка для квартиры. */
+  const kids = R.propertyOwnTax({ cadastral: 6000000, area: 60, kind: "flat", children: 2 });
+  ok(kids.tax === 3000, "два ребёнка добавляют 10 м² вычета", kids.tax);
+
+  /* Дороже 300 млн — ставка 2%, а не 0,1%. */
+  const lux = R.propertyOwnTax({ cadastral: 400000000, area: 400, kind: "flat" });
+  ok(lux.rate === R.propertyOwn.rateLuxury, "от 300 млн ставка 2%", lux.rate);
+}
+
+console.log("\n— Транспортный налог (ст. 361 и 362 НК) —");
+{
+  const a = R.transportTax({ hp: 120 });
+  ok(a.rate === 3.5, "120 л.с. попадают в ступень 100–150", a.rate);
+  ok(a.base === 420, `налог по федеральной ставке: ${a.base}`, a.base);
+
+  /* Регион вправе изменить ставку не более чем в десять раз — вилка
+     честнее одного числа, потому что итог всё равно решает регион. */
+  ok(a.min === 42 && a.max === 4200, "вилка регионов — десятикратная", [a.min, a.max]);
+
+  const b = R.transportTax({ hp: 300, price: 12000000 });
+  ok(b.luxury === 3, "от 10 млн ₽ включается повышающий коэффициент", b.luxury);
+  ok(b.base === 13500, `300 л.с. с коэффициентом: ${b.base}`, b.base);
+
+  const c = R.transportTax({ hp: 120, months: 6 });
+  ok(c.base === 210, "полгода владения — половина налога", c.base);
+
+  /* Ступени границами не путаются: ровно 100 л.с. — ещё нижняя ставка. */
+  ok(R.transportTax({ hp: 100 }).rate === 2.5, "ровно 100 л.с. — ставка 2,5");
+  ok(R.transportTax({ hp: 101 }).rate === 3.5, "101 л.с. — уже 3,5");
+  ok(R.transportTax({ hp: 251 }).rate === 15, "свыше 250 — ставка 15");
+}
+
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

@@ -235,6 +235,61 @@ const RATES = {
     ],
   },
 
+  /* --- Налог на имущество физлиц, НК РФ гл. 32 ---
+
+     Считается от КАДАСТРОВОЙ стоимости, а не от рыночной и не от той,
+     за которую покупали. Кадастровую смотрят в личном кабинете ФНС или
+     на публичной кадастровой карте — это первое, чего люди не знают.
+
+     Второе, чего не знают: часть площади налогом не облагается вовсе.
+     Вычет даётся на каждый объект и не требует заявления — он
+     применяется сам. Из-за этого налог на маленькую квартиру часто
+     оказывается нулевым, а человек ждёт квитанцию.
+
+     Ставки устанавливает муниципалитет: 0,1% — типовая для жилья,
+     до 0,3% — предельная по общему правилу, 2% — для объектов дороже
+     300 млн рублей (ст. 406). */
+  propertyOwn: {
+    deductionM2: {
+      room: 10,        // комната или часть квартиры
+      flat: 20,        // квартира или часть дома
+      house: 50,       // жилой дом
+    },
+    /* Многодетным — дополнительно за каждого ребёнка, ст. 403 п. 6.1. */
+    extraPerChildM2: { room: 5, flat: 5, house: 7 },
+    rateTypical: 0.001,   // 0,1%
+    rateMax: 0.003,       // предел по общему правилу
+    rateLuxury: 0.02,     // от 300 млн рублей
+    luxuryFrom: 300000000,
+    article: "гл. 32 НК РФ",
+  },
+
+  /* --- Транспортный налог, НК РФ ст. 361 и 362 ---
+
+     Базовые ставки в кодексе, но регион вправе изменить их не более чем
+     в десять раз в любую сторону. Поэтому федеральный расчёт —
+     ориентир, а не итог: в Москве и в глубинке налог на одну и ту же
+     машину отличается в разы.
+
+     Повышающий коэффициент — для дорогих машин из перечня Минпромторга,
+     он публикуется раз в год.
+
+     Считается по МЕСЯЦАМ владения, причём месяц засчитывается целиком,
+     если машина была в собственности больше половины месяца. */
+  transport: {
+    carRates: [
+      { upTo: 100, rate: 2.5 },
+      { upTo: 150, rate: 3.5 },
+      { upTo: 200, rate: 5 },
+      { upTo: 250, rate: 7.5 },
+      { upTo: Infinity, rate: 15 },
+    ],
+    regionFactorMax: 10,     // во сколько раз регион может изменить ставку
+    luxuryFrom: 10000000,    // порог для повышающего коэффициента
+    luxuryFactor: 3,
+    article: "ст. 361 и 362 НК РФ",
+  },
+
   /* --- Штрафы налоговой, НК РФ ст. 119 и 122 ---
 
      Два самых частых штрафа, и их постоянно путают: за НЕСДАННУЮ
@@ -669,6 +724,79 @@ const RATES = {
   },
 
   /* Подпись «данные актуальны на …» для вывода под расчётами. */
+  /* Налог на имущество физлиц — НК РФ гл. 32.
+
+     Главное, чего не знают: часть площади налогом не облагается вовсе,
+     и вычет применяется сам, без заявления. Квартира в 20 квадратов
+     облагается по нулю — а человек ждёт квитанцию и волнуется, что она
+     не пришла.
+
+     Считаем от кадастровой стоимости за квадратный метр: так вычет
+     вычитается честно, в метрах, а не приблизительно в рублях.       */
+  propertyOwnTax({ cadastral = 0, area = 0, kind = "flat", share = 1,
+                   months = 12, children = 0, rate = null } = {}) {
+    const P = this.propertyOwn;
+    const value = Math.max(0, cadastral);
+    const m2 = Math.max(0, area);
+    if (!value || !m2) return { tax: 0, taxedM2: 0, freeM2: 0, base: 0 };
+
+    const perM2 = value / m2;
+    const deduction = (P.deductionM2[kind] || P.deductionM2.flat)
+      + (children > 0 ? (P.extraPerChildM2[kind] || 0) * children : 0);
+
+    const taxedM2 = Math.max(0, m2 - deduction);
+    const base = perM2 * taxedM2;
+
+    /* Ставка по умолчанию — типовая 0,1%; для дорогих объектов кодекс
+       разрешает 2%, и это надо показывать, а не молчать. */
+    const r = rate !== null ? rate
+      : (value >= P.luxuryFrom ? P.rateLuxury : P.rateTypical);
+
+    const part = Math.max(0, Math.min(1, share));
+    const monthsPart = Math.max(0, Math.min(12, months)) / 12;
+
+    return {
+      tax: Math.round(base * r * part * monthsPart),
+      taxedM2: Math.round(taxedM2 * 10) / 10,
+      freeM2: Math.min(deduction, m2),
+      base: Math.round(base),
+      perM2: Math.round(perM2),
+      rate: r,
+      zeroByDeduction: taxedM2 === 0,
+    };
+  },
+
+  /* Транспортный налог — НК РФ ст. 361 и 362.
+
+     Федеральные ставки здесь — ориентир, а не итог: регион вправе
+     изменить их не более чем в десять раз в любую сторону, и налог на
+     одну и ту же машину в разных регионах отличается в разы. Поэтому
+     возвращаем и вилку, в которую регион обязан уложиться: она честнее
+     одного числа.                                                    */
+  transportTax({ hp = 0, months = 12, share = 1, price = 0, regionFactor = 1 } = {}) {
+    const T = this.transport;
+    const power = Math.max(0, hp);
+    if (!power) return { tax: 0, base: 0, rate: 0, min: 0, max: 0 };
+
+    const row = T.carRates.find(r => power <= r.upTo) || T.carRates[T.carRates.length - 1];
+    const baseRate = row.rate;
+
+    const luxury = price >= T.luxuryFrom ? T.luxuryFactor : 1;
+    const part = Math.max(0, Math.min(1, share));
+    const monthsPart = Math.max(0, Math.min(12, months)) / 12;
+
+    const calc = f => Math.round(power * baseRate * f * luxury * part * monthsPart);
+
+    return {
+      tax: calc(Math.max(0, regionFactor)),
+      base: calc(1),
+      rate: baseRate,
+      luxury,
+      min: calc(1 / T.regionFactorMax),
+      max: calc(T.regionFactorMax),
+    };
+  },
+
   /* Взносы ИП за неполный год — НК РФ ст. 430 п. 5.
 
      Самая частая ошибка тех, кто открылся или закрылся в середине года:
