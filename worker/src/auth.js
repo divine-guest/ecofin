@@ -195,8 +195,31 @@ export async function updateProfile(request, env, origin, user) {
   if (name.length < 2) return fail(env, origin, "Имя слишком короткое");
   if (avatar === null)
     return fail(env, origin, "Фото не подошло: нужен JPEG, PNG или WebP до 45 КБ после сжатия");
-  await env.DB.prepare("UPDATE users SET name = ?, avatar = ? WHERE email = ?")
-    .bind(name, avatar, user.email).run();
+
+  /* Профиль: ответы знакомства и мастера календаря. Принимаем только
+     известные поля с известными значениями — это данные из браузера, и
+     класть их в базу как есть нельзя. Отсутствующее поле не стирает
+     сохранённое: мастер календаря шлёт свои три ключа и не должен
+     затирать ответы про сферу и цель. */
+  const ALLOWED = {
+    status: ["self", "ip", "ooo", "person", "start"],
+    sphere: ["services", "trade", "it", "build", "other"],
+    goal: ["tax", "docs", "money", "learn"],
+    who: ["ip", "ooo", "self", "person"],
+    mode: ["usn", "patent", "npd", "osno", "ausn", "none"],
+  };
+  let profile = user.profile ? (() => { try { return JSON.parse(user.profile); } catch { return {}; } })() : {};
+  if (profile === null || typeof profile !== "object") profile = {};
+  if (b.profile && typeof b.profile === "object") {
+    for (const [k, list] of Object.entries(ALLOWED)) {
+      if (list.includes(b.profile[k])) profile[k] = b.profile[k];
+    }
+    if (typeof b.profile.staff === "boolean") profile.staff = b.profile.staff;
+  }
+  const profileText = Object.keys(profile).length ? JSON.stringify(profile) : "";
+
+  await env.DB.prepare("UPDATE users SET name = ?, avatar = ?, profile = ? WHERE email = ?")
+    .bind(name, avatar, profileText, user.email).run();
   await logAction(env, user.email, "Обновлён профиль");
   const row = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(user.email).first();
   return json(env, origin, { user: publicUser(row) });

@@ -68,6 +68,23 @@ const PF = {
   },
   prefs() { try { return JSON.parse(localStorage.getItem(this.localKey("prefs")) || "{}"); } catch { return {}; } },
 
+  /* Профиль: кто человек, чем занимается, на каком режиме.
+     Хранится на сервере, а не в браузере.
+
+     Раньше ответы знакомства уходили в localStorage, а кабинет читал
+     пользователя с сервера — то есть не видел их никогда. Блок
+     «Рекомендуем для вас» не показался ни одному человеку, и при
+     входе с телефона ответы терялись целиком.
+
+     Дописываем поверх сохранённого, а не заменяем: мастер календаря
+     присылает свои три поля и не должен стирать ответы про сферу. */
+  async saveProfile(patch) {
+    const cur = (this.user() && this.user().profile) || {};
+    const next = { ...cur, ...patch };
+    await API.updateProfile({ profile: next });
+    return next;
+  },
+
   /* --- Мои документы: остаются в браузере, это черновики, а не аккаунт --- */
   docsKey() { const u = this.user(); return "pf_docs_" + (u ? u.email : "guest"); },
   docs() { try { return JSON.parse(localStorage.getItem(this.docsKey()) || "[]"); } catch { return []; } },

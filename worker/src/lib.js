@@ -146,6 +146,16 @@ export function validEmail(e) {
 }
 
 /* Публичное представление пользователя: пароль и внутренние поля наружу не уходят */
+/* Профиль хранится строкой JSON. Битая строка не должна ронять вход:
+   лучше пустой профиль, чем «нет связи с сервером» на ровном месте. */
+function safeProfile(raw) {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : null;
+  } catch { return null; }
+}
+
 export function publicUser(row) {
   if (!row) return null;
   const pro = isPro(row);
@@ -166,6 +176,11 @@ export function publicUser(row) {
     proUntil: row.pro_until || null,
     toolUses: row.tool_uses || 0,
     createdAt: row.created_at,
+    /* Ответы знакомства и мастера календаря. Раньше они лежали только
+       в браузере, поэтому кабинет, читающий пользователя с сервера, их
+       не видел никогда — блок «Рекомендуем для вас» не показался ни
+       разу, а при входе с телефона ответы терялись. */
+    profile: safeProfile(row.profile),
     /* Автопродление. canAutoRenew — есть ли вообще чем списывать:
        у тех, кому подписку выдали вручную или по промокоду, способа
        оплаты нет, и обещать им «отмену» было бы обманом. */

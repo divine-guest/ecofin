@@ -327,6 +327,40 @@ console.log("\n— Файлы js разбираются —");
      broken.join("; "));
 }
 
+/* Скрипты внутри страниц тоже должны разбираться.
+
+   Проверка выше смотрела только папку js. Но половина логики сайта
+   живёт прямо в страницах, и ошибка там страшнее: браузер бросает
+   разбор целиком, и страница выходит пустой. Так уже случалось —
+   второй модуль с именем PLAN в кабинете обрушил бы весь кабинет,
+   и ни одна проверка этого не увидела бы.
+
+   Каждый встроенный скрипт разбираем отдельно, а потом все вместе:
+   страница подключает их подряд, и повторно объявленное имя между
+   двумя блоками браузер тоже считает ошибкой. */
+console.log("\n— Скрипты внутри страниц разбираются —");
+{
+  const root = new URL("../", import.meta.url);
+  const pages = fs.readdirSync(root).filter(f => f.endsWith(".html"));
+  const broken = [];
+
+  for (const f of pages) {
+    const html = fs.readFileSync(new URL(f, root), "utf8");
+    /* Пропускаем внешние файлы и разметку для поисковиков: там JSON,
+       а не JavaScript. */
+    const blocks = [...html.matchAll(/<script(?![^>]*\ssrc=)(?![^>]*type="application)[^>]*>([\s\S]*?)<\/script>/g)]
+      .map(m => m[1]);
+    blocks.forEach((code, i) => {
+      try { new Function(code); } catch (e) { broken.push(`${f} #${i + 1}: ${e.message}`); }
+    });
+    if (blocks.length > 1) {
+      try { new Function(blocks.join("\n;\n")); }
+      catch (e) { broken.push(`${f} (все скрипты вместе): ${e.message}`); }
+    }
+  }
+  ok(broken.length === 0, `скрипты на ${pages.length} страницах разбираются`, broken.slice(0, 4).join("; "));
+}
+
 /* Подпись поля связана с самим полем.
 
    Визуально подпись стоит рядом, и глазами всё в порядке. Программе

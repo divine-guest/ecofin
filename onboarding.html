@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=138">
+<link rel="stylesheet" href="css/style.css?v=140">
 </head>
 <body>
 <main class="section tint-green">
@@ -43,12 +43,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=138"></script>
-<script src="js/api.js?v=138"></script>
-<script src="js/app.js?v=138"></script>
-<script src="js/progress.js?v=138"></script>
-<script src="js/palette.js?v=138"></script>
-<script src="js/ai.js?v=138"></script>
+<script src="js/themes.js?v=140"></script>
+<script src="js/api.js?v=140"></script>
+<script src="js/app.js?v=140"></script>
+<script src="js/progress.js?v=140"></script>
+<script src="js/palette.js?v=140"></script>
+<script src="js/ai.js?v=140"></script>
 <script>
 initPage("onboarding.html");
 
@@ -92,11 +92,17 @@ function render() {
     ${step > 0 ? `<br><button class="btn small secondary" onclick="step--;render()">← Назад</button>` : ""}
   `;
 }
-function pick(key, val) {
+async function pick(key, val) {
   answers[key] = val;
   step++;
   if (step < STEPS.length) return render();
-  PF.updateUser({ profile: answers });
+
+  /* Ответы уходят на сервер, а не в браузер. Раньше они оставались
+     здесь, и всё, ради чего эти вопросы задавались, не работало:
+     кабинет читает пользователя с сервера и профиля не видел. */
+  document.getElementById("wzBody").innerHTML = '<p class="hint">Сохраняем…</p>';
+  try { await PF.saveProfile(answers); }
+  catch (e) { toast("Не удалось сохранить: " + e.message); }
   PF.logAction("Пройден онбординг");
   trackEvent("onboarding_done");
   location.href = "dashboard.html";

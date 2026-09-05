@@ -53,6 +53,11 @@ const ROUTES = [
   ["POST", "/api/reminders/update", reminders.update, "user"],
   ["POST", "/api/reminders/delete", reminders.remove, "user"],
   ["POST", "/api/reminders/preset", reminders.addPreset, "user"],
+  /* Личный налоговый календарь: сначала показать, что получится,
+     потом заполнить. Оба под входом — сроки пишутся конкретному
+     человеку. */
+  ["GET", "/api/reminders/plan", reminders.planPreview, "user"],
+  ["POST", "/api/reminders/plan", reminders.planApply, "user"],
   /* Фоновые задачи ИИ: вопрос переживает переход на другую страницу. */
   /* Публичная лента: читают все, предлагают вошедшие, решает владелец. */
   /* Кабинет: сохранённые расчёты и история вопросов. */

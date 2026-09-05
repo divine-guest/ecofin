@@ -137,6 +137,12 @@ const API = {
     update(data) { return API.request("/api/reminders/update", { method: "POST", body: data }); },
     remove(id) { return API.request("/api/reminders/delete", { method: "POST", body: { id } }); },
     addPreset(id) { return API.request("/api/reminders/preset", { method: "POST", body: { id } }); },
+    /* Личный налоговый календарь: подбор сроков под режим и работников. */
+    plan({ who, mode, staff, sphere }) {
+      return API.request(`/api/reminders/plan?who=${who}&mode=${mode}`
+        + `&staff=${staff ? 1 : 0}&sphere=${encodeURIComponent(sphere || "")}`);
+    },
+    planApply(data) { return API.request("/api/reminders/plan", { method: "POST", body: data }); },
   },
   notifications: {
     list() { return API.request("/api/notifications"); },

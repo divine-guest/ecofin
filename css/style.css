@@ -797,8 +797,11 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
 }
 .cal-cell.other .d { color: var(--muted); opacity: .45; }
 .cal-cell.other.done { opacity: .55; }
-.cal-cell.future { background: var(--surface-2); cursor: default; }
+/* Будущий день выглядит спокойнее прошедшего, но кликается: копилку
+   в нём отметить нельзя, а срок поставить — как раз да. */
+.cal-cell.future { background: var(--surface-2); }
 .cal-cell.future .d { color: var(--muted); opacity: .5; }
+.cal-cell { cursor: pointer; transition: background .15s; }
 .cal-cell.clickable { cursor: pointer; transition: background .15s; }
 .cal-cell.clickable:hover { background: color-mix(in srgb, var(--violet) 10%, var(--surface)); }
 .cal-cell.today .d { outline: 2px solid var(--violet); outline-offset: 1px; }
@@ -808,6 +811,22 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
 .cal-cell .mark {
   position: absolute; inset: 0; display: flex; align-items: center;
   justify-content: center; font-size: 1.2rem; pointer-events: none; opacity: .9;
+}
+
+/* День с назначенным сроком.
+
+   Метка — засечка в углу ячейки, а не точка по центру: центр занят
+   отметкой копилки, и две вещи в одном месте наложились бы. Число
+   внутри появляется, только когда сроков больше одного, — иначе
+   единица на каждом дне превращается в шум. */
+.cal-cell.has-due { box-shadow: inset 0 0 0 1.5px var(--primary); }
+.cal-cell .cal-due {
+  position: absolute; top: 5px; right: 5px;
+  min-width: 15px; height: 15px; padding: 0 3px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--primary); color: #fff;
+  border-radius: 999px; font-size: 10px; font-weight: 800;
+  font-variant-numeric: tabular-nums; pointer-events: none;
 }
 /* Бургер/Меню: скрыто на десктопе */
 .nav-burger { display: none; }
