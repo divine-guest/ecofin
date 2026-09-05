@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=130">
+<link rel="stylesheet" href="css/style.css?v=131">
 </head>
 <body>
 <main class="section tint-green">
@@ -42,7 +42,7 @@
       <div class="card">
         <div class="stat-value" id="exLimit">—</div><div class="stat-label">лимит месяца</div>
         <div style="display:flex;gap:6px;margin-top:10px">
-          <input type="number" id="exLimInp" placeholder="₽" style="padding:7px 10px">
+          <input type="number" id="exLimInp" aria-label="Дневной лимит трат, ₽" placeholder="₽" style="padding:7px 10px">
           <button class="btn small" onclick="setLimit()">Задать</button>
         </div>
       </div>
@@ -52,8 +52,8 @@
       <div class="card">
         <h3>Новая запись</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
-          <input type="number" id="exSum" placeholder="Сумма, ₽" style="flex:1;min-width:110px">
-          <select id="exCat" style="width:auto"></select>
+          <input type="number" id="exSum" aria-label="Сумма траты, ₽" placeholder="Сумма, ₽" style="flex:1;min-width:110px">
+          <select id="exCat" aria-label="Категория траты" style="width:auto"></select>
           <button class="btn" onclick="addExp()">Добавить</button>
         </div>
         <div id="exList" style="max-height:340px;overflow-y:auto"></div>
@@ -66,13 +66,13 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=130"></script>
-<script src="js/api.js?v=130"></script>
-<script src="js/app.js?v=130"></script>
-<script src="js/progress.js?v=130"></script>
-<script src="js/palette.js?v=130"></script>
-<script src="js/ai.js?v=130"></script>
-<script src="js/competencies.js?v=130"></script>
+<script src="js/themes.js?v=131"></script>
+<script src="js/api.js?v=131"></script>
+<script src="js/app.js?v=131"></script>
+<script src="js/progress.js?v=131"></script>
+<script src="js/palette.js?v=131"></script>
+<script src="js/ai.js?v=131"></script>
+<script src="js/competencies.js?v=131"></script>
 <script>
 initPage("expenses.html");
 
