@@ -240,5 +240,78 @@ console.log("\n— Налог с вклада —");
   ok(lowRate.tax > d.tax, "чем ниже ключевая ставка, тем больше налог: минимум меньше");
 }
 
+console.log("\n— Взносы ИП за неполный год (ст. 430 п. 5 НК) —");
+{
+  const full = R.ipContributionsFor({}).fixed;
+  ok(full === R.ipContributions.fixed, `весь год — полная сумма: ${full}`, full);
+
+  /* Ровно половина года — ровно половина взносов. Проверка на круглом
+     числе: если пропорция где-то съедет, здесь это видно сразу. */
+  const half = R.ipContributionsFor({ from: `${R.year}-07-01` }).fixed;
+  ok(near(half, full / 2, 2), `с 1 июля — половина: ${half}`, half);
+
+  const quarter = R.ipContributionsFor({ to: `${R.year}-03-31` }).fixed;
+  ok(near(quarter, full / 4, 2), `по 31 марта — четверть: ${quarter}`, quarter);
+
+  /* Неполный месяц считается по календарным дням, а не отбрасывается.
+     15 марта: 17 дней марта из 31 плюс девять полных месяцев. */
+  const mid = R.ipContributionsFor({ from: `${R.year}-03-15` }).fixed;
+  const expect = full / 12 * (9 + 17 / 31);
+  ok(near(mid, expect, 3), `с 15 марта — неполный месяц по дням: ${mid}`, mid);
+
+  /* Период вне года не должен добавлять ничего: деятельность, начатая
+     в прошлом декабре, к этому году добавляет ноль. */
+  const before = R.ipContributionsFor({ from: `${R.year - 1}-01-01` }).fixed;
+  ok(before === full, "период шире года обрезается по году", before);
+
+  const none = R.ipContributionsFor({ from: `${R.year}-12-31`, to: `${R.year}-01-01` }).fixed;
+  ok(none === 0, "конец раньше начала — ноль, а не отрицательное", none);
+}
+
+console.log("\n— Штрафы налоговой (ст. 119 и 122 НК) —");
+{
+  const a = R.taxFines({ unpaid: 100000, monthsLate: 3 });
+  ok(a.lateReturn === 15000, `три месяца — 5% в месяц: ${a.lateReturn}`, a.lateReturn);
+  ok(a.unpaidTax === 20000, `неуплата по неосторожности 20%: ${a.unpaidTax}`, a.unpaidTax);
+  ok(a.total === 35000, "оба штрафа складываются", a.total);
+
+  /* Потолок 30% — иначе за два года просрочки насчиталось бы 120%. */
+  const b = R.taxFines({ unpaid: 100000, monthsLate: 24 });
+  ok(b.lateReturn === 30000, `потолок 30% держится: ${b.lateReturn}`, b.lateReturn);
+
+  /* Минимум 1000 ₽ платят и при нулевом налоге: штраф не за деньги,
+     а за несданную бумагу. */
+  const c = R.taxFines({ unpaid: 0, monthsLate: 1 });
+  ok(c.lateReturn === 1000, "минимум 1000 ₽ при нулевом налоге", c.lateReturn);
+
+  const d = R.taxFines({ unpaid: 100000, monthsLate: 1, intentional: true });
+  ok(d.unpaidTax === 40000, "умышленная неуплата — 40%", d.unpaidTax);
+
+  /* Неполный месяц считается как полный — это буква закона. */
+  const e = R.taxFines({ unpaid: 100000, monthsLate: 1.1 });
+  ok(e.lateReturn === 10000, "неполный месяц считается как полный", e.lateReturn);
+
+  const f = R.taxFines({ unpaid: 100000, monthsLate: 3, mitigations: 2 });
+  ok(f.withMitigation === Math.round(f.total / 4), "два смягчающих — вчетверо меньше",
+     f.withMitigation);
+}
+
+console.log("\n— Выходное пособие при сокращении (ст. 178 ТК) —");
+{
+  const a = R.severancePay({ avgMonth: 60000, monthsUnemployed: 2 });
+  ok(a.onDismissal === 60000, "пособие при увольнении — один средний заработок");
+  ok(a.forSearch === 120000, "плюс два месяца на поиск работы", a.forSearch);
+  ok(a.total === 180000, "всего три средних заработка", a.total);
+
+  /* Больше двух месяцев на поиск закон не даёт: третий — по решению
+     службы занятости, и его считать за гарантию нельзя. */
+  const b = R.severancePay({ avgMonth: 60000, monthsUnemployed: 5 });
+  ok(b.extraMonths === 2, "сверх двух месяцев не считаем", b.extraMonths);
+
+  const c = R.severancePay({ avgMonth: 60000, monthsUnemployed: 0 });
+  ok(c.total === 60000, "сразу нашёл работу — только пособие", c.total);
+}
+
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

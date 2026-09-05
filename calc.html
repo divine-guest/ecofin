@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Калькуляторы и счета — ЭкоФин</title>
 <!-- seo:start -->
-<meta name="description" content="25 калькуляторов: сравнение всех налоговых режимов, взносы за работников, налог с продажи квартиры и авто, декретные, алименты, налог с вклада, пени, госпошлина и счёт с QR-кодом СБП.">
+<meta name="description" content="28 калькуляторов: сравнение всех налоговых режимов, штрафы налоговой, взносы за неполный год, выходное пособие, налог с продажи квартиры и авто, декретные, алименты, пени, госпошлина и счёт с QR-кодом СБП.">
 <link rel="canonical" href="https://ecofin26.ru/calc.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ЭкоФин">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:title" content="Калькуляторы и счета — ЭкоФин">
-<meta property="og:description" content="25 калькуляторов: сравнение всех налоговых режимов, взносы за работников, налог с продажи квартиры и авто, декретные, алименты, налог с вклада, пени, госпошлина и счёт с QR-кодом СБП.">
+<meta property="og:description" content="28 калькуляторов: сравнение всех налоговых режимов, штрафы налоговой, взносы за неполный год, выходное пособие, налог с продажи квартиры и авто, декретные, алименты, пени, госпошлина и счёт с QR-кодом СБП.">
 <meta property="og:url" content="https://ecofin26.ru/calc.html">
 <meta property="og:image" content="https://ecofin26.ru/og-cover.png">
 <meta property="og:image:width" content="1200">
@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=131">
+<link rel="stylesheet" href="css/style.css?v=133">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -109,6 +109,9 @@
       <button class="tab" data-panel="calcAlimony" onclick="switchCalc(22,this)">Алименты</button>
       <button class="tab" data-panel="calcDeposit" onclick="switchCalc(23,this)">Налог с вклада</button>
       <button class="tab" data-panel="calcLimit" onclick="switchCalc(24,this)">Срок исковой давности</button>
+      <button class="tab" data-panel="calcPartYear" onclick="switchCalc(25,this)">Взносы за неполный год</button>
+      <button class="tab" data-panel="calcFines" onclick="switchCalc(26,this)">Штрафы налоговой</button>
+      <button class="tab" data-panel="calcSeverance" onclick="switchCalc(27,this)">Пособие при сокращении</button>
     </div>
 
     <!-- 1. Налоговые режимы -->
@@ -719,18 +722,83 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Срок исковой давности')">Скачать / печать</button>
       </div>
     </div>
+
+    <!-- 26. Взносы ИП за неполный год -->
+    <div class="tab-panel game-stage" id="calcPartYear">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="pyFrom">Дата регистрации ИП</label>
+            <input type="date" id="pyFrom" oninput="calcPartYear()">
+            <p class="hint">Оставьте пустым, если работали с начала года.</p></div>
+          <div class="form-group"><label for="pyTo">Дата прекращения</label>
+            <input type="date" id="pyTo" oninput="calcPartYear()">
+            <p class="hint">Оставьте пустым, если работаете дальше.</p></div>
+        </div>
+        <div class="calc-result" id="pyOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Взносы за неполный год')">Скачать / печать</button>
+      </div>
+    </div>
+
+    <!-- 27. Штрафы налоговой -->
+    <div class="tab-panel game-stage" id="calcFines">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="fnSum">Неуплаченный налог, ₽</label>
+            <input type="number" id="fnSum" value="100000" min="0" oninput="calcFines()">
+            <p class="hint">Сумма из декларации, которую не заплатили в срок.</p></div>
+          <div class="form-group"><label for="fnMonths">Месяцев просрочки декларации</label>
+            <input type="number" id="fnMonths" value="3" min="0" max="60" oninput="calcFines()">
+            <p class="hint">Считаются и полные, и неполные: один день в новом
+              месяце добавляет целые 5%.</p></div>
+          <div class="form-group"><label for="fnIntent">Как оценивают неуплату</label>
+            <select id="fnIntent" onchange="calcFines()">
+              <option value="no">По неосторожности — 20%</option>
+              <option value="yes">Умышленно — 40%</option>
+            </select></div>
+          <div class="form-group"><label for="fnMit">Смягчающих обстоятельств</label>
+            <select id="fnMit" onchange="calcFines()">
+              <option value="0">Нет</option>
+              <option value="1">Одно</option>
+              <option value="2">Два</option>
+              <option value="3">Три и больше</option>
+            </select>
+            <p class="hint">Каждое снижает штраф не менее чем вдвое —
+              но решает инспекция или суд, и просить надо письменно.</p></div>
+        </div>
+        <div class="calc-result" id="fnOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Штрафы налоговой')">Скачать / печать</button>
+      </div>
+    </div>
+
+    <!-- 28. Выходное пособие при сокращении -->
+    <div class="tab-panel game-stage" id="calcSeverance">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="svAvg">Средний месячный заработок, ₽</label>
+            <input type="number" id="svAvg" value="60000" min="0" oninput="calcSeverance()">
+            <p class="hint">Не оклад: в средний заработок входят премии и
+              надбавки, поэтому он обычно выше оклада.</p></div>
+          <div class="form-group"><label for="svMonths">Месяцев без работы после увольнения</label>
+            <input type="number" id="svMonths" value="2" min="0" max="3" oninput="calcSeverance()">
+            <p class="hint">За второй месяц платят, если не устроились;
+              за третий — по решению службы занятости.</p></div>
+        </div>
+        <div class="calc-result" id="svOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Пособие при сокращении')">Скачать / печать</button>
+      </div>
+    </div>
   </div>
 </main>
 
-<script src="js/qr.js?v=131"></script>
-<script src="js/partners.js?v=131"></script>
-<script src="js/rates.js?v=131"></script>
-<script src="js/themes.js?v=131"></script>
-<script src="js/api.js?v=131"></script>
-<script src="js/app.js?v=131"></script>
-<script src="js/progress.js?v=131"></script>
-<script src="js/palette.js?v=131"></script>
-<script src="js/ai.js?v=131"></script>
+<script src="js/qr.js?v=133"></script>
+<script src="js/partners.js?v=133"></script>
+<script src="js/rates.js?v=133"></script>
+<script src="js/themes.js?v=133"></script>
+<script src="js/api.js?v=133"></script>
+<script src="js/app.js?v=133"></script>
+<script src="js/progress.js?v=133"></script>
+<script src="js/palette.js?v=133"></script>
+<script src="js/ai.js?v=133"></script>
 <script>
 initPage("calc.html");
 
@@ -841,6 +909,79 @@ function calcPenalty() {
 }
 
 /* --- 3. Отпускные --- */
+/* --- Взносы ИП за неполный год, НК РФ ст. 430 п. 5 --- */
+function calcPartYear() {
+  const from = document.getElementById("pyFrom").value || null;
+  const to = document.getElementById("pyTo").value || null;
+  const r = RATES.ipContributionsFor({ from, to });
+
+  const full = from || to;
+  document.getElementById("pyOut").innerHTML = `
+    <p>Фиксированные взносы за период:</p><div class="big">${fmt(r.fixed)}</div>
+    <p style="margin-top:10px">За полный год было бы: <b>${fmt(r.full)}</b></p>
+    ${full && r.saved > 0
+      ? `<p>Платить меньше на <b>${fmt(r.saved)}</b></p>`
+      : `<p style="color:var(--muted)">Период — весь год, взносы полные.</p>`}
+    <p style="color:var(--muted);font-size:var(--t-xs);margin-top:8px">
+      Полных месяцев: ${r.months}${r.days ? `, плюс ${r.days} дн. в неполных` : ""}.
+      За неполный месяц взносы считаются пропорционально календарным дням —
+      ст. 430 п. 5 НК РФ. Переменная часть (1% с дохода свыше 300 000 ₽)
+      считается отдельно и от периода не зависит. ${RATES.disclaimer()}
+    </p>`;
+}
+
+/* --- Штрафы налоговой, НК РФ ст. 119 и 122 --- */
+function calcFines() {
+  const unpaid = +document.getElementById("fnSum").value || 0;
+  const monthsLate = +document.getElementById("fnMonths").value || 0;
+  const intentional = document.getElementById("fnIntent").value === "yes";
+  const mitigations = +document.getElementById("fnMit").value || 0;
+
+  const r = RATES.taxFines({ unpaid, monthsLate, intentional, mitigations });
+  const capped = unpaid > 0 && r.lateReturn >= unpaid * RATES.fines.lateReturn.maxShare;
+
+  document.getElementById("fnOut").innerHTML = `
+    <p>Штрафы вместе:</p><div class="big">${fmt(r.total)}</div>
+    <table class="calc-table" style="margin-top:12px">
+      <tr><td>За несданную декларацию (ст. 119)${capped ? " — потолок 30%" : ""}</td>
+          <td>${fmt(r.lateReturn)}</td></tr>
+      <tr><td>За неуплату налога (ст. 122)${intentional ? " — умышленно, 40%" : " — 20%"}</td>
+          <td>${fmt(r.unpaidTax)}</td></tr>
+    </table>
+    ${mitigations
+      ? `<p style="margin-top:10px">Со смягчающими может выйти
+           <b>${fmt(r.withMitigation)}</b> — снижение минимум в ${r.divisor} раза.</p>`
+      : `<p style="margin-top:10px;color:var(--muted)">Смягчающие обстоятельства
+           снижают штраф не менее чем вдвое. Их надо заявить письменно —
+           в разделе «Документы» есть готовое ходатайство.</p>`}
+    <p style="color:var(--muted);font-size:var(--t-xs);margin-top:8px">
+      Это два РАЗНЫХ нарушения, и назначают их вместе: не сдал декларацию
+      и не заплатил налог. Минимум по ст. 119 — 1 000 ₽, даже если налог
+      нулевой. Пени за просрочку считаются отдельно. ${RATES.disclaimer()}
+    </p>`;
+}
+
+/* --- Выходное пособие при сокращении, ТК РФ ст. 178 --- */
+function calcSeverance() {
+  const avgMonth = +document.getElementById("svAvg").value || 0;
+  const monthsUnemployed = +document.getElementById("svMonths").value || 0;
+  const r = RATES.severancePay({ avgMonth, monthsUnemployed });
+
+  document.getElementById("svOut").innerHTML = `
+    <p>Всего к получению:</p><div class="big">${fmt(r.total)}</div>
+    <table class="calc-table" style="margin-top:12px">
+      <tr><td>Пособие при увольнении</td><td>${fmt(r.onDismissal)}</td></tr>
+      <tr><td>За время поиска работы (${r.extraMonths} мес.)</td><td>${fmt(r.forSearch)}</td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:var(--t-xs);margin-top:8px">
+      Про пособие при увольнении знают все, про выплаты за время поиска —
+      почти никто. За второй месяц платят, если не устроились, за третий —
+      по решению службы занятости, и встать на учёт надо в течение
+      14 дней после увольнения. Выплаты НДФЛ не облагаются в пределах
+      трёх средних заработков. ${RATES.disclaimer()}
+    </p>`;
+}
+
 function calcVacation() {
   const s = +document.getElementById("vpSum").value || 0;
   const d = +document.getElementById("vpDays").value || 0;
@@ -2009,6 +2150,12 @@ const CALC_FIELDS = {
                fields: ["frPay","frMonths","frPerYear","frUsed"], run: "calcFire" },
   usnvat:    { out: "uvOut", title: "НДС на УСН",
                fields: ["uvIncome","uvInput"], run: "calcUsnVat" },
+  partyear:  { out: "pyOut", title: "Взносы за неполный год",
+               fields: ["pyFrom","pyTo"], run: "calcPartYear" },
+  fines:     { out: "fnOut", title: "Штрафы налоговой",
+               fields: ["fnSum","fnMonths","fnIntent","fnMit"], run: "calcFines" },
+  severance: { out: "svOut", title: "Пособие при сокращении",
+               fields: ["svAvg","svMonths"], run: "calcSeverance" },
 };
 
 function readFields(kind) {

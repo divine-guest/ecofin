@@ -235,6 +235,47 @@ const RATES = {
     ],
   },
 
+  /* --- Штрафы налоговой, НК РФ ст. 119 и 122 ---
+
+     Два самых частых штрафа, и их постоянно путают: за НЕСДАННУЮ
+     декларацию и за НЕУПЛАЧЕННЫЙ налог. Их могут назначить оба сразу —
+     это разные нарушения.
+
+     За непредставление декларации (ст. 119): 5% от неуплаченной по ней
+     суммы за каждый полный и неполный месяц просрочки. Но не больше 30%
+     и не меньше 1000 рублей — даже когда налог нулевой.
+
+     За неуплату (ст. 122): 20% от неуплаченной суммы, а если докажут
+     умысел — 40%.
+
+     Смягчающие обстоятельства снижают штраф не менее чем вдвое
+     (ст. 112 и 114), нижнего предела закон не ставит. */
+  fines: {
+    lateReturn: {
+      ratePerMonth: 0.05,
+      maxShare: 0.30,
+      minRub: 1000,
+      article: "ст. 119 НК РФ",
+    },
+    unpaidTax: {
+      rate: 0.20,
+      rateIntentional: 0.40,
+      article: "ст. 122 НК РФ",
+    },
+    mitigationDivisor: 2,   // «не менее чем в два раза», ст. 114 п. 3
+  },
+
+  /* --- Выходное пособие при сокращении, ТК РФ ст. 178 ---
+
+     Платят не один раз, а до трёх: пособие при увольнении, затем за
+     второй месяц, если человек не устроился, и за третий — по решению
+     службы занятости. Люди обычно знают только про первое. */
+  severance: {
+    months: 1,              // пособие при увольнении
+    extraMonths: 2,         // ещё до двух месяцев на время поиска работы
+    article: "ст. 178 ТК РФ",
+  },
+
   /* Среднемесячное число календарных дней — ТК РФ ст. 139.
      Используется и в отпускных, и в компенсации при увольнении. */
   avgMonthDays: 29.3,
@@ -628,6 +669,105 @@ const RATES = {
   },
 
   /* Подпись «данные актуальны на …» для вывода под расчётами. */
+  /* Взносы ИП за неполный год — НК РФ ст. 430 п. 5.
+
+     Самая частая ошибка тех, кто открылся или закрылся в середине года:
+     платят полную годовую сумму, потому что нигде не написано иначе.
+     Закон считает иначе: за полные месяцы — пропорционально, за неполный
+     месяц — пропорционально календарным дням в нём.
+
+     Дни считаем включительно с обоих концов: день регистрации входит
+     в срок (ст. 430 п. 5 прямо говорит «начиная с календарного месяца
+     начала деятельности»), день прекращения — тоже.                  */
+  ipContributionsFor({ from = null, to = null, year = null } = {}) {
+    const y = year || this.year;
+    const start = from ? new Date(from) : new Date(y, 0, 1);
+    const end = to ? new Date(to) : new Date(y, 11, 31);
+
+    /* Обрезаем период границами года: взносы считаются за календарный
+       год, и деятельность, начатая в прошлом декабре, к этому году
+       добавляет ровно ноль. */
+    const yStart = new Date(y, 0, 1), yEnd = new Date(y, 11, 31);
+    const s = start < yStart ? yStart : start;
+    const e = end > yEnd ? yEnd : end;
+    if (e < s) return { fixed: 0, months: 0, days: 0, full: this.ipContributions.fixed };
+
+    const fixedYear = this.ipContributions.fixed;
+    const monthPart = fixedYear / 12;
+
+    let sum = 0, fullMonths = 0, extraDays = 0;
+    for (let m = 0; m < 12; m++) {
+      const mStart = new Date(y, m, 1);
+      const mEnd = new Date(y, m + 1, 0);
+      if (mEnd < s || mStart > e) continue;
+
+      const covFrom = mStart < s ? s : mStart;
+      const covTo = mEnd > e ? e : mEnd;
+      const daysInMonth = mEnd.getDate();
+      const covered = Math.round((covTo - covFrom) / 86400000) + 1;
+
+      if (covered >= daysInMonth) { sum += monthPart; fullMonths++; }
+      else { sum += monthPart * covered / daysInMonth; extraDays += covered; }
+    }
+
+    return {
+      fixed: Math.round(sum),
+      full: fixedYear,
+      months: fullMonths,
+      days: extraDays,
+      saved: Math.round(fixedYear - sum),
+    };
+  },
+
+  /* Штрафы налоговой — НК РФ ст. 119 и 122.
+
+     Считаем оба сразу и показываем оба: их назначают вместе, а человек
+     обычно знает про один и удивляется второму.
+
+     Месяцы просрочки — полные И неполные: один день просрочки в новом
+     месяце добавляет целые 5%. Это не описка закона, а его буква. */
+  taxFines({ unpaid = 0, monthsLate = 0, intentional = false, mitigations = 0 } = {}) {
+    const F = this.fines;
+    const sum = Math.max(0, unpaid);
+    const months = Math.max(0, Math.ceil(monthsLate));
+
+    let lateReturn = sum * F.lateReturn.ratePerMonth * months;
+    lateReturn = Math.min(lateReturn, sum * F.lateReturn.maxShare);
+    lateReturn = Math.max(lateReturn, F.lateReturn.minRub);
+
+    const unpaidTax = sum * (intentional ? F.unpaidTax.rateIntentional : F.unpaidTax.rate);
+
+    /* Смягчающие снижают не менее чем вдвое за каждое — закон нижнего
+       предела не ставит, но обещать больше половины за штуку нельзя:
+       решает инспекция или суд. Показываем осторожную оценку. */
+    const divisor = Math.pow(F.mitigationDivisor, Math.max(0, Math.min(3, mitigations)));
+
+    return {
+      lateReturn: Math.round(lateReturn),
+      unpaidTax: Math.round(unpaidTax),
+      total: Math.round(lateReturn + unpaidTax),
+      withMitigation: Math.round((lateReturn + unpaidTax) / divisor),
+      divisor,
+      months,
+    };
+  },
+
+  /* Выходное пособие при сокращении — ТК РФ ст. 178.
+
+     Средний МЕСЯЧНЫЙ заработок, а не оклад: в него входят премии и
+     надбавки, поэтому он обычно выше оклада, и люди недополучают,
+     считая по окладу.                                                */
+  severancePay({ avgMonth = 0, monthsUnemployed = 0 } = {}) {
+    const a = Math.max(0, avgMonth);
+    const extra = Math.max(0, Math.min(this.severance.extraMonths, Math.ceil(monthsUnemployed)));
+    return {
+      onDismissal: Math.round(a),
+      forSearch: Math.round(a * extra),
+      total: Math.round(a * (this.severance.months + extra)),
+      extraMonths: extra,
+    };
+  },
+
   disclaimer() {
     const d = new Date(this.checkedOn).toLocaleDateString("ru-RU");
     return `Ставки и лимиты сверены на ${d}. Нормы меняются — перед подачей отчётности ` +
