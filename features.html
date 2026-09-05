@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Возможности — ЭкоФин</title>
+<!-- seo:start -->
+<meta name="description" content="Всё, что умеет ЭкоФин, на одной странице: расчёты, готовые документы, ИИ-инструменты, учёт доходов и налога, база знаний. С поиском по названию.">
+<link rel="canonical" href="https://ecofin26.ru/features.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Возможности — ЭкоФин">
+<meta property="og:description" content="Всё, что умеет ЭкоФин, на одной странице: расчёты, готовые документы, ИИ-инструменты, учёт доходов и налога, база знаний.">
+<meta property="og:url" content="https://ecofin26.ru/features.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ЭкоФин — финансы, налоги и право в одном сервисе">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<!-- seo:end -->
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css?v=119">
+</head>
+<body>
+<main class="section">
+  <div class="container">
+    <div class="section-title">
+      <h1>Все <span>возможности</span></h1>
+      <div class="line"></div>
+      <p class="subtitle">Что умеет сервис — на одной странице. Ищите по названию или листайте по разделам.</p>
+    </div>
+
+    <div class="form-group" style="max-width:520px;margin:0 auto 26px">
+      <input type="search" id="featFind" placeholder="Найти: пеня, аренда, УСН, увольнение…"
+             oninput="renderFeatures()" autocomplete="off">
+    </div>
+
+    <div id="featRoot"><p style="color:var(--muted);text-align:center">Собираю список…</p></div>
+  </div>
+</main>
+
+<script src="js/themes.js?v=119"></script>
+<script src="js/api.js?v=119"></script>
+<script src="js/app.js?v=119"></script>
+<script src="js/progress.js?v=119"></script>
+<script src="js/ai.js?v=119"></script>
+<!-- Библиотеку документов и базу знаний подключаем сюда специально:
+     из них берутся названия для указателя, и без них страница показала
+     бы разделы, но умолчала о пятидесяти документах и статьях. -->
+<script src="js/templates.js?v=119"></script>
+<script src="js/knowledge.js?v=119"></script>
+<script src="js/palette.js?v=119"></script>
+<script>
+initPage("features.html");
+
+/* ============ Витрина возможностей ============
+
+   Зачем страница нужна.
+
+   В навигации пятнадцать адресов, и человек, попавший сюда впервые, не
+   знает, что за ними. «Практикум» и «Что делать» ничего не говорят тому,
+   кто у нас в первый раз, а половина возможностей вообще не в меню —
+   они внутри вкладок калькуляторов и инструментов.
+
+   Убирать разделы ради простоты — неправильно: они рабочие и нужные.
+   Правильно — дать место, где видно всё сразу.
+
+   Список берётся из указателя быстрого поиска, а не пишется руками.
+   Это принципиально: руками написанный перечень устареет на первом же
+   новом калькуляторе, и витрина начнёт врать. Здесь она физически не
+   может разойтись с содержанием — источник один.                     */
+
+/* Порядок разделов — по тому, зачем приходят: сначала посчитать,
+   потом оформить бумагу, потом разобраться. */
+const GROUPS = [
+  ["Раздел",      "Разделы сервиса",  "С чего начать"],
+  ["Калькулятор", "Расчёты",          "Посчитать налог, выплату, срок"],
+  ["Инструмент",  "ИИ-инструменты",   "Разобрать, составить, объяснить"],
+  ["Документ",    "Готовые документы","Заполнить поля — документ соберётся сам"],
+  ["Календарь",   "Календарь",        "Сроки отчётности"],
+  ["Статья",      "База знаний",      "Разборы простым языком"],
+];
+
+function featureItems() {
+  const all = PALETTE.base();
+  const seen = new Set();
+  return all.filter(it => {
+    const key = it.kind + "|" + it.title;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function renderFeatures() {
+  const q = (document.getElementById("featFind").value || "").trim().toLowerCase();
+  const items = featureItems();
+  const root = document.getElementById("featRoot");
+
+  const match = it => !q
+    || it.title.toLowerCase().includes(q)
+    || String(it.note || "").toLowerCase().includes(q);
+
+  let html = "";
+  let shown = 0;
+
+  for (const [kind, title, hint] of GROUPS) {
+    const list = items.filter(it => it.kind === kind && match(it));
+    if (!list.length) continue;
+    shown += list.length;
+
+    html += `
+      <div class="feat-group">
+        <div class="feat-head">
+          <h2>${escapeHtml(title)}</h2>
+          <span class="feat-count">${list.length}</span>
+          <span class="feat-hint">${escapeHtml(hint)}</span>
+        </div>
+        <div class="feat-grid">
+          ${list.map(it => `
+            <a class="feat-card" href="${PF.href(it.href)}">
+              <b>${escapeHtml(it.title)}</b>
+              ${it.note ? `<span>${escapeHtml(it.note)}</span>` : ""}
+            </a>`).join("")}
+        </div>
+      </div>`;
+  }
+
+  if (!shown) {
+    html = `<p style="text-align:center;color:var(--muted)">
+      Ничего не нашлось по запросу «${escapeHtml(q)}».
+      Попробуйте одно слово: «пеня», «аренда», «увольнение».</p>`;
+  }
+
+  root.innerHTML = html;
+}
+
+/* Ждём загрузки указателя: он собирается из библиотек документов и
+   статей, которые подключены выше. */
+renderFeatures();
+document.addEventListener("pf:ready", renderFeatures);
+</script>
+</body>
+</html>

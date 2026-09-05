@@ -34,11 +34,12 @@ const PALETTE = {
 
   base() {
     const list = [
+      { kind: "Раздел", title: "Все возможности сервиса", href: "features.html" },
       { kind: "Раздел", title: "Что делать: разбор ситуаций", href: "situations.html" },
       { kind: "Раздел", title: "Кабинет", href: "dashboard.html" },
       { kind: "Раздел", title: "ИИ-инструменты", href: "tools.html" },
       { kind: "Раздел", title: "Моё дело: учёт выручки и налог", href: "book.html" },
-      { kind: "Раздел", title: "Мои дела: несколько ИП и клиентов", href: "clients.html" },
+      { kind: "Раздел", title: "Мои клиенты: учёт за нескольких ИП и ООО", href: "clients.html" },
       { kind: "Раздел", title: "Документы: готовые бланки", href: "docs.html" },
       { kind: "Раздел", title: "Калькуляторы", href: "calc.html" },
       { kind: "Раздел", title: "Практикум", href: "games.html" },

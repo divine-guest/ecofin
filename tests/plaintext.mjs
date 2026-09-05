@@ -83,5 +83,37 @@ console.log("\n— Живой пример ответа —");
   ok(got.includes("— УСН 6% — 30 000 ₽"), "пункт списка оформлен тире", got);
 }
 
+/* Ответ модели приходит в ДВУХ видах, и чистка обязана накрывать оба.
+
+   Обычный запрос отдаёт {text}, фоновая очередь — {job:{answer}}.
+   Написанная только под первый, она оставила чат в углу с решётками и
+   звёздочками: чат ходит как раз через очередь. Со стороны выглядело
+   так, будто исправления вовсе не было.
+
+   Поэтому проверяем не саму plainText, а то, что её вызывают на всех
+   путях доставки ответа. */
+console.log("\n— Чистка накрывает оба вида ответа —");
+{
+  const api = fs.readFileSync(new URL("../js/api.js", import.meta.url), "utf8");
+  const m = api.match(/_clean\(r\) \{[\s\S]*?\n  \},/);
+  ok(Boolean(m), "функция _clean найдена в api.js");
+
+  if (m) {
+    const src = "return function " + m[0].replace(/,$/, "") + ";";
+    const clean = new Function("plainText", src)(P);
+    const raw = "### **Итого**\nНужно **срочно**.";
+
+    const a = clean({ text: raw });
+    ok(!/[*#]/.test(a.text), "обычный ответ {text} очищен", a.text);
+
+    const b = clean({ job: { status: "done", answer: raw } });
+    ok(!/[*#]/.test(b.job.answer), "фоновый ответ {job:{answer}} очищен", b.job && b.job.answer);
+
+    ok(clean(null) === null, "null не роняет");
+    ok(clean({ ok: true }).ok === true, "ответ без текста проходит как есть");
+  }
+}
+
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено`);
 process.exit(fail ? 1 : 0);

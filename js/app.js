@@ -377,7 +377,7 @@ const MOBILE_TABS = [
 const MOBILE_MORE = [
   ["Разделы", [
     ["index.html", "Главная", "Обзор и что нового"],
-    ["clients.html", "Мои дела", "ИП, ООО и клиенты — в одном кабинете"],
+    ["clients.html", "Мои клиенты", "Учёт за тех, кого ведёте: ИП, ООО, самозанятые"],
     ["docs.html", "Документы", "32 готовых бланка — заполнить и распечатать"],
     ["knowledge.html", "База знаний", "Статьи простым языком"],
     ["courses.html", "Курсы", "Пошаговое обучение"],
@@ -523,6 +523,102 @@ document.addEventListener("click", e => {
   if (e.target.closest(".tabs .tab")) setTimeout(scrollActiveTabIntoView, 0);
 });
 
+/* ============ Меню шапки: лишнее уходит в «Ещё» ============
+
+   Меню объявлено горизонтальной прокруткой. На телефоне это верно: ряд
+   листают пальцем, обрезанный край последней плитки сам приглашает это
+   сделать. На компьютере — нет: мышью такой ряд не листают, признака
+   прокрутки не видно, и пункты просто пропадают.
+
+   Так и было: у вошедшего человека меню требовало 818 пикселей при
+   доступных 711, и «База знаний» с «Кабинетом» уезжали под кнопку
+   аккаунта. Глазами это не поймать — выглядит, будто разделов нет.
+
+   Складываем непоместившееся в «Ещё». Ни один раздел не пропадает,
+   шапка перестаёт обрезаться, и на любой ширине видно ровно столько,
+   сколько влезло.                                                     */
+function fitNav() {
+  const nav = document.querySelector(".site-header .nav-links");
+  if (!nav) return;
+
+  /* На телефоне меню переносится по строкам и прокрутки не требует —
+     складывать там нечего. */
+  if (innerWidth <= 860) {
+    nav.querySelectorAll("a[hidden]").forEach(a => (a.hidden = false));
+    const old = nav.querySelector(".nav-more");
+    if (old) old.remove();
+    return;
+  }
+
+  let more = nav.querySelector(".nav-more");
+  if (!more) {
+    more = document.createElement("div");
+    more.className = "nav-more";
+    more.innerHTML = `
+      <button type="button" class="nav-more-btn" aria-haspopup="true" aria-expanded="false">Ещё</button>
+      <div class="nav-more-list"></div>`;
+    nav.appendChild(more);
+    more.querySelector(".nav-more-btn").addEventListener("click", e => {
+      e.stopPropagation();
+      const open = more.classList.toggle("open");
+      more.querySelector(".nav-more-btn").setAttribute("aria-expanded", String(open));
+    });
+    /* Клик мимо и Esc закрывают: раскрытый список, который не закрыть,
+       перекрывает страницу и раздражает сильнее, чем помогает. */
+    document.addEventListener("click", () => more.classList.remove("open"));
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") more.classList.remove("open");
+    });
+  }
+
+  const links = [...nav.querySelectorAll(":scope > a")];
+  const list = more.querySelector(".nav-more-list");
+
+  /* Считаем от нуля: сначала показываем всё, потом прячем лишнее.
+     Иначе после расширения окна спрятанное так и осталось бы в «Ещё». */
+  links.forEach(a => (a.hidden = false));
+  more.hidden = true;
+  list.innerHTML = "";
+
+  const room = nav.clientWidth;
+  const widthOf = el => el.getBoundingClientRect().width;
+  const moreW = 62;   // запас под саму кнопку «Ещё»
+
+  let used = 0;
+  const overflow = [];
+  for (const a of links) {
+    used += widthOf(a);
+    if (used > room - moreW) overflow.push(a);
+  }
+
+  /* Прячем в «Ещё» только если не поместилось больше одного: ради
+     единственного пункта заводить выпадающий список — хуже, чем
+     показать его. */
+  if (overflow.length) {
+    /* Если лишний ровно один, пробуем обойтись без кнопки: без неё
+       освобождается как раз её ширина. */
+    if (overflow.length === 1 && used <= room) {
+      more.hidden = true;
+      return;
+    }
+    for (const a of overflow) {
+      a.hidden = true;
+      const copy = a.cloneNode(true);
+      copy.hidden = false;
+      list.appendChild(copy);
+    }
+    more.hidden = false;
+  }
+}
+
+let navFitTimer = 0;
+addEventListener("resize", () => {
+  clearTimeout(navFitTimer);
+  navFitTimer = setTimeout(fitNav, 120);
+});
+addEventListener("load", fitNav);
+document.addEventListener("pf:ready", fitNav);
+
 /* ============ Общее модальное окно ============
 
    Окно с затемнением собиралось в коде трижды, каждый раз заново:
@@ -637,7 +733,7 @@ function renderFooter() {
       ${L("knowledge.html", "База знаний")} · ${L("courses.html", "Курсы")} ·
       ${L("answers.html", "Ответы на вопросы")} · ${L("games.html", "Практикум")} ·
       ${L("expenses.html", "Дневник трат")} ·
-      ${L("search.html", "Поиск")}
+      ${L("features.html", "Все возможности")} · ${L("search.html", "Поиск")}
     </p>
     <p>${L("about.html", "О сервисе")} · ${L("about.html#contact", "Связаться")} ·
        ${L("faq.html", "Частые вопросы")} · ${L("legal.html", "Правовые документы")}</p>

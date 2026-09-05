@@ -163,9 +163,18 @@ const API = {
      Проверка на функцию — на случай страницы, где app.js не подключён:
      лучше показать ответ со звёздочками, чем уронить страницу. */
   _clean(r) {
-    if (r && typeof r.text === "string" && typeof plainText === "function")
-      return { ...r, text: plainText(r.text) };
-    return r;
+    if (!r || typeof plainText !== "function") return r;
+
+    /* Ответ приходит в двух видах, и это не мелочь: обычный запрос
+       отдаёт {text}, а фоновая очередь — {job:{answer}}. Чистка,
+       написанная только под первый, оставляла чат в углу с решётками
+       и звёздочками ровно так, как будто её вовсе нет. Именно там их
+       и увидел владелец. */
+    let out = r;
+    if (typeof out.text === "string") out = { ...out, text: plainText(out.text) };
+    if (out.job && typeof out.job.answer === "string")
+      out = { ...out, job: { ...out.job, answer: plainText(out.job.answer) } };
+    return out;
   },
 
   quota() { return this.request("/api/quota"); },
@@ -181,12 +190,20 @@ const API = {
     ask(prompt, { kind = "chat", context, system, maxTokens } = {}) {
       return API.request("/api/ai/ask", {
         method: "POST", body: { prompt, context, system, kind, maxTokens },
-      });
+      }).then(r => API._clean(r));
     },
     status(id) {
       return API.request("/api/ai/job?id=" + encodeURIComponent(id)).then(r => API._clean(r));
     },
-    list()     { return API.request("/api/ai/jobs"); },
+    list() {
+      /* Список прошлых ответов чистим тоже: в него человек возвращается
+         за старым ответом, и разметка там так же неуместна. */
+      return API.request("/api/ai/jobs").then(r => {
+        if (!r || !Array.isArray(r.jobs) || typeof plainText !== "function") return r;
+        return { ...r, jobs: r.jobs.map(j =>
+          typeof j.answer === "string" ? { ...j, answer: plainText(j.answer) } : j) };
+      });
+    },
   },
   /* Распознать фото в текст. Отдельно от analyze: тот возвращает разбор,
      а здесь нужен сам текст — дальше с ним работает нужный инструмент. */

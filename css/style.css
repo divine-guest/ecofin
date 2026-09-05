@@ -465,6 +465,75 @@ textarea { min-height: 120px; resize: vertical; }
    иначе над заголовком «Налоги» висит необъяснимая дыра. */
 .quota-row:not(:empty) { margin-bottom: 18px; }
 
+/* ============ «Ещё» в шапке ============
+   Кнопка выглядит как обычный пункт меню: она и есть пункт меню,
+   просто раскрывающийся. Отличать её оформлением — значит намекать,
+   что за ней что-то другое. */
+.nav-more { position: relative; flex: 0 0 auto; }
+.nav-more[hidden] { display: none; }
+.nav-more-btn {
+  color: var(--muted); padding: 9px 11px; border-radius: 10px;
+  font-weight: 600; font-size: .88rem; font-family: inherit;
+  background: none; border: none; cursor: pointer; white-space: nowrap;
+}
+.nav-more-btn::after { content: " ▾"; font-size: .7em; opacity: .7; }
+.nav-more-btn:hover { color: var(--text); }
+
+.nav-more-list {
+  display: none; position: absolute; right: 0; top: calc(100% + 8px);
+  min-width: 190px; padding: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: var(--shadow-lg); z-index: 60;
+}
+.nav-more.open .nav-more-list { display: block; }
+.nav-more-list a {
+  display: block; padding: 9px 12px; border-radius: 9px;
+  color: var(--text); font-size: var(--t-sm); white-space: nowrap;
+}
+.nav-more-list a:hover { background: var(--surface-2); text-decoration: none; }
+.nav-more-list a.active { color: var(--link, var(--primary)); }
+
+/* ============ Витрина возможностей ============
+
+   Плитки нарочно плотные и одинаковые: человек пришёл сюда не читать,
+   а увидеть охват. Разная высота карточек превращает список в лоскутное
+   одеяло, по которому невозможно скользить взглядом. */
+.feat-group { margin-bottom: 34px; }
+.feat-head {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 14px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.feat-head h2 { font-size: var(--t-lg); margin: 0; }
+/* Число рядом с названием — самый честный ответ на «а много ли тут». */
+.feat-count {
+  font-size: var(--t-xs); font-weight: 800; color: var(--primary);
+  background: var(--surface-2); border-radius: 999px; padding: 2px 9px;
+}
+.feat-hint { font-size: var(--t-xs); color: var(--muted); }
+
+.feat-grid {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+}
+.feat-card {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: 11px;
+  background: var(--surface); color: var(--text); text-decoration: none;
+  transition: border-color .2s, transform .2s;
+}
+.feat-card:hover {
+  border-color: var(--primary); transform: translateY(-1px); text-decoration: none;
+}
+.feat-card b { font-size: var(--t-sm); line-height: 1.35; }
+.feat-card span { font-size: var(--t-xs); color: var(--muted); }
+
+@media (max-width: 640px) {
+  /* На телефоне одна колонка: две колонки по 160 пикселей режут
+     названия документов на середине слова. */
+  .feat-grid { grid-template-columns: 1fr; }
+}
+
 /* ============ Подстановка реквизитов ============
 
    Панель стоит над полями документа. Это её главное свойство: человек
