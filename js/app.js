@@ -1724,18 +1724,32 @@ const SETTINGS = {
     } catch (e) { toast(e.message, "error"); }
   },
 
-  exportData() {
+  /* Выгрузка собирается на сервере: только он знает всё.
+
+     Раньше здесь брали localStorage — и в файл попадали профиль,
+     отметки копилки и курсы, а учёт доходов, документы, сроки,
+     контрагенты и история вопросов не попадали вовсе. Политика при
+     этом обещает «экспорт всех ваших данных одним файлом», и право
+     на это даёт ст. 14 152-ФЗ. */
+  async exportData() {
     const u = PF.user();
     if (!u) return;
-    const data = {
-      exported: new Date().toISOString(),
-      profile: { email: u.email, name: u.name, plan: u.plan, proUntil: u.proUntil },
-      documents: PF.docs(),
-      deadlines: JSON.parse(localStorage.getItem("pf_deadlines_" + u.email) || "[]"),
+
+    let data;
+    try {
+      data = await API.request("/api/auth/export");
+    } catch (e) {
+      return toast("Не удалось собрать выгрузку: " + e.message, "error");
+    }
+
+    /* То, что живёт только в браузере, добавляем сверху: серверу оно
+       неизвестно, но человеку принадлежит. */
+    data.localOnly = {
       habits: JSON.parse(localStorage.getItem("pf_habits_" + u.email) || "{}"),
       courses: JSON.parse(localStorage.getItem("pf_course_" + u.email) || "{}"),
       expenses: JSON.parse(localStorage.getItem("pf_expenses_" + u.email) || "[]"),
     };
+
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);

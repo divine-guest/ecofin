@@ -36,6 +36,9 @@ const ROUTES = [
   ["POST", "/api/auth/password", auth.changePassword, "user"],
   ["POST", "/api/auth/delete", auth.deleteAccount, "user"],
   ["GET", "/api/auth/sessions", auth.listSessions, "user"],
+  /* Все данные одним файлом — право по ст. 14 152-ФЗ, и политика
+     сервиса обещает его прямым текстом. */
+  ["GET", "/api/auth/export", auth.exportAll, "user"],
   ["POST", "/api/auth/logout-all", auth.logoutEverywhere, "user"],
 
   ["POST", "/api/ai", ai.handleAI, "user"],

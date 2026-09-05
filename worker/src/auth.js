@@ -301,6 +301,10 @@ export async function deleteAccount(request, env, origin, user) {
     P("DELETE FROM tg_link_codes WHERE email = ?"),
     P("DELETE FROM qa_useful     WHERE email = ?"),
     P("DELETE FROM book_ops      WHERE email = ?"),
+    /* Документы удаляются вместе с аккаунтом: в них лежат тексты
+       договоров и счетов с данными контрагентов. Оставить их после
+       отзыва согласия — прямое нарушение ст. 21 152-ФЗ. */
+    P("DELETE FROM documents     WHERE email = ?"),
     P("DELETE FROM counterparties WHERE email = ?"),
     P("DELETE FROM doc_numbers   WHERE email = ?"),
     P("DELETE FROM doc_numbers2  WHERE email = ?"),
@@ -319,6 +323,81 @@ export async function deleteAccount(request, env, origin, user) {
     P("DELETE FROM users WHERE email = ?"),
   ]);
   return json(env, origin, { ok: true });
+}
+
+/* GET /api/auth/export — все данные человека одним файлом.
+
+   Статья 14 152-ФЗ даёт субъекту право получить сведения об обработке
+   своих данных, и политика сервиса обещает «экспорт всех ваших данных
+   одним файлом». До сих пор кнопка выгружала только то, что лежало в
+   браузере: профиль, отметки копилки, курсы. Всё, что хранит сервер —
+   учёт доходов, документы, сроки, контрагенты, история вопросов, — в
+   файл не попадало, то есть обещание не выполнялось.
+
+   Собираем на сервере, потому что только он знает всё. Пароль и токены
+   не отдаём: их хэши бесполезны субъекту и опасны в файле, который
+   человек перешлёт себе на почту.                                   */
+export async function exportAll(request, env, origin, user) {
+  const q = async (sql, ...args) => {
+    try {
+      const r = await env.DB.prepare(sql).bind(...args).all();
+      return r.results || [];
+    } catch {
+      /* Таблица могла не появиться на старой базе — пустой раздел
+         честнее, чем отказ отдать вообще всё. */
+      return [];
+    }
+  };
+  const e = user.email;
+
+  const money = rows => rows.map(r => ({ ...r, amount: r.amount / 100 }));
+
+  const data = {
+    exported: new Date().toISOString(),
+    about: "Все данные вашей учётной записи в ЭкоФине. " +
+           "Пароль не включён: он хранится только в виде необратимого преобразования.",
+
+    profile: {
+      email: user.email,
+      name: user.name,
+      createdAt: user.created_at,
+      lastLoginAt: user.last_login_at,
+      plan: user.plan,
+      proUntil: user.pro_until,
+      points: user.points,
+      profile: user.profile ? JSON.parse(user.profile || "{}") : null,
+      business: { form: user.biz_form || "", regime: user.biz_regime || "", workers: user.biz_workers || 0 },
+      telegram: user.tg_username || null,
+    },
+
+    documents: money(await q(
+      "SELECT id, kind, title, number, doc_date, party, amount, status, content, created_at" +
+      " FROM documents WHERE email = ? ORDER BY created_at", e)),
+
+    book: money(await q(
+      "SELECT id, day, kind, amount, category, party, note, payer, client_id" +
+      " FROM book_ops WHERE email = ? ORDER BY day", e)),
+
+    reminders: await q(
+      "SELECT id, title, due, repeat_rule, notify_days, channel, note FROM reminders WHERE email = ?", e),
+
+    counterparties: await q("SELECT * FROM counterparties WHERE email = ?", e),
+    organisations: await q("SELECT * FROM my_orgs WHERE email = ?", e),
+    clients: await q("SELECT * FROM clients WHERE owner = ?", e),
+
+    savedCalcs: await q("SELECT * FROM saved_calcs WHERE email = ?", e),
+    aiHistory: await q(
+      "SELECT id, title, created_at, answer FROM ai_jobs WHERE email = ? ORDER BY created_at", e),
+    notes: { text: user.notes || "", updatedAt: user.notes_at || 0 },
+    progress: await q("SELECT key, data, updated_at FROM progress WHERE email = ?", e),
+    points: await q("SELECT * FROM point_ops WHERE email = ?", e),
+    payments: await q(
+      "SELECT id, amount, status, created_at, plan FROM payments WHERE email = ?", e),
+    actions: await q(
+      "SELECT text, created_at FROM actions WHERE email = ? ORDER BY created_at DESC LIMIT 500", e),
+  };
+
+  return json(env, origin, data);
 }
 
 /* GET /api/auth/sessions — «мои устройства». Сам токен не показываем,
