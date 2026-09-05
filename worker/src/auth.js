@@ -280,6 +280,8 @@ export async function deleteAccount(request, env, origin, user) {
     P("DELETE FROM book_ops      WHERE email = ?"),
     P("DELETE FROM counterparties WHERE email = ?"),
     P("DELETE FROM doc_numbers   WHERE email = ?"),
+    P("DELETE FROM doc_numbers2  WHERE email = ?"),
+    P("DELETE FROM my_orgs       WHERE email = ?"),
     env.DB.prepare("DELETE FROM clients WHERE owner = ?").bind(e),
     P("DELETE FROM public_qa     WHERE email = ? AND status != 'published'"),
 

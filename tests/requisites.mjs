@@ -94,6 +94,100 @@ console.log("\n— Контрольные суммы отклоняют неве
   });
 }
 
+console.log("\n— Несколько своих организаций —");
+let orgIp = 0, orgOoo = 0;
+{
+  /* Прежние одиночные реквизиты должны сами стать первой организацией:
+     человек, вводивший их до появления списка, не должен вводить заново
+     — иначе улучшение ощущается как поломка. */
+  const first = await call("/api/orgs", { token: me.token });
+  ok(first.data.orgs.length === 1, "прежние реквизиты стали первой организацией",
+     first.data.orgs.length);
+  orgIp = first.data.orgs[0]?.id || 0;
+  ok(first.data.active === orgIp, "и сразу выбраны для подстановки", first.data.active);
+
+  const add = await call("/api/orgs", {
+    method: "POST", token: me.token,
+    body: { label: "ООО", name: "ООО «Ромашка»", inn: "7707083893", kpp: "770701001" },
+  });
+  orgOoo = add.data.id;
+  ok(orgOoo > 0, "вторая организация добавляется", add.data);
+
+  const bad = await call("/api/orgs", {
+    method: "POST", token: me.token, body: { name: "Кривая", inn: "262300558404" },
+  });
+  ok(bad.status === 400, "организация с неверным ИНН не сохраняется");
+
+  const noName = await call("/api/orgs", {
+    method: "POST", token: me.token, body: { name: "  " },
+  });
+  ok(noName.status === 400, "и без наименования тоже");
+}
+
+console.log("\n— Нумерация ведётся по организации —");
+{
+  await call("/api/orgs/active", { method: "POST", token: me.token, body: { id: orgIp } });
+  const a = await call("/api/docnumber", { method: "POST", token: me.token, body: { kind: "dogovor" } });
+  const b = await call("/api/docnumber", { method: "POST", token: me.token, body: { kind: "dogovor" } });
+  ok(a.data.number === 1 && b.data.number === 2, "у первой организации 1 и 2",
+     [a.data.number, b.data.number]);
+
+  await call("/api/orgs/active", { method: "POST", token: me.token, body: { id: orgOoo } });
+  const c = await call("/api/docnumber", { method: "POST", token: me.token, body: { kind: "dogovor" } });
+  /* Это главное в разделении: общая нумерация двух своих фирм выглядит
+     для налоговой как пропущенные документы. */
+  ok(c.data.number === 1, "у второй нумерация своя, с единицы", c.data.number);
+}
+
+console.log("\n— Закрытая фирма уходит в архив, а не пропадает —");
+{
+  await call("/api/orgs/active", { method: "POST", token: me.token, body: { id: orgOoo } });
+  const arch = await call("/api/orgs/archive", { method: "POST", token: me.token, body: { id: orgOoo } });
+  ok(arch.status === 200, "убирается в архив");
+
+  /* Выбор обязан сам перейти на живую: иначе подстановка молча
+     перестаёт работать, и причину человек не найдёт. */
+  ok(arch.data.active === orgIp, "выбор сам перешёл на оставшуюся", arch.data.active);
+
+  const pick = await call("/api/orgs/active", { method: "POST", token: me.token, body: { id: orgOoo } });
+  ok(pick.status === 400, "архивную нельзя выбрать", pick.status);
+
+  const req = await call("/api/requisites", { token: me.token });
+  ok(req.data.requisites.inn === "262300558403", "подставляются реквизиты оставшейся",
+     req.data.requisites.inn);
+  ok(req.data.orgs.every(o => o.id !== orgOoo), "архивная не предлагается в документах");
+
+  const back = await call("/api/orgs/archive", {
+    method: "POST", token: me.token, body: { id: orgOoo, restore: true },
+  });
+  ok(back.status === 200, "возвращается из архива");
+
+  /* Номера после возврата продолжаются, а не начинаются заново: иначе
+     человек выставит документ с номером, который у него уже был. */
+  await call("/api/orgs/active", { method: "POST", token: me.token, body: { id: orgOoo } });
+  const n = await call("/api/docnumber", { method: "POST", token: me.token, body: { kind: "dogovor" } });
+  ok(n.data.number === 2, "нумерация после архива продолжается", n.data.number);
+
+  await call("/api/orgs/active", { method: "POST", token: me.token, body: { id: orgIp } });
+}
+
+console.log("\n— Чужие организации недоступны —");
+{
+  const theirs = await call("/api/orgs", { token: other.token });
+  ok(theirs.data.orgs.length === 0, "чужой не видит моих организаций", theirs.data.orgs.length);
+
+  const grab = await call("/api/orgs/active", { method: "POST", token: other.token, body: { id: orgIp } });
+  ok(grab.status === 404, "и не может выбрать мою");
+
+  const edit = await call("/api/orgs", {
+    method: "POST", token: other.token, body: { id: orgIp, name: "Подмена", inn: "" },
+  });
+  ok(edit.status === 404, "и не может переписать мою");
+
+  const arch = await call("/api/orgs/archive", { method: "POST", token: other.token, body: { id: orgIp } });
+  ok(arch.status === 404, "и не может убрать мою в архив");
+}
+
 console.log("\n— Контрагенты —");
 let cpId = 0;
 {
@@ -187,8 +281,11 @@ console.log("\n— Удаление аккаунта уносит реквизи
   const left = await sql(`SELECT COUNT(*) AS n FROM counterparties WHERE email='${email}'`);
   ok(Number(left[0]?.n ?? left[0]?.["COUNT(*)"] ?? 0) === 0, "контрагенты удалены вместе с аккаунтом", left);
 
-  const nums = await sql(`SELECT COUNT(*) AS n FROM doc_numbers WHERE email='${email}'`);
+  const nums = await sql(`SELECT COUNT(*) AS n FROM doc_numbers2 WHERE email='${email}'`);
   ok(Number(nums[0]?.n ?? 0) === 0, "и нумерация документов тоже", nums);
+
+  const orgs = await sql(`SELECT COUNT(*) AS n FROM my_orgs WHERE email='${email}'`);
+  ok(Number(orgs[0]?.n ?? 0) === 0, "и свои организации", orgs);
 }
 
 await cleanup(other.email);

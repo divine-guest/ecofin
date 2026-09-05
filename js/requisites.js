@@ -11,7 +11,9 @@
    который каждый раз заполняется с нуля.                              */
 
 const REQ = {
-  mine: null,          // свои реквизиты
+  mine: null,          // реквизиты выбранной организации
+  orgs: [],            // свои организации (без архивных)
+  active: 0,           // какая выбрана
   parties: [],         // контрагенты
   loaded: false,
 
@@ -21,6 +23,8 @@ const REQ = {
     try {
       const [a, b] = await Promise.all([API.requisites(), API.counterparties()]);
       this.mine = a.requisites || null;
+      this.orgs = a.orgs || [];
+      this.active = a.active || 0;
       this.parties = b.counterparties || [];
     } catch { /* нет связи — просто не подставляем, форма остаётся рабочей */ }
     this.loaded = true;
@@ -28,6 +32,12 @@ const REQ = {
   },
 
   ready() { return Boolean(this.mine && this.mine.name && this.mine.inn); },
+
+  /* Как называется выбранная организация — коротко, для кнопки. */
+  activeLabel() {
+    const o = this.orgs.find(x => x.id === this.active);
+    return o ? (o.label || o.name) : "";
+  },
 
   /* ---------- Какое поле кем является ----------
 

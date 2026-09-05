@@ -227,6 +227,15 @@ const API = {
   touchCounterparty(id)  { return this.request("/api/counterparties/touch", { method: "POST", body: { id } }); },
   docNumber(kind)  { return this.request("/api/docnumber", { method: "POST", body: { kind } }); },
 
+  /* Свои организации: у человека бывает ИП и ООО, фирмы закрывают и
+     открывают новые. Одного набора реквизитов не хватает. */
+  orgs()           { return this.request("/api/orgs"); },
+  saveOrg(o)       { return this.request("/api/orgs", { method: "POST", body: o }); },
+  setActiveOrg(id) { return this.request("/api/orgs/active", { method: "POST", body: { id } }); },
+  archiveOrg(id, opts = {}) {
+    return this.request("/api/orgs/archive", { method: "POST", body: { id, ...opts } });
+  },
+
   /* --- Оплата --- */
   billing: {
     plans() { return API.request("/api/billing/plans"); },

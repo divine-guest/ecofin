@@ -98,6 +98,10 @@ const ROUTES = [
   ["POST", "/api/counterparties", requisites.saveCounterparty, "user"],
   ["POST", "/api/counterparties/delete", requisites.removeCounterparty, "user"],
   ["POST", "/api/counterparties/touch", requisites.touchCounterparty, "user"],
+  ["GET",  "/api/orgs", requisites.listOrgs, "user"],
+  ["POST", "/api/orgs", requisites.saveOrg, "user"],
+  ["POST", "/api/orgs/active", requisites.setActiveOrg, "user"],
+  ["POST", "/api/orgs/archive", requisites.archiveOrg, "user"],
   ["POST", "/api/docnumber", requisites.nextNumber, "user"],
 
   ["POST", "/api/registry/npd", registry.npdStatus, "user"],

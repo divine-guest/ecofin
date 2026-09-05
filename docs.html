@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=119">
+<link rel="stylesheet" href="css/style.css?v=121">
 <style>
   /* Плитка документа. Название крупно, пояснение мелко: выбирают
      по названию, а читают пояснение только при сомнении. */
@@ -89,14 +89,14 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=119"></script>
-<script src="js/api.js?v=119"></script>
-<script src="js/app.js?v=119"></script>
-<script src="js/progress.js?v=119"></script>
-<script src="js/palette.js?v=119"></script>
-<script src="js/ai.js?v=119"></script>
-<script src="js/templates.js?v=119"></script>
-<script src="js/requisites.js?v=119"></script>
+<script src="js/themes.js?v=121"></script>
+<script src="js/api.js?v=121"></script>
+<script src="js/app.js?v=121"></script>
+<script src="js/progress.js?v=121"></script>
+<script src="js/palette.js?v=121"></script>
+<script src="js/ai.js?v=121"></script>
+<script src="js/templates.js?v=121"></script>
+<script src="js/requisites.js?v=121"></script>
 <script>
 initPage("docs.html");
 
@@ -281,15 +281,23 @@ async function renderFillBar(tpl) {
 
   const btns = [];
   if (hasMine) {
-    btns.push(REQ.ready()
-      ? `<button class="btn small secondary" onclick="fillMine()">Подставить мои реквизиты</button>`
-      : `<button class="btn small" onclick="editRequisites()">Заполнить свои реквизиты</button>`);
+    if (REQ.ready()) {
+      /* Название организации прямо на кнопке. Без него человек с двумя
+         фирмами не знает, чьи реквизиты сейчас подставятся, — и узнаёт
+         об этом уже из готового документа. */
+      btns.push(`<button class="btn small secondary" onclick="fillMine()">
+        Подставить: ${escapeHtml(REQ.activeLabel())}</button>`);
+    } else {
+      btns.push(`<button class="btn small" onclick="manageOrgs()">Заполнить свои реквизиты</button>`);
+    }
   }
   if (hasOther) {
     btns.push(`<button class="btn small secondary" onclick="pickParty()">Выбрать контрагента</button>`);
   }
   if (REQ.ready()) {
-    btns.push(`<button class="btn small ghost" onclick="editRequisites()">Изменить реквизиты</button>`);
+    const many = REQ.orgs.length > 1;
+    btns.push(`<button class="btn small ghost" onclick="manageOrgs()">${
+      many ? "Мои организации (" + REQ.orgs.length + ")" : "Мои реквизиты"}</button>`);
   }
 
   bar.innerHTML = `<div class="fill-row">${btns.join("")}</div>`;
@@ -356,7 +364,8 @@ async function saveCurrentParty() {
 
 /* ---------- Свои реквизиты ---------- */
 
-const REQ_FORM = [
+const ORG_FORM = [
+  ["label", "Как называть в списке (ИП, ООО, «старая фирма»)"],
   ["name", "Наименование (ИП Иванов И. И. или ООО «Ромашка»)"],
   ["inn", "ИНН"],
   ["ogrn", "ОГРН или ОГРНИП"],
@@ -371,30 +380,107 @@ const REQ_FORM = [
   ["post", "Должность подписанта"],
 ];
 
-async function editRequisites() {
-  await REQ.load();
-  const r = REQ.mine || {};
-  MODAL.open("Мои реквизиты", `
-    <p class="hint" style="margin-bottom:12px">Вводятся один раз и подставляются
-       во все документы. Хранятся только у вас в аккаунте.</p>
-    <div class="grid cols-2">
-      ${REQ_FORM.map(([k, l]) => `
-        <div class="form-group">
-          <label>${escapeHtml(l)}</label>
-          <input type="text" id="r_${k}" value="${escapeHtml(r[k] || "")}" autocomplete="off">
-        </div>`).join("")}
-    </div>
-    <button class="btn" onclick="saveRequisites()">Сохранить</button>`);
+/* ---------- Свои организации ----------
+
+   Список, а не один набор. У человека бывает ИП и ООО одновременно,
+   фирмы закрывают и открывают новые, реквизиты меняются при переезде
+   или смене банка. С одним набором прежнее пришлось бы затирать руками. */
+async function manageOrgs() {
+  const d = await API.orgs().catch(() => null);
+  if (!d) return toast("Не удалось загрузить организации", "error");
+
+  const live = d.orgs.filter(o => !o.archived);
+  const gone = d.orgs.filter(o => o.archived);
+
+  const row = o => `
+    <div class="org-row${o.id === d.active ? " current" : ""}">
+      <div class="org-main">
+        <b>${escapeHtml(o.label || o.name)}</b>
+        <span>${escapeHtml(o.name)}${o.inn ? " · ИНН " + escapeHtml(o.inn) : ""}</span>
+      </div>
+      <div class="org-acts">
+        ${o.id === d.active
+          ? `<span class="org-badge">подставляется</span>`
+          : `<button class="btn small secondary" onclick="useOrg(${o.id})">Выбрать</button>`}
+        <button class="btn small ghost" onclick="editOrg(${o.id})">Изменить</button>
+        <button class="btn small ghost" onclick="archiveOrg(${o.id})">В архив</button>
+      </div>
+    </div>`;
+
+  const goneRow = o => `
+    <div class="org-row archived">
+      <div class="org-main">
+        <b>${escapeHtml(o.label || o.name)}</b>
+        <span>в архиве${o.inn ? " · ИНН " + escapeHtml(o.inn) : ""}</span>
+      </div>
+      <div class="org-acts">
+        <button class="btn small ghost" onclick="restoreOrg(${o.id})">Вернуть</button>
+      </div>
+    </div>`;
+
+  MODAL.open("Мои организации", `
+    <p class="hint" style="margin-bottom:12px">Реквизиты вводятся один раз и
+       подставляются во все документы. Отмеченная подставляется сейчас.</p>
+    ${live.map(row).join("")}
+    ${gone.length ? `
+      <p class="hint" style="margin:14px 0 8px">Закрытые. Не предлагаются в документах,
+         но остаются: по закрытой фирме требования приходят и через три года.</p>
+      ${gone.map(goneRow).join("")}` : ""}
+    <button class="btn small" style="margin-top:14px" onclick="editOrg(0)">
+      Добавить организацию</button>`);
 }
 
-async function saveRequisites() {
-  const body = {};
-  for (const [k] of REQ_FORM) body[k] = document.getElementById("r_" + k)?.value || "";
+async function useOrg(id) {
   try {
-    const res = await API.saveRequisites(body);
-    REQ.mine = res.requisites;
+    await API.setActiveOrg(id);
+    await REQ.load(true);
     MODAL.close();
-    toast("Реквизиты сохранены");
+    toast("Теперь подставляется: " + REQ.activeLabel());
+    if (CURRENT && TEMPLATES[CURRENT]) renderFillBar(TEMPLATES[CURRENT]);
+  } catch (e) { toast(e.message || "Не удалось переключить", "error"); }
+}
+
+async function archiveOrg(id) {
+  try {
+    await API.archiveOrg(id);
+    await REQ.load(true);
+    manageOrgs();
+    if (CURRENT && TEMPLATES[CURRENT]) renderFillBar(TEMPLATES[CURRENT]);
+  } catch (e) { toast(e.message || "Не удалось убрать в архив", "error"); }
+}
+
+async function restoreOrg(id) {
+  try {
+    await API.archiveOrg(id, { restore: true });
+    await REQ.load(true);
+    manageOrgs();
+  } catch (e) { toast(e.message || "Не удалось вернуть", "error"); }
+}
+
+async function editOrg(id) {
+  const d = await API.orgs().catch(() => ({ orgs: [] }));
+  const o = d.orgs.find(x => x.id === id) || {};
+  MODAL.open(id ? "Реквизиты организации" : "Новая организация", `
+    <p class="hint" style="margin-bottom:12px">Хранятся только у вас в аккаунте.
+       ИНН и ОГРН проверяются по контрольной сумме — опечатка не пройдёт.</p>
+    <div class="grid cols-2">
+      ${ORG_FORM.map(([k, l]) => `
+        <div class="form-group">
+          <label>${escapeHtml(l)}</label>
+          <input type="text" id="r_${k}" value="${escapeHtml(o[k] || "")}" autocomplete="off">
+        </div>`).join("")}
+    </div>
+    <button class="btn" onclick="saveOrg(${id})">Сохранить</button>`);
+}
+
+async function saveOrg(id) {
+  const body = { id };
+  for (const [k] of ORG_FORM) body[k] = document.getElementById("r_" + k)?.value || "";
+  try {
+    await API.saveOrg(body);
+    await REQ.load(true);
+    MODAL.close();
+    toast("Сохранено");
     if (CURRENT && TEMPLATES[CURRENT]) renderFillBar(TEMPLATES[CURRENT]);
   } catch (e) {
     /* Сервер отказывает при неверной контрольной сумме — показываем

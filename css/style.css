@@ -493,6 +493,34 @@ textarea { min-height: 120px; resize: vertical; }
 .nav-more-list a:hover { background: var(--surface-2); text-decoration: none; }
 .nav-more-list a.active { color: var(--link, var(--primary)); }
 
+/* ============ Свои организации ============
+   Отмеченная строка выделяется рамкой, а не цветом фона: цвет фона
+   в тёмной теме читается как «недоступно», и человек решал бы, что
+   выбранную как раз тронуть нельзя. */
+.org-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; margin-bottom: 8px;
+  border: 1px solid var(--border); border-radius: 11px; background: var(--surface);
+}
+.org-row.current { border-color: var(--primary); }
+.org-row.archived { opacity: .62; }
+.org-main { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.org-main b { font-size: var(--t-sm); }
+.org-main span { font-size: var(--t-xs); color: var(--muted); }
+.org-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.org-badge {
+  align-self: center; font-size: var(--t-xs); font-weight: 700;
+  color: var(--primary); background: var(--surface-2);
+  border-radius: 999px; padding: 4px 10px; white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  /* На телефоне кнопки уезжают под название: три штуки в строку с ним
+     не помещаются и режут его на середине слова. */
+  .org-row { flex-direction: column; align-items: stretch; }
+  .org-acts { justify-content: flex-start; }
+}
+
 /* ============ Витрина возможностей ============
 
    Плитки нарочно плотные и одинаковые: человек пришёл сюда не читать,
