@@ -518,7 +518,10 @@ DIAG="$REPO/diag-8f3a2c.txt"
   tail -40 /var/log/pravofin-setup.log 2>/dev/null | sed 's/^/  /' || echo "  журнала нет"
   echo
   echo "--- настройка nginx на диске ---"
-  grep -nE 'listen|server_name|return 30|ssl_certificate |root '     /etc/nginx/sites-available/pravofin 2>/dev/null | sed 's/^/  /'
+  # Условие «if ($host = ...)» показываем вместе с переадресацией: без него
+  # видно, КУДА отправляют, но не видно, КОГО — а именно там прячутся
+  # ошибки после смены домена.
+  grep -nE 'listen|server_name|return 30|if \(\$host|ssl_certificate |root ' /etc/nginx/sites-available/pravofin 2>/dev/null | sed 's/^/  /'
   echo "  включённые сайты: $(ls -1 /etc/nginx/sites-enabled/ 2>/dev/null | tr '
 ' ' ')"
   echo "--- настройка зеркала ---"
