@@ -1236,6 +1236,27 @@ textarea:focus-visible,
 .rem-meta { color: var(--muted); }
 .rem-side { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 
+/* ===== Строка документа =====
+
+   Устроена как строка срока, но кнопок в ней больше — открыть,
+   отметить оплату, удалить. На телефоне они не помещаются рядом с
+   названием, поэтому строка переносится, а кнопки уходят вниз
+   целым рядом: втиснутые в остаток ширины, они превращаются
+   в неприцельные огрызки. */
+.doc-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.doc-row:last-of-type { border-bottom: none; }
+.doc-main { display: flex; flex-direction: column; gap: 2px; min-width: 190px; flex: 1; }
+.doc-main b { font-size: max(.92rem, 14px); overflow-wrap: anywhere; }
+.doc-side { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+@media (max-width: 560px) {
+  .doc-side { width: 100%; }
+}
+
 /* ===== Колокольчик уведомлений ===== */
 .notif-btn { position: relative; }
 .notif-dot {

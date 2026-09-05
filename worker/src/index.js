@@ -22,6 +22,7 @@ import * as book from "./book.js";
 import * as registry from "./registry.js";
 import * as clients from "./clients.js";
 import * as requisites from "./requisites.js";
+import * as documents from "./documents.js";
 
 /* Маршруты: [метод, путь, обработчик, доступ] */
 const ROUTES = [
@@ -108,6 +109,14 @@ const ROUTES = [
   ["POST", "/api/orgs/active", requisites.setActiveOrg, "user"],
   ["POST", "/api/orgs/archive", requisites.archiveOrg, "user"],
   ["POST", "/api/docnumber", requisites.nextNumber, "user"],
+
+  /* Мои документы: история созданных бумаг вместо одноразовой печати.
+     Оплаченный счёт сам попадает в «Моё дело» — см. documents.js. */
+  ["GET",  "/api/documents", documents.list, "user"],
+  ["GET",  "/api/documents/one", documents.one, "user"],
+  ["POST", "/api/documents", documents.save, "user"],
+  ["POST", "/api/documents/status", documents.setStatus, "user"],
+  ["POST", "/api/documents/delete", documents.remove, "user"],
 
   ["POST", "/api/registry/npd", registry.npdStatus, "user"],
   ["POST", "/api/registry/company", registry.companyInfo, "user"],

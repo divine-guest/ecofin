@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=140">
+<link rel="stylesheet" href="css/style.css?v=144">
 </head>
 <body>
 <main class="section">
@@ -105,12 +105,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=140"></script>
-<script src="js/api.js?v=140"></script>
-<script src="js/app.js?v=140"></script>
-<script src="js/progress.js?v=140"></script>
-<script src="js/palette.js?v=140"></script>
-<script src="js/ai.js?v=140"></script>
+<script src="js/themes.js?v=144"></script>
+<script src="js/api.js?v=144"></script>
+<script src="js/app.js?v=144"></script>
+<script src="js/progress.js?v=144"></script>
+<script src="js/palette.js?v=144"></script>
+<script src="js/ai.js?v=144"></script>
 <script>
 initPage("auth.html");
 
@@ -232,7 +232,7 @@ if (REF.code) {
       const el = document.getElementById("refBanner");
       el.style.display = "block";
       el.innerHTML = `<b>${escapeHtml(d.inviter || "Друг")}</b> приглашает вас в ЭкоФин.
-        Зарегистрируйтесь — и вы оба получите <b>${d.days} дней Pro</b> в подарок.`;
+        Зарегистрируйтесь — и вы оба получите <b>${d.days} дней «Про»</b> в подарок.`;
     })
     .catch(() => { REF.code = ""; });
 }

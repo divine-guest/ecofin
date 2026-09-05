@@ -85,13 +85,33 @@ const PF = {
     return next;
   },
 
-  /* --- Мои документы: остаются в браузере, это черновики, а не аккаунт --- */
+  /* --- Мои документы ---
+
+     Раньше они лежали в браузере: терялись при чистке, не открывались
+     с телефона и ничего не знали об учёте. Человек выставлял счёт и
+     через месяц не помнил, оплатили его или нет.
+
+     Теперь документ хранит сервер вместе с номером, датой,
+     контрагентом и суммой. Отметка «оплачен» заносит поступление
+     в «Моё дело» и в расчёт налога.
+
+     Локальное хранилище оставлено как запасной путь: если сервер не
+     ответил, только что составленную бумагу терять нельзя. Оно же
+     хранит документы, составленные до перехода, — их переносит
+     кабинет при первом входе. */
   docsKey() { const u = this.user(); return "pf_docs_" + (u ? u.email : "guest"); },
   docs() { try { return JSON.parse(localStorage.getItem(this.docsKey()) || "[]"); } catch { return []; } },
-  saveDoc(title, content) {
-    const docs = this.docs();
-    docs.unshift({ title, content, date: new Date().toISOString() });
-    localStorage.setItem(this.docsKey(), JSON.stringify(docs.slice(0, 50)));
+
+  async saveDoc(title, content, meta = {}) {
+    try {
+      const r = await API.documents.save({ title, content, ...meta });
+      return r.id;
+    } catch (e) {
+      const docs = this.docs();
+      docs.unshift({ title, content, date: new Date().toISOString(), pending: true });
+      localStorage.setItem(this.docsKey(), JSON.stringify(docs.slice(0, 50)));
+      throw e;
+    }
   },
   deleteDoc(i) {
     const docs = this.docs();
@@ -1862,7 +1882,7 @@ const NOTIFY = {
    Это самый дорогой экран сервиса: сюда человек попадает в момент, когда
    ему по-настоящему что-то нужно. Прежняя версия работала против нас:
 
-   — говорила «Нужна подписка Pro», хотя тарифов три, а почти все упоры
+   — говорила «Нужна подписка «Про»», хотя тарифов три, а почти все упоры
      снимает «Базовый» за 290 ₽ — и вела к самому дорогому;
    — не называла цену вообще (человек не знает, 200 это или 2000);
    — не предлагала три бесплатных дня, хотя принять их здесь проще всего.

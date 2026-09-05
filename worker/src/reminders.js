@@ -97,7 +97,7 @@ export async function create(request, env, origin, user) {
   if (count >= MAX_REMINDERS) return fail(env, origin, `Больше ${MAX_REMINDERS} напоминаний не поддерживается`);
   if (!isPro(user) && count >= FREE_REMINDERS) {
     return json(env, origin, {
-      error: `На бесплатном тарифе доступно ${FREE_REMINDERS} напоминания. С Pro — сколько угодно и с доставкой в Telegram`,
+      error: `На бесплатном тарифе доступно ${FREE_REMINDERS} напоминания. С «Про» — сколько угодно и с доставкой в Telegram`,
       paywall: true, kind: "reminders",
     }, 402);
   }

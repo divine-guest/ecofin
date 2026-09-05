@@ -141,8 +141,8 @@ export async function revoke(request, env, origin, admin) {
   if (target.role !== "user") return fail(env, origin, "У администратора доступ бессрочный по роли", 400);
 
   await env.DB.prepare("UPDATE users SET plan = 'free', pro_until = NULL WHERE email = ?").bind(email).run();
-  await logAction(env, email, "Администратор снял подписку Pro");
-  await logAction(env, admin.email, `Снял Pro у ${email}`);
+  await logAction(env, email, "Администратор снял подписку «Про»");
+  await logAction(env, admin.email, `Снял «Про» у ${email}`);
   const row = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
   return json(env, origin, { user: publicUser(row) });
 }

@@ -410,7 +410,7 @@ async function handle(env, chatId, text, username) {
     const cnt = await env.DB.prepare("SELECT COUNT(*) AS n FROM reminders WHERE email = ? AND active = 1")
       .bind(user.email).first();
     if (!isPro(user) && (cnt?.n || 0) >= 3) {
-      return send(env, chatId, "На бесплатном тарифе доступно 3 напоминания. С Pro — сколько угодно и с доставкой сюда, в Telegram.");
+      return send(env, chatId, "На бесплатном тарифе доступно 3 напоминания. С «Про» — сколько угодно и с доставкой сюда, в Telegram.");
     }
 
     await env.DB.prepare(
@@ -519,7 +519,7 @@ ${siteUrl(env)}book.html`);
   if (!spent) {
     const q = await aiQuota(env, user);
     return send(env, chatId,
-      `Дневной лимит вопросов исчерпан (${q.limit} в сутки). Он обновится завтра.\n\nС подпиской Pro лимита нет — оформить можно в кабинете на сайте.`);
+      `Дневной лимит вопросов исчерпан (${q.limit} в сутки). Он обновится завтра.\n\nС подпиской «Про» лимита нет — оформить можно в кабинете на сайте.`);
   }
 
   await send(env, chatId, "Думаю…");

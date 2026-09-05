@@ -59,8 +59,13 @@ export async function makeAdmin(call) {
 
 /** Убирает за собой: аккаунт и все его следы. */
 export async function cleanup(email) {
+  /* Список таблиц приходится держать руками, и каждая забытая
+     оставляет за тестами мусор в базе. Документы и записи учёта
+     добавлены сюда же: без них после прогона оставались чужие
+     счета и поступления. */
   for (const t of ["reminders", "point_ops", "sessions", "usage",
-                   "actions", "payments", "notifications"]) {
+                   "actions", "payments", "notifications",
+                   "documents", "book_ops"]) {
     try { await sql(`DELETE FROM ${t} WHERE email='${email}'`); } catch {}
   }
   try { await sql(`DELETE FROM users WHERE email='${email}'`); } catch {}

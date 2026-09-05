@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=140">
+<link rel="stylesheet" href="css/style.css?v=144">
 </head>
 <body>
 <main class="section">
@@ -38,17 +38,17 @@
   </div>
 </main>
 
-<script src="js/rates.js?v=140"></script>
-<script src="js/book.js?v=140"></script>
-<script src="js/themes.js?v=140"></script>
-<script src="js/api.js?v=140"></script>
-<script src="js/app.js?v=140"></script>
-<script src="js/progress.js?v=140"></script>
-<script src="js/palette.js?v=140"></script>
-<script src="js/ai.js?v=140"></script>
-<script src="js/knowledge.js?v=140"></script>
-<script src="js/competencies.js?v=140"></script>
-<script src="js/courses.js?v=140"></script>
+<script src="js/rates.js?v=144"></script>
+<script src="js/book.js?v=144"></script>
+<script src="js/themes.js?v=144"></script>
+<script src="js/api.js?v=144"></script>
+<script src="js/app.js?v=144"></script>
+<script src="js/progress.js?v=144"></script>
+<script src="js/palette.js?v=144"></script>
+<script src="js/ai.js?v=144"></script>
+<script src="js/knowledge.js?v=144"></script>
+<script src="js/competencies.js?v=144"></script>
+<script src="js/courses.js?v=144"></script>
 <script>
 initPage("dashboard.html");
 
@@ -179,7 +179,12 @@ const CAL = (() => {
     if (!view) view = { y: now.getFullYear(), m: now.getMonth() };
     const { y, m } = view;
     const titleEl = document.querySelector(".cal-header h3");
-    titleEl.textContent = "Копилка · " + new Date(y, m, 1).toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+    /* Заголовок называет месяц, а не «Копилку»: в сетке теперь два
+       разных смысла — отметки дней и назначенные сроки, и называть её
+       по одному из них значит спрятать второй. */
+    titleEl.textContent = new Date(y, m, 1)
+      .toLocaleDateString("ru-RU", { month: "long", year: "numeric" })
+      .replace(/^./, c => c.toUpperCase());
 
     const set = new Set(daysArr());
     const tISO = todayISO();
@@ -452,7 +457,7 @@ function renderCabinet() {
           const pct = Math.round(done / c.lessons.length * 100);
           const status = pct === 100 ? '<span class="badge ok">Сертификат</span>' : pct > 0 ? '<span class="badge">В процессе</span>' : '<span class="badge">Не начато</span>';
           return `<a class="card" href="courses.html" style="padding:18px">
-            <h3 style="font-size:var(--t-md)">${c.title} ${c.free ? "" : '<span class="badge pro">Pro</span>'}</h3>
+            <h3 style="font-size:var(--t-md)">${c.title} ${c.free ? "" : '<span class="badge pro">Про</span>'}</h3>
             <p style="font-size:var(--t-xs);color:var(--muted)">${COMP.AREAS[COMP.courseArea[c.id]]} · ${c.lessons.length} уроков</p>
             <div class="progress-bar" style="margin:8px 0 4px"><div style="width:${pct}%"></div></div>
             <p style="font-size:var(--t-xs)">${status} ${pct}%</p>
@@ -500,13 +505,20 @@ function renderCabinet() {
 
       <div class="card" data-tab="tasks">
         <h3>Мои документы</h3>
-        <p style="color:var(--muted);font-size:var(--t-sm)">Сохранённые шаблоны и генерации. Скачиваются в один клик.</p><br>
-        <div id="docsList"></div>
+        <p style="color:var(--muted);font-size:var(--t-sm)">
+          Счета и акты с номером, датой и суммой. Отметите оплату —
+          поступление само попадёт в «Моё дело» и в расчёт налога.</p>
+        <div id="docsHead" style="margin-top:12px"></div>
+        <div id="docsFilter" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+        <input type="search" id="docFind" aria-label="Поиск по документам"
+               placeholder="Найти по названию, номеру или контрагенту"
+               oninput="DOCS.search(this.value)" style="margin-bottom:12px">
+        <div id="docsList"><p class="hint">Загружаем…</p></div>
       </div>
       <div class="card" data-tab="tasks">
         <h3>Сроки и напоминания</h3>
         <p class="hint" style="margin-bottom:12px">
-          Напомним заранее — за 3 дня, за день и в сам день. С подпиской Pro
+          Напомним заранее — за 3 дня, за день и в сам день. С подпиской «Про»
           напоминания приходят ещё и в Telegram.
         </p>
         <!-- Куда именно придут напоминания. Раньше об этом нигде не
@@ -566,7 +578,7 @@ function renderCabinet() {
   }
   CAL.render();
   renderReferral();
-  renderDocs();
+  DOCS.load().then(migrateLocalDocs);
   REM.load();
   NOTIF.checkDeadlines();
   const nb = document.getElementById("notifBtn");
@@ -778,63 +790,200 @@ const CABINET = {
 };
 
 
-/* ============ Мои документы ============ */
-/* Документов накапливаются десятки, и найти нужный без поиска нельзя.
-   Поле появляется только когда их больше трёх — раньше оно лишнее. */
-let docQuery = "";
-function docSearch(v) { docQuery = v.trim().toLowerCase(); renderDocs(); }
+/* ============ Мои документы ============
 
-function renderDocs() {
-  const all = PF.docs();
-  const docs = docQuery
-    ? all.filter(d => (d.title + " " + d.content).toLowerCase().includes(docQuery))
-    : all;
+   Раньше это был список текстов в браузере: терялся при чистке, не
+   открывался с телефона и ничего не знал об учёте. Человек выставлял
+   счёт и через месяц не помнил, оплатили его или нет, — а это и есть
+   главный вопрос про счёт.
 
-  const box = document.getElementById("docsList");
-  if (!box) return;
-  if (all.length > 3 && !document.getElementById("docFind")) {
-    const f = document.createElement("input");
-    f.id = "docFind";
-    f.type = "search";
-    f.setAttribute("aria-label", "Поиск по сохранённым документам");
-    f.placeholder = "Поиск по документам";
-    f.style.cssText = "width:100%;margin-bottom:10px";
-    f.oninput = e => docSearch(e.target.value);
-    box.parentElement.insertBefore(f, box);
-  }
-  box.innerHTML = docs.length
-    ? docs.map((d, i) => `
-      <p style="padding:8px 0;border-bottom:1px solid var(--border);font-size:var(--t-sm)">
-        <b>${escapeHtml(d.title)}</b>
-        <span style="color:var(--muted);font-size:var(--t-xs)"> · ${new Date(d.date).toLocaleDateString("ru-RU")}</span><br>
-        <button class="btn small secondary" onclick="docView(${i})">Открыть</button>
-        <button class="btn small secondary" onclick="docDownload(${i})">Скачать</button>
-        <button class="btn small danger" onclick="docDelete(${i})">Удалить</button>
-      </p>`).join("")
-    : docQuery
-      ? `<p class="hint">По запросу «${escapeHtml(docQuery)}» ничего не нашлось.</p>`
-      : `<div class="empty"><b>Документов пока нет</b>
-          <p>Составьте договор, претензию или акт — и он сохранится здесь,
-          чтобы не искать его потом по перепискам.</p>
-          <a href="tools.html" class="btn small">Составить документ</a></div>`;
-}
-function docView(i) {
-  const d = PF.docs()[i];
-  alert(d.title + "\n\n" + d.content);
-}
-function docDownload(i) {
-  const d = PF.docs()[i];
-  const blob = new Blob([d.content], { type: "text/plain;charset=utf-8" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = d.title.replace(/[\\/:*?"<>|]/g, "") + ".txt";
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-function docDelete(i) {
-  if (!confirm("Удалить документ?")) return;
-  PF.deleteDoc(i);
-  renderDocs();
+   Теперь у документа есть состояние. «Оплачен» заносит поступление
+   в «Моё дело», и сумма попадает в расчёт налога. Снятая отметка
+   запись убирает: иначе первая же исправленная ошибка удвоила бы
+   выручку, и узнал бы об этом человек уже из налога.                */
+const DOCS = {
+  items: [],
+  query: "",
+  filter: "",
+  owed: 0,
+  limit: null,
+
+  STATUS: {
+    draft:     ["Черновик", "badge"],
+    issued:    ["Ждёт оплаты", "badge pro"],
+    paid:      ["Оплачен", "badge ok"],
+    cancelled: ["Отменён", "badge"],
+  },
+
+  async load() {
+    const box = document.getElementById("docsList");
+    if (!box) return;
+    try {
+      const d = await API.documents.list(this.filter);
+      this.items = d.documents;
+      this.owed = d.owed;
+      this.limit = d.limit;
+      this.render();
+    } catch (e) {
+      box.innerHTML = `<p class="hint">Не удалось загрузить: ${escapeHtml(e.message)}</p>`;
+    }
+  },
+
+  search(v) { this.query = v.trim().toLowerCase(); this.render(); },
+  setFilter(v) { this.filter = v; this.load(); },
+
+  money(v) {
+    return v.toLocaleString("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 2 });
+  },
+
+  render() {
+    const box = document.getElementById("docsList");
+    if (!box) return;
+
+    const list = this.query
+      ? this.items.filter(d => (d.title + " " + d.party + " " + d.number).toLowerCase().includes(this.query))
+      : this.items;
+
+    /* Сколько денег висит неоплаченным — то, ради чего сюда заходят.
+       Показываем над списком, а не внутри: это ответ на вопрос,
+       с которым открывают раздел. */
+    const head = document.getElementById("docsHead");
+    if (head) {
+      head.innerHTML = this.owed > 0
+        ? `<p style="margin-bottom:10px"><b>Ждёт оплаты: ${this.money(this.owed)}</b>
+             <span class="hint">— по выставленным счетам</span></p>`
+        : "";
+    }
+
+    const tabs = document.getElementById("docsFilter");
+    if (tabs) {
+      tabs.innerHTML = [["", "Все"], ["issued", "Ждут оплаты"], ["paid", "Оплачены"], ["draft", "Черновики"]]
+        .map(([id, label]) =>
+          `<button type="button" class="btn small ${this.filter === id ? "" : "secondary"}"
+            onclick="DOCS.setFilter('${id}')">${label}</button>`).join("");
+    }
+
+    if (!list.length) {
+      box.innerHTML = this.query || this.filter
+        ? `<p class="hint">Ничего не нашлось. <a href="#" onclick="DOCS.query='';DOCS.setFilter('');return false">Показать все</a></p>`
+        : `<div class="empty"><b>Документов пока нет</b>
+            <p>Выставите счёт или составьте акт — он останется здесь с номером,
+            датой и суммой. Отметите оплату — поступление само попадёт в «Моё дело».</p>
+            <a href="docs.html" class="btn small">Составить документ</a></div>`;
+      return;
+    }
+
+    box.innerHTML = list.map(d => {
+      const [label, cls] = this.STATUS[d.status] || this.STATUS.draft;
+      return `
+        <div class="doc-row">
+          <span class="doc-main">
+            <b>${escapeHtml(d.title)}${d.number ? " № " + escapeHtml(d.number) : ""}</b>
+            <span class="rem-meta">
+              ${d.date ? d.date.split("-").reverse().join(".") : new Date(d.createdAt).toLocaleDateString("ru-RU")}
+              ${d.party ? " · " + escapeHtml(d.party) : ""}
+              ${d.amount ? " · " + this.money(d.amount) : ""}
+            </span>
+          </span>
+          <span class="doc-side">
+            <span class="${cls}">${label}</span>
+            <button class="btn small secondary" onclick="DOCS.open(${d.id})">Открыть</button>
+            ${d.status === "paid"
+              ? `<button class="btn small secondary" onclick="DOCS.status(${d.id},'issued')">Снять оплату</button>`
+              : `<button class="btn small" onclick="DOCS.status(${d.id},'paid')">Оплачен</button>`}
+            <button class="btn small danger" onclick="DOCS.remove(${d.id})" aria-label="Удалить документ">✕</button>
+          </span>
+        </div>`;
+    }).join("") + (this.limit !== null
+      ? `<p class="hint">Хранится ${this.items.length} из ${this.limit} на бесплатном тарифе.
+         Самые старые черновики вытесняются — выставленные и оплаченные остаются.
+         <a href="#" onclick="showPaywall('Полная история документов — в подписке Про');return false">Хранить всё</a></p>`
+      : "");
+  },
+
+  async open(id) {
+    try {
+      const d = (await API.documents.one(id)).document;
+      MODAL.open(d.title + (d.number ? " № " + d.number : ""), `
+        <div style="max-height:50vh;overflow:auto;border:1px solid var(--border);
+                    border-radius:10px;padding:12px;margin-bottom:12px">
+          <pre style="white-space:pre-wrap;font-family:inherit;margin:0">${escapeHtml(d.content)}</pre>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="DOCS.download(${d.id})">Скачать</button>
+          <button class="btn secondary" onclick="DOCS.print(${d.id})">Печать</button>
+          ${d.status !== "issued" && d.status !== "paid"
+            ? `<button class="btn secondary" onclick="DOCS.status(${d.id},'issued');MODAL.close()">Выставлен</button>` : ""}
+        </div>`);
+      this._last = d;
+    } catch (e) { toast(e.message); }
+  },
+
+  async _text(id) {
+    if (this._last && this._last.id === id) return this._last;
+    return (await API.documents.one(id)).document;
+  },
+
+  async download(id) {
+    const d = await this._text(id);
+    const blob = new Blob([d.content], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = (d.title + (d.number ? " " + d.number : "")).replace(/[\\/:*?"<>|]/g, "") + ".txt";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  },
+
+  async print(id) {
+    const d = await this._text(id);
+    const w = window.open("", "_blank");
+    if (!w) return toast("Браузер заблокировал новое окно");
+    w.document.write(`<pre style="white-space:pre-wrap;font:14px Georgia,serif;padding:24px">${
+      escapeHtml(d.content)}</pre>`);
+    w.document.close();
+    w.print();
+  },
+
+  async status(id, status) {
+    try {
+      const r = await API.documents.setStatus(id, status);
+      if (r.bookOpAdded) toast("Оплата отмечена, поступление занесено в «Моё дело»");
+      else if (r.bookOpRemoved) toast("Оплата снята, поступление убрано из учёта");
+      else toast("Готово");
+      await this.load();
+    } catch (e) { toast(e.message); }
+  },
+
+  async remove(id) {
+    if (!confirm("Удалить документ? Занесённое поступление останется в учёте.")) return;
+    try {
+      await API.documents.remove(id);
+      await this.load();
+    } catch (e) { toast(e.message); }
+  },
+};
+
+/* Старое хранилище документов в браузере. Оставляем только чтение и
+   перенос: у людей там лежат бумаги, и терять их при обновлении нельзя.
+   Переносим один раз и помечаем, чтобы не задваивать. */
+async function migrateLocalDocs() {
+  const u = PF.user();
+  if (!u) return;
+  const flag = "pf_docs_moved_" + u.email;
+  if (localStorage.getItem(flag)) return;
+  const old = PF.docs();
+  if (!old.length) { localStorage.setItem(flag, "1"); return; }
+  try {
+    for (const d of old.slice(0, 20)) {
+      await API.documents.save({
+        title: d.title,
+        content: d.content,
+        date: (d.date || "").slice(0, 10),
+      });
+    }
+    localStorage.setItem(flag, "1");
+    toast(`Документы перенесены в кабинет: ${Math.min(old.length, 20)}`);
+  } catch { /* не вышло — попробуем в следующий раз, ничего не теряя */ }
 }
 
 /* ============ Сроки и напоминания ============
@@ -855,8 +1004,23 @@ const TAXCAL = {
   answers: { who: "ip", mode: "usn", staff: false, sphere: "" },
 
   /* Что уже знаем из знакомства при регистрации. */
+  /* Соответствие режимов: в «Моём деле» УСН разделена на «Доходы» и
+     «Доходы минус расходы», а патент назван ПСН. Для сроков разницы
+     между двумя УСН нет — даты у них одни. */
+  MODE_FROM_BIZ: { npd: "npd", usn6: "usn", usn15: "usn", psn: "patent", ausn: "ausn", osno: "osno", eshn: "osno" },
+  MODE_TO_BIZ: { npd: "npd", usn: "usn6", patent: "psn", ausn: "ausn", osno: "osno", none: "" },
+
   fromProfile() {
-    const p = (PF.user() || {}).profile || {};
+    const u = PF.user() || {};
+    const p = u.profile || {};
+    const biz = u.biz || {};
+
+    /* Профиль дела главнее: по нему уже считается налог, и сроки
+       должны прийти для того же режима. */
+    if (["ip", "ooo", "self"].includes(biz.form)) this.answers.who = biz.form;
+    if (this.MODE_FROM_BIZ[biz.regime]) this.answers.mode = this.MODE_FROM_BIZ[biz.regime];
+    if (biz.workers > 0) this.answers.staff = true;
+
     /* Что знаем из знакомства — подставляем, чтобы не спрашивать
        второй раз то же самое. */
     if (["ip", "ooo", "self", "person"].includes(p.status)) this.answers.who = p.status;
@@ -948,7 +1112,7 @@ const TAXCAL = {
           </div>`).join("")}
         </div>
         ${limited ? `<p class="hint">На бесплатном тарифе поставим ${d.free} ближайших.
-          Остальные — с подпиской Pro, там же и доставка в Telegram.</p>` : ""}
+          Остальные — с подпиской «Про», там же и доставка в Telegram.</p>` : ""}
         <button class="btn" onclick="TAXCAL.apply()">Поставить напоминания</button>`;
     } catch (e) {
       box.innerHTML = `<p class="hint">Не удалось посчитать: ${escapeHtml(e.message)}</p>`;
@@ -960,11 +1124,23 @@ const TAXCAL = {
       const d = await API.reminders.planApply(this.answers);
       MODAL.close();
       try { await PF.saveProfile(this.answers); } catch {}
+      /* Пишем и в профиль дела: иначе «Моё дело» спросит то же самое
+         третий раз, а налог посчитает по старому режиму. */
+      try {
+        const biz = (PF.user() || {}).biz || {};
+        const regime = this.MODE_TO_BIZ[this.answers.mode] ?? "";
+        await API.request("/api/book/profile", { method: "POST", body: {
+          form: this.answers.who === "person" ? "self" : this.answers.who,
+          regime: regime || biz.regime || "",
+          workers: this.answers.staff ? Math.max(1, biz.workers || 1) : 0,
+        } });
+        await API.me();
+      } catch {}
       if (d.added) toast(`Поставлено сроков: ${d.added}`);
       else if (d.already) toast("Все ваши сроки уже стоят");
       else toast("Свободных мест для новых напоминаний нет");
       if (d.limited) {
-        showPaywall("Остальные сроки вашего календаря и доставка в Telegram — в подписке Pro");
+        showPaywall("Остальные сроки вашего календаря и доставка в Telegram — в подписке «Про»");
       }
       await REM.load();
       this.card();
@@ -1054,7 +1230,7 @@ const REM = {
         </div>`;
     }).join("") + (d.limit !== null
       ? `<p class="hint">Использовано ${d.used} из ${d.limit} на бесплатном тарифе.
-         <a href="#" onclick="showPaywall('Больше напоминаний и доставка в Telegram — в подписке Pro');return false">Снять лимит</a></p>`
+         <a href="#" onclick="showPaywall('Больше напоминаний и доставка в Telegram — в подписке «Про»');return false">Снять лимит</a></p>`
       : "");
   },
 

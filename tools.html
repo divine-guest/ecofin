@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=140">
+<link rel="stylesheet" href="css/style.css?v=144">
 </head>
 <body>
 <main class="section tint-green">
@@ -553,15 +553,15 @@
   <div class="container"><div id="partnersTools"></div></div>
 </main>
 
-<script src="js/themes.js?v=140"></script>
-<script src="js/api.js?v=140"></script>
-<script src="js/app.js?v=140"></script>
-<script src="js/progress.js?v=140"></script>
-<script src="js/palette.js?v=140"></script>
-<script src="js/ai.js?v=140"></script>
-<script src="js/templates.js?v=140"></script>
-<script src="js/docscan.js?v=140"></script>
-<script src="js/partners.js?v=140"></script>
+<script src="js/themes.js?v=144"></script>
+<script src="js/api.js?v=144"></script>
+<script src="js/app.js?v=144"></script>
+<script src="js/progress.js?v=144"></script>
+<script src="js/palette.js?v=144"></script>
+<script src="js/ai.js?v=144"></script>
+<script src="js/templates.js?v=144"></script>
+<script src="js/docscan.js?v=144"></script>
+<script src="js/partners.js?v=144"></script>
 <script>
 initPage("tools.html");
 
@@ -606,7 +606,7 @@ function renderQuota() {
   }
   if (PF.isPro()) {
     el.className = "badge pro";
-    el.textContent = "Pro — без ограничений";
+    el.textContent = "«Про» — без ограничений";
     return true;
   }
   const q = PF.quota;
@@ -615,7 +615,7 @@ function renderQuota() {
   el.className = left > 0 ? "badge ok" : "badge";
   el.textContent = left > 0
     ? `Пробный запуск: осталось ${left} из ${q.tool.limit}`
-    : "Пробный запуск израсходован — нужна подписка Pro";
+    : "Пробный запуск израсходован — нужна подписка «Про»";
   return left > 0;
 }
 renderQuota();
@@ -680,7 +680,9 @@ function printResult(btn) {
 }
 
 function saveResultToDocs(btn) {
-  PF.saveDoc("Разбор от " + new Date().toLocaleDateString("ru-RU"), resultText(btn));
+  PF.saveDoc("Разбор от " + new Date().toLocaleDateString("ru-RU"), resultText(btn),
+             { kind: "analysis", date: new Date().toISOString().slice(0, 10) })
+      .catch(e => toast("Не удалось сохранить: " + e.message));
   toast("Сохранено в «Мои документы»");
 }
 
@@ -1126,7 +1128,9 @@ function makeTemplate() {
 }
 function saveTemplate() {
   if (!lastTemplateDoc) return;
-  PF.saveDoc(lastTemplateDoc.title, lastTemplateDoc.content);
+  PF.saveDoc(lastTemplateDoc.title, lastTemplateDoc.content,
+             { kind: lastTemplateDoc.kind || "template", date: new Date().toISOString().slice(0, 10) })
+      .catch(e => toast("Не удалось сохранить: " + e.message));
   toast("Документ сохранён в кабинете");
 }
 

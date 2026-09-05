@@ -144,6 +144,17 @@ const API = {
     },
     planApply(data) { return API.request("/api/reminders/plan", { method: "POST", body: data }); },
   },
+  /* Мои документы: история созданных бумаг вместо одноразовой печати. */
+  documents: {
+    list(status) { return API.request("/api/documents" + (status ? "?status=" + status : "")); },
+    one(id) { return API.request("/api/documents/one?id=" + Number(id)); },
+    save(data) { return API.request("/api/documents", { method: "POST", body: data }); },
+    setStatus(id, status) {
+      return API.request("/api/documents/status", { method: "POST", body: { id, status } });
+    },
+    remove(id) { return API.request("/api/documents/delete", { method: "POST", body: { id } }); },
+  },
+
   notifications: {
     list() { return API.request("/api/notifications"); },
     read(id) { return API.request("/api/notifications/read", { method: "POST", body: id ? { id } : {} }); },

@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=140">
+<link rel="stylesheet" href="css/style.css?v=144">
 </head>
 <body>
 <main class="section tint-navy">
@@ -37,12 +37,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=140"></script>
-<script src="js/api.js?v=140"></script>
-<script src="js/app.js?v=140"></script>
-<script src="js/progress.js?v=140"></script>
-<script src="js/palette.js?v=140"></script>
-<script src="js/ai.js?v=140"></script>
+<script src="js/themes.js?v=144"></script>
+<script src="js/api.js?v=144"></script>
+<script src="js/app.js?v=144"></script>
+<script src="js/progress.js?v=144"></script>
+<script src="js/palette.js?v=144"></script>
+<script src="js/ai.js?v=144"></script>
 <script>
 initPage("admin.html");
 
@@ -100,7 +100,7 @@ const AD = {
 
       <div class="grid cols-4" style="margin-bottom:8px">
         <div class="card"><div class="stat-value">${s.users}</div><div class="stat-label">пользователей</div></div>
-        <div class="card"><div class="stat-value">${s.pro}</div><div class="stat-label">с активной Pro</div></div>
+        <div class="card"><div class="stat-value">${s.pro}</div><div class="stat-label">с активной «Про»</div></div>
         <div class="card"><div class="stat-value">${this.money(s.revenue)}</div><div class="stat-label">выручка всего</div></div>
         <div class="card"><div class="stat-value">${this.money(s.revenue30)}</div><div class="stat-label">выручка за 30 дней</div></div>
       </div>
@@ -349,7 +349,7 @@ const AD = {
 
   revoke(enc) {
     const email = decodeURIComponent(enc);
-    if (!confirm(`Снять подписку Pro у ${email}?`)) return;
+    if (!confirm(`Снять подписку «Про» у ${email}?`)) return;
     this.act(() => API.admin.revoke(email), "Подписка снята");
   },
 

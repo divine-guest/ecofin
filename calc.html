@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@500;600;700;800&family=Golos+Text:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=140">
+<link rel="stylesheet" href="css/style.css?v=144">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -846,15 +846,15 @@
   </div>
 </main>
 
-<script src="js/qr.js?v=140"></script>
-<script src="js/partners.js?v=140"></script>
-<script src="js/rates.js?v=140"></script>
-<script src="js/themes.js?v=140"></script>
-<script src="js/api.js?v=140"></script>
-<script src="js/app.js?v=140"></script>
-<script src="js/progress.js?v=140"></script>
-<script src="js/palette.js?v=140"></script>
-<script src="js/ai.js?v=140"></script>
+<script src="js/qr.js?v=144"></script>
+<script src="js/partners.js?v=144"></script>
+<script src="js/rates.js?v=144"></script>
+<script src="js/themes.js?v=144"></script>
+<script src="js/api.js?v=144"></script>
+<script src="js/app.js?v=144"></script>
+<script src="js/progress.js?v=144"></script>
+<script src="js/palette.js?v=144"></script>
+<script src="js/ai.js?v=144"></script>
 <script>
 initPage("calc.html");
 
@@ -1195,6 +1195,14 @@ function renderPosInputs() {
       <button class="btn small danger no-print" onclick="delPosRow(${i})">✕</button>
     </div>`).join("");
 }
+/* Итог счёта нужен в двух местах: на самой бумаге и при сохранении
+   в кабинет. Считаем в одном — иначе сумма в списке документов
+   однажды разойдётся с суммой в счёте, и понять, какая настоящая,
+   будет нельзя. */
+function invoiceTotal() {
+  return posRows.reduce((sum, p) => sum + (p.qty || 0) * (p.price || 0), 0);
+}
+
 function renderInvoice() {
   const g = id => (document.getElementById(id)?.value || "").trim();
   const vat = document.getElementById("ivVat").value === "yes";
@@ -1206,7 +1214,15 @@ function renderInvoice() {
       <td style="padding:7px 8px;border:1px solid #ccc;text-align:right">${(p.price || 0).toLocaleString("ru-RU")}</td>
       <td style="padding:7px 8px;border:1px solid #ccc;text-align:right">${s.toLocaleString("ru-RU")}</td></tr>`;
   }).join("");
-  const vatSum = vat ? total * 0.2 : 0;
+  /* НДС в счёте — «в том числе», а не сверху.
+
+     Раньше строка «НДС 20%» показывала пятую часть от суммы позиций,
+     а «Итого» и QR-код брали сумму БЕЗ него. Счёт получался
+     противоречивым: в нём стоял налог, которого не было в сумме к
+     оплате, и платёж по QR приходил меньше, чем написано в строке
+     НДС. Считаем 20/120 от итога — так пишут в счетах, и итог с QR
+     остаются теми же, что были, у всех уже выставленных счетов. */
+  const vatSum = vat ? total / 6 : 0;
   document.getElementById("invoicePaper").innerHTML = `
     <div style="text-align:center;font-weight:800;font-size:var(--t-lg)">СЧЁТ № ${escapeHtml(g("ivNum") || "1")} от ${g("ivDate") || "___.___.20__"}</div>
     <table style="width:100%;margin:18px 0;font-size:var(--t-sm)">
@@ -1218,7 +1234,8 @@ function renderInvoice() {
       ${rowsHtml}
     </table>
     <div style="text-align:right;margin-top:14px;font-size:var(--t-md)">
-      ${vat ? `НДС 20%: <b>${vatSum.toLocaleString("ru-RU")} ₽</b><br>` : "Без НДС (УСН)<br>"}
+      ${vat ? `В том числе НДС 20%: <b>${vatSum.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽</b><br>`
+            : "Без НДС (УСН)<br>"}
       <span style="font-size:var(--t-lg)">Итого: <b>${total.toLocaleString("ru-RU")} ₽</b></span>
     </div>
     <div style="display:flex;gap:18px;align-items:center;margin-top:20px">
@@ -1250,10 +1267,27 @@ function sbpQr(g, total) {
   }
 }
 
-function saveInvoice() {
+async function saveInvoice() {
   const text = document.getElementById("invoicePaper").innerText;
-  PF.saveDoc("Счёт " + (document.getElementById("ivNum").value || "1"), text);
-  toast("Счёт сохранён в моих документах");
+  const g = id => (document.getElementById(id) || {}).value || "";
+
+  /* Сохраняем не просто текст, а счёт: с номером, датой, покупателем и
+     суммой. Без этого в кабинете нельзя ни отметить оплату, ни увидеть,
+     сколько денег висит невыплаченными, — а это главный вопрос про
+     выставленный счёт. */
+  try {
+    await PF.saveDoc("Счёт " + (g("ivNum") || "1"), text, {
+      kind: "invoice",
+      number: g("ivNum") || "1",
+      date: g("ivDate"),
+      party: g("ivBuyer"),
+      amount: invoiceTotal(),
+      status: "issued",
+    });
+    toast("Счёт сохранён — в кабинете можно отметить оплату");
+  } catch (e) {
+    toast("Не удалось сохранить на сервере: " + e.message + ". Копия осталась в браузере");
+  }
 }
 
 /* --- Календарь отчётности ---
