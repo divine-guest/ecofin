@@ -101,13 +101,16 @@ export async function npdStatus(request, env, origin, user) {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    console.error("npd", res.status, text.slice(0, 200));
+    /* Тело ответа не пишем: сервис ФНС возвращает ИНН и фамилию
+       проверяемого — данные третьего лица. Для разбора сбоя
+       достаточно кода состояния. */
+    console.error("npd: ответ сервиса ФНС", res.status);
     return fail(env, origin, `Сервис ФНС ответил ошибкой (${res.status}). Проверьте позже`, 502);
   }
 
   const d = await res.json().catch(() => null);
   if (!d || typeof d.status !== "string") {
-    console.error("npd: непонятный ответ", JSON.stringify(d).slice(0, 200));
+    console.error("npd: непонятный ответ сервиса ФНС");
     return fail(env, origin, "Ответ ФНС не удалось разобрать. Проверьте вручную на npd.nalog.ru/check-status/", 502);
   }
 

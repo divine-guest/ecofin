@@ -88,7 +88,11 @@ export async function callProvider(env, { model, messages, maxTokens }) {
   });
   if (!r.ok) {
     const t = await r.text().catch(() => "");
-    console.error("upstream", r.status, t.slice(0, 500)); // детали в логи, не пользователю
+    /* Ответ поставщика при ошибке нередко повторяет кусок
+       запроса, а в запросе бывает текст договора. Пишем код
+       состояния и первые символы — их хватает, чтобы отличить
+       нехватку денег на счёте от неверной модели. */
+    console.error("upstream", r.status, t.slice(0, 80));
     throw Object.assign(new Error("provider"), { status: r.status });
   }
   const data = await r.json();

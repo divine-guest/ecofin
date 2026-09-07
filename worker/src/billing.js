@@ -27,7 +27,9 @@ async function ykFetch(env, path, { method = "GET", body, idempotenceKey } = {})
   });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
-    console.error("yookassa", r.status, JSON.stringify(data).slice(0, 500));
+    /* Ответ платёжного сервиса содержит реквизиты плательщика.
+       В журнал — только код состояния и код ошибки. */
+    console.error("yookassa", r.status, data && data.code ? data.code : "");
     throw Object.assign(new Error("yookassa"), { status: r.status, data });
   }
   return data;
@@ -375,7 +377,9 @@ export async function runRenewals(env) {
        следующий час не начнёт вторую попытку поверх первой. */
     await env.DB.prepare("UPDATE users SET auto_last = ? WHERE email = ?").bind(t, user.email).run();
     const ok = await chargeSaved(env, user).catch(e => {
-      console.error("renew", user.email, e.message);
+      /* Почту в журнал не пишем: по ней человек опознаётся
+         однозначно. Для разбора хватает текста ошибки. */
+      console.error("renew", e.message);
       return false;
     });
     ok ? done++ : failed++;

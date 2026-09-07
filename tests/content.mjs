@@ -753,5 +753,53 @@ console.log("\n— Распознавание: порядок путей —");
   ok(/--list-langs/.test(setup), "наличие русского проверяется отдельной командой");
 }
 
+console.log("\n— Персональные данные не попадают в журнал —");
+{
+  /* Журнал живёт дольше запроса, читается проще базы и в описи мер
+     защиты обычно не значится. Разглашением это станет в тот день,
+     когда логи понадобится кому-то передать: в поддержку хостинга,
+     подрядчику, при разборе инцидента.
+
+     Проверяем не догадками, а по коду: что именно уходит в
+     console.error рядом с ответами внешних сервисов. */
+  const dir = new URL("../worker/src/", import.meta.url);
+  const bad = [];
+
+  /* Что нельзя писать в журнал ни при каких обстоятельствах. */
+  const forbidden = [
+    { re: /console\.(error|log|warn)\([^)]*user\.email/, why: "почта пользователя" },
+    { re: /console\.(error|log|warn)\([^)]*\bprompt\b/, why: "текст обращения" },
+    { re: /console\.(error|log|warn)\([^)]*pass_hash/, why: "хэш пароля" },
+    { re: /console\.(error|log|warn)\([^)]*\btoken\b/, why: "токен сессии" },
+  ];
+
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.endsWith(".js")) continue;
+    const src = fs.readFileSync(new URL(f, dir), "utf8");
+    for (const line of src.split("\n")) {
+      /* Комментарии не считаем: в них эти слова как раз объясняют,
+         почему писать нельзя. */
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) continue;
+      for (const { re, why } of forbidden) {
+        if (re.test(line)) bad.push(`${f}: ${why} — ${line.trim().slice(0, 70)}`);
+      }
+    }
+  }
+  ok(bad.length === 0, "почта, обращения, хэши и токены в журнал не пишутся", bad);
+
+  /* Ответы внешних сервисов содержат данные людей: сервис ФНС
+     возвращает ИНН и фамилию проверяемого, платёжный — реквизиты
+     плательщика. Тело ответа в журнал не идёт. */
+  const reg = read("../worker/src/registry.js");
+  ok(!/console\.error\([^)]*text\.slice/.test(reg),
+     "ответ сервиса ФНС не пишется в журнал целиком");
+  ok(!/console\.error\([^)]*JSON\.stringify\(d\)/.test(reg),
+     "и не пишется разобранным");
+
+  const bill = read("../worker/src/billing.js");
+  ok(!/console\.error\("yookassa"[^)]*JSON\.stringify\(data\)/.test(bill),
+     "ответ платёжного сервиса не пишется в журнал целиком");
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);
