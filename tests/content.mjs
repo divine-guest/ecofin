@@ -921,5 +921,72 @@ console.log("\n— Безопасность: то, что проверяется
      "предел защиты описан рядом с кодом, а не подразумевается");
 }
 
+console.log("\n— Страница не ходит на чужие адреса —");
+{
+  /* Что здесь на кону.
+
+     Любой внешний ресурс на странице — шрифт, счётчик, картинка —
+     заставляет браузер посетителя обратиться к чужому серверу и
+     передать туда свой IP-адрес, версию браузера и адрес открытой
+     страницы. IP относится к персональным данным, значит это
+     передача: у всех подряд, до входа, без согласия и без
+     упоминания в политике.
+
+     Так и было со шрифтами Google на каждой странице. Заметить это
+     нельзя, глядя на сайт: он работает, выглядит правильно, и
+     обращение уходит молча.
+
+     Разрешены только ссылки, по которым человек переходит сам
+     (реестры ФНС, ЦБ, суды) — они срабатывают по клику, а не при
+     открытии страницы. */
+  const root = new URL("../", import.meta.url);
+
+  /* Что грузится автоматически: стили, скрипты, шрифты, картинки,
+     предзагрузка и предварительные соединения. */
+  const AUTO = /<(?:link|script|img|iframe|source|video|audio)\b[^>]*?(?:href|src)\s*=\s*["'](https?:\/\/[^"']+)["']/gi;
+
+  const outside = [];
+  const check = (file, html) => {
+    for (const m of html.matchAll(AUTO)) {
+      const url = m[1];
+      if (/^https?:\/\/(ecofin26\.ru|www\.ecofin26\.ru)/i.test(url)) continue;
+      outside.push(`${file}: ${url.slice(0, 70)}`);
+    }
+    /* Предварительное соединение тоже обращается наружу, хотя ничего
+       не грузит: DNS и TLS уже раскрывают, куда идёт человек. */
+    for (const m of html.matchAll(/rel=["']?(?:preconnect|dns-prefetch)["']?[^>]*href=["'](https?:\/\/[^"']+)/gi)) {
+      outside.push(`${file}: preconnect ${m[1].slice(0, 60)}`);
+    }
+  };
+
+  for (const f of fs.readdirSync(root).filter(x => x.endsWith(".html"))) {
+    check(f, fs.readFileSync(new URL(f, root), "utf8"));
+  }
+  const st = new URL("st/", root);
+  if (fs.existsSync(st)) {
+    for (const f of fs.readdirSync(st).filter(x => x.endsWith(".html")).slice(0, 5)) {
+      check("st/" + f, fs.readFileSync(new URL(f, st), "utf8"));
+    }
+  }
+
+  ok(outside.length === 0,
+     "ни одна страница не грузит ресурсы с чужих серверов", outside.slice(0, 6));
+
+  /* Шрифты должны лежать у нас и подключаться своим файлом. */
+  const idx = read("../index.html");
+  ok(/href="css\/fonts\.css/.test(idx), "шрифты подключаются своим файлом");
+  ok(!/fonts\.(googleapis|gstatic)\.com/.test(idx), "обращений к Google на главной нет");
+
+  const fontsCss = read("../css/fonts.css");
+  ok(/url\(\.\.\/fonts\//.test(fontsCss), "файлы шрифтов лежат в репозитории");
+  ok(!/url\(https?:/.test(fontsCss), "в описании шрифтов нет внешних адресов");
+
+  /* Генератор статей собирает страницы сам — если Google вернётся
+     туда, он тихо разойдётся по полусотне статей при первой сборке. */
+  const gen = read("../build-seo.mjs");
+  ok(!/fonts\.(googleapis|gstatic)\.com/.test(gen),
+     "генератор статей не возвращает шрифты Google");
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);
