@@ -183,6 +183,8 @@ const ROUTES = [
    держать не стоит, а таблица иначе растёт вечно. */
 async function maybeSweep(env, ctx) {
   if (Math.random() > 0.01) return;
+  /* scope-ok: уборка протухших сессий по всей таблице. Это
+     обслуживание хранилища, а не доступ к данным человека. */
   ctx.waitUntil(env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now()).run().catch(() => {}));
   ctx.waitUntil(sweepLimits(env).catch(() => {}));
 }

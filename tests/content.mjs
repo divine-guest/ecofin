@@ -801,5 +801,125 @@ console.log("\n— Персональные данные не попадают �
      "ответ платёжного сервиса не пишется в журнал целиком");
 }
 
+console.log("\n— Безопасность: то, что проверяется по коду —");
+{
+  const dir = new URL("../worker/src/", import.meta.url);
+  const files = fs.readdirSync(dir).filter(f => f.endsWith(".js"));
+
+  /* 1. Подстановка в SQL.
+
+     Все запросы обязаны идти через prepare(...).bind(...). Шаблонная
+     строка с ${} внутри prepare — прямой путь к инъекции: значение
+     приходит из браузера. */
+  const injections = [];
+  for (const f of files) {
+    const src = fs.readFileSync(new URL(f, dir), "utf8");
+    src.split("\n").forEach((l, i) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(l)) return;
+      if (/prepare\(\s*`[^`]*\$\{/.test(l)) injections.push(`${f}:${i + 1}`);
+    });
+  }
+  ok(injections.length === 0, "нет подстановок значений прямо в SQL", injections);
+
+  /* 2. Изоляция данных между людьми.
+
+     Любой запрос к таблице с личными данными обязан фильтровать по
+     владельцу. Забытое условие означает, что человек видит чужие
+     документы или чужой учёт — это уже утечка, а не ошибка. */
+  const TABLES = ["documents", "book_ops", "reminders", "counterparties", "my_orgs",
+                  "saved_calcs", "ai_jobs", "progress", "clients", "point_ops",
+                  "notifications", "sessions", "doc_numbers2"];
+  const unscoped = [];
+  for (const f of files) {
+    /* Запрос часто собран из нескольких строковых кусков через «+».
+       Без склейки разбор обрывается на первой закрывающей кавычке, и
+       условие по владельцу, стоящее во второй строке, не видно —
+       проверка ругается на исправный код. */
+    const src = fs.readFileSync(new URL(f, dir), "utf8")
+      .replace(/"\s*\+\s*\n?\s*"/g, " ");
+    /* Пометка уровня файла: модуль целиком объясняет, почему условия
+       по владельцу в нём нет нигде. Так сделано в очереди задач —
+       повторять одно объяснение над семью строками значит сделать его
+       незаметным. */
+    if (/scope-ok \(весь файл\)/.test(src.slice(0, 2000))) continue;
+
+    for (const m of src.matchAll(/(SELECT|UPDATE|DELETE)[\s\S]{0,400}?(?=`|"|;)/gi)) {
+      const q = m[0].replace(/\s+/g, " ");
+      /* Отсекаем куски кода, случайно начавшиеся со слова SELECT или
+         UPDATE: настоящий запрос содержит FROM, SET или INTO в самом
+         начале. Без этого проверка ругалась на обычный объект, в
+         котором рядом оказалось слово из SQL. */
+      if (!/^(SELECT[\s\S]{0,120}?FROM|UPDATE\s+\w+\s+SET|DELETE\s+FROM|INSERT\s+INTO)/i.test(q)) continue;
+      if (!TABLES.some(t => new RegExp(`\\b${t}\\b`).test(q))) continue;
+      if (/WHERE/i.test(q) && /(email|owner)\s*=/i.test(q)) continue;
+      if (/reminder_id IN \(SELECT/i.test(q)) continue;
+      /* Запрос без условия по владельцу допустим, но должен быть
+         помечен: «scope-ok:» и причина в комментарии рядом. Без
+         пометки — падаем. Так решение принимается один раз и явно,
+         а не подразумевается тем, кто писал код полгода назад. */
+      if (/scope-ok:/.test(src.slice(Math.max(0, m.index - 420), m.index))) continue;
+      unscoped.push(`${f}: ${q.slice(0, 60)}`);
+    }
+  }
+  ok(unscoped.length === 0,
+     "каждый запрос к личным данным ограничен владельцем или помечен как проверенный",
+     unscoped);
+
+  /* 3. Вебхуки — единственные ручки мимо проверки источника, входа и
+     ограничения частоты. Значит защита у них должна быть своя, и
+     безусловная. */
+  const tg = read("../worker/src/telegram.js");
+  ok(/if \(!env\.TELEGRAM_WEBHOOK_SECRET\)/.test(tg),
+     "вебхук мессенджера отклоняется, если секрет не задан");
+  const bill = read("../worker/src/billing.js");
+  ok(/ykFetch\(env, `\/payments\//.test(bill),
+     "платёжный вебхук перепроверяет платёж у платёжного сервиса, а не верит телу запроса");
+
+  /* 4. Доступ по ролям — в одном месте, а не в каждом обработчике. */
+  const idx = read("../worker/src/index.js");
+  ok(/access === "admin" && user\.role !== "admin" && user\.role !== "owner"/.test(idx),
+     "права администратора проверяются централизованно");
+  ok(/access === "owner" && user\.role !== "owner"/.test(idx),
+     "права владельца проверяются централизованно");
+  ok(/if \(!user\) return fail\(env, origin, "Требуется вход", 401\)/.test(idx),
+     "без входа закрытые ручки не работают");
+
+  /* Каждый маршрут обязан объявить уровень доступа. Забытый уровень —
+     это ручка, открытая всем. */
+  const routes = [...idx.matchAll(/\["(GET|POST|PUT|DELETE)",\s*"([^"]+)",\s*[\w.]+,\s*"(\w+)"\]/g)];
+  const levels = new Set(routes.map(r => r[3]));
+  ok([...levels].every(l => ["public", "user", "admin", "owner", "webhook"].includes(l)),
+     "все уровни доступа известны", [...levels]);
+
+  /* Ручки админки не должны оказаться публичными по недосмотру. */
+  const adminPublic = routes.filter(r => r[2].startsWith("/api/admin/") && r[3] === "public");
+  ok(adminPublic.length === 0, "ни одна ручка админки не открыта всем", adminPublic.map(r => r[2]));
+
+  /* 5. Ограничение частоты на том, что подбирают. */
+  ok(/"\/api\/auth\/login": "login"/.test(idx), "вход под ограничением частоты");
+  ok(/"\/api\/auth\/register": "register"/.test(idx), "регистрация под ограничением");
+  ok(/"\/api\/auth\/owner-recover": "recover"/.test(idx),
+     "аварийный ключ владельца под самым жёстким ограничением");
+
+  /* 6. Пароли и токены. */
+  /* Хэширование живёт в lib.js, а не в auth.js: там общие
+     примитивы. Проверка искала не в том файле и падала на исправном
+     коде — а хуже ложной тревоги только привычка её игнорировать. */
+  const lib = read("../worker/src/lib.js");
+  const auth = read("../worker/src/auth.js");
+  ok(/PBKDF2/i.test(lib), "пароль хранится в виде необратимого преобразования");
+  ok(/PBKDF2_ITER:\s*100000/.test(lib), "итераций не меньше ста тысяч");
+  ok(/sha256\(bearer\(request\)\)|sha256\(token\)/.test(auth),
+     "в базе лежит хэш токена сессии, а не сам токен");
+
+  /* 7. Резервные копии. В копии — вся база; открытая копия рядом с
+     рабочей означает, что один доступ к диску отдаёт и историю. */
+  const bak = read("../worker/node/server-setup/backup.sh");
+  ok(/openssl enc -aes-256-cbc/.test(bak), "резервные копии шифруются");
+  ok(/chmod 600/.test(bak), "права на копии ограничены");
+  ok(/ЧЕСТНО ПРО ПРЕДЕЛ ЗАЩИТЫ/.test(bak),
+     "предел защиты описан рядом с кодом, а не подразумевается");
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

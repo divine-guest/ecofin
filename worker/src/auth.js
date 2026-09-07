@@ -130,6 +130,8 @@ export async function me(request, env, origin, user) {
 
 export async function logout(request, env, origin) {
   const raw = bearer(request);
+  /* scope-ok: токен и есть удостоверение — знающий его владеет сессией.
+     Проверка почты ничего не добавила бы. */
   if (raw) await env.DB.prepare("DELETE FROM sessions WHERE token = ?").bind(await sha256(raw)).run();
   return json(env, origin, { ok: true });
 }

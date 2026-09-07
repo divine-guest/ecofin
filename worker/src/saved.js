@@ -158,6 +158,10 @@ export async function aiHistory(request, env, origin, user) {
   const bind = [user.email];
   if (q) { where.push("(lower(prompt) LIKE ? OR lower(answer) LIKE ?)"); bind.push(`%${q}%`, `%${q}%`); }
 
+  /* scope-ok: условие собирается из литералов, и первым в нём всегда
+     стоит «email = ?». Значения уходят через bind, подстановки в текст
+     запроса нет — поиск по слову приходит от человека, но попадает
+     в параметр, а не в SQL. */
   const rows = await env.DB.prepare(
     `SELECT id, kind, prompt, answer, created_at FROM ai_jobs
       WHERE ${where.join(" AND ")} ORDER BY created_at DESC LIMIT ?`

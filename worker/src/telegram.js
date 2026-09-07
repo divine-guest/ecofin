@@ -159,9 +159,24 @@ const HELP = `Я помогу не пропустить сроки и отвеч
 Или просто напишите вопрос — отвечу как консультант на сайте.`;
 
 export async function webhook(request, env, origin) {
-  /* Telegram шлёт секрет в заголовке — иначе вебхук может дёрнуть кто угодно. */
-  if (env.TELEGRAM_WEBHOOK_SECRET &&
-      request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== env.TELEGRAM_WEBHOOK_SECRET) {
+  /* Telegram шлёт секрет в заголовке — иначе вебхук может дёрнуть кто
+     угодно, подставив любой идентификатор чата: отвязать чужой
+     мессенджер, засыпать человека сообщениями от имени сервиса.
+
+     Проверка безусловная. Раньше она стояла под условием «если секрет
+     задан» — и при потере переменной (перенос на другую машину,
+     очистка окружения) защита исчезала молча, а вебхук оставался
+     открытым. Лучше неработающий бот, который об этом сообщает, чем
+     работающий вход без охраны.
+
+     Вебхук — единственная ручка, которая проходит мимо проверки
+     источника, входа и ограничения частоты. Цена ошибки здесь выше,
+     чем где-либо ещё. */
+  if (!env.TELEGRAM_WEBHOOK_SECRET) {
+    console.error("telegram: TELEGRAM_WEBHOOK_SECRET не задан — вебхук отклонён");
+    return json(env, origin, { ok: true });
+  }
+  if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== env.TELEGRAM_WEBHOOK_SECRET) {
     return json(env, origin, { ok: true });   // молча игнорируем чужие запросы
   }
 
@@ -597,9 +612,13 @@ export async function runReminders(env) {
     if (r.due < localDay(tz)) {
       const next = nextDue(r.due, r.repeat_rule);
       if (next) {
+        /* scope-ok: r — строка из выборки рассылки, она уже привязана
+           к своему владельцу. Идентификатор из сообщения бота сюда
+           попасть не может. */
         await env.DB.prepare("UPDATE reminders SET due = ? WHERE id = ?").bind(next, r.id).run();
         rolled++;
       } else if (addDays(r.due, 7) < localDay(tz)) {
+        /* scope-ok: та же строка рассылки, владелец у неё уже свой. */
         await env.DB.prepare("UPDATE reminders SET active = 0 WHERE id = ?").bind(r.id).run();
       }
     }

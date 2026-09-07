@@ -167,6 +167,9 @@ async function cancelPayment(env, paymentId) {
   if (!row || row.status !== "pending") return;
   await env.DB.prepare("UPDATE payments SET status = 'canceled' WHERE id = ?").bind(paymentId).run();
 
+  /* scope-ok: поиск по ссылке на платёж — она уникальна и
+     выдана платёжным сервисом. Это проверка «не начислили ли
+     уже», а не выборка чьих-то данных. */
   const spent = await env.DB.prepare("SELECT delta FROM point_ops WHERE ref = ?").bind(`pay-${paymentId}`).first();
   if (spent && spent.delta < 0) {
     await grant(env, row.email, -spent.delta, "Возврат баллов за отменённый платёж", `refund-${paymentId}`);

@@ -256,6 +256,20 @@ fi
 install_if_changed "$HERE/bootstrap.sh"     "$DIR/bootstrap.sh"     755
 install_if_changed "$HERE/pravofin.service" /etc/systemd/system/pravofin.service 644
 install_if_changed "$HERE/backup.sh"        "$DIR/backup.sh"        755
+
+# Ключ шифрования резервных копий. Заводится один раз и живёт на
+# машине: в копии лежит вся база, и оставлять её открытой рядом с
+# рабочей нельзя — один доступ к диску означал бы утечку и текущего
+# состояния, и истории за двое суток.
+#
+# Генерируем сами, чтобы шифрование работало без действий владельца.
+# Права 600 и владелец root: прочитать может только тот, кто и так
+# имеет полный доступ.
+if [ ! -f /opt/pravofin/backup.key ]; then
+  openssl rand -base64 32 > /opt/pravofin/backup.key 2>/dev/null ||     head -c 32 /dev/urandom | base64 > /opt/pravofin/backup.key
+  chmod 600 /opt/pravofin/backup.key
+  log "создан ключ шифрования резервных копий"
+fi
 install_if_changed "$HERE/check-domain.sh"  "$DIR/check-domain.sh"  755
 install_if_changed "$HERE/watch-outside.sh" "$DIR/watch-outside.sh" 755
 install_if_changed "$HERE/run-tests.sh"     "$DIR/run-tests.sh"     755

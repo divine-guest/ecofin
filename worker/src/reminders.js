@@ -123,6 +123,8 @@ export async function create(request, env, origin, user) {
         paywall: true, kind: "reminders",
       }, 402);
     }
+    /* scope-ok: far.id получен запросом выше, где стоит WHERE email = ?.
+       Чужой срок вытеснить нельзя. */
     await env.DB.prepare("DELETE FROM reminders WHERE id = ?").bind(far.id).run();
     await env.DB.prepare("DELETE FROM reminder_sent WHERE reminder_id = ?").bind(far.id).run();
     displaced = far.title;

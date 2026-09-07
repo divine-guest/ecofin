@@ -180,6 +180,8 @@ export async function save(request, env, origin, user) {
         paywall: true, kind: "documents",
       }, 402);
     }
+    /* scope-ok: old.id получен запросом выше, где стоит WHERE email = ?.
+       Чужой документ сюда попасть не может. */
     await env.DB.prepare("DELETE FROM documents WHERE id = ?").bind(old.id).run();
     evicted = true;
   }

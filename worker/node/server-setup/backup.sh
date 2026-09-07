@@ -7,8 +7,56 @@
 set -e
 DIR=/opt/pravofin/backups
 mkdir -p "$DIR"
+chmod 700 "$DIR"
 STAMP=$(date +%Y%m%d-%H%M)
 sqlite3 /opt/pravofin/data/pravofin.db "VACUUM INTO '$DIR/pravofin-$STAMP.db'"
 gzip -f "$DIR/pravofin-$STAMP.db"
-# Держим двое суток почасовых копий.
-ls -1t "$DIR"/pravofin-*.db.gz | tail -n +49 | xargs -r rm --
+chmod 600 "$DIR/pravofin-$STAMP.db.gz"
+
+# Шифруем копию.
+#
+# В копии — всё: учётные записи, учёт доходов, документы с реквизитами
+# контрагентов, история обращений. Лежит она на той же машине, что и
+# рабочая база, поэтому один доступ к серверу означал утечку не только
+# текущего состояния, но и истории за двое суток.
+#
+# Ключ берём из worker/.env — он и так нужен серверу и в репозиторий
+# не попадает. Без ключа копия бесполезна тому, кто унёс диск.
+#
+# Ключа нет — копия остаётся незашифрованной, но в журнал пишется
+# предупреждение. Останавливать резервное копирование из-за
+# отсутствия ключа нельзя: без копий потеря данных гарантирована,
+# а без шифрования — только возможна.
+# Ключ: сначала из .env, иначе из отдельного файла, который заводится
+# при настройке машины. Второй путь нужен, чтобы шифрование работало
+# без единого действия владельца.
+#
+# ЧЕСТНО ПРО ПРЕДЕЛ ЗАЩИТЫ. Ключ лежит на той же машине, что и копии.
+# Это защищает от кражи диска, снимка диска и от выноса самих копий
+# наружу — но не от того, кто получил доступ к серверу: он возьмёт и
+# копии, и ключ. Настоящая защита от второго случая — выгружать копии
+# в отдельное хранилище с ключом, которого на сервере нет.
+KEY=$(grep -m1 '^BACKUP_KEY=' /opt/pravofin/repo/worker/.env 2>/dev/null | cut -d= -f2-)
+[ -z "$KEY" ] && [ -r /opt/pravofin/backup.key ] && KEY=$(cat /opt/pravofin/backup.key)
+if [ -n "$KEY" ]; then
+  if openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt \
+       -in "$DIR/pravofin-$STAMP.db.gz" \
+       -out "$DIR/pravofin-$STAMP.db.gz.enc" -pass "pass:$KEY" 2>/dev/null; then
+    shred -u "$DIR/pravofin-$STAMP.db.gz" 2>/dev/null || rm -f "$DIR/pravofin-$STAMP.db.gz"
+    chmod 600 "$DIR/pravofin-$STAMP.db.gz.enc"
+  else
+    echo "backup: не удалось зашифровать копию, оставлена открытой"
+  fi
+else
+  echo "backup: BACKUP_KEY не задан — копия сохранена без шифрования"
+fi
+
+# Держим двое суток почасовых копий. Оба вида имён: во время перехода
+# на шифрование в папке лежат и старые открытые копии, и новые.
+ls -1t "$DIR"/pravofin-*.db.gz.enc 2>/dev/null | tail -n +49 | xargs -r rm --
+ls -1t "$DIR"/pravofin-*.db.gz 2>/dev/null | tail -n +49 | xargs -r rm --
+
+# Как восстановить:
+#   openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 \
+#     -in pravofin-ГГГГММДД-ЧЧММ.db.gz.enc -out копия.db.gz -pass pass:КЛЮЧ
+#   gunzip копия.db.gz

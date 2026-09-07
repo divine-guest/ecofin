@@ -42,6 +42,9 @@ export async function grant(env, email, delta, reason, ref = null) {
   if (!delta) return { ok: false, reason: "нулевая операция" };
 
   if (ref) {
+    /* scope-ok: поиск по ссылке на платёж — она уникальна и
+       выдана платёжным сервисом. Это проверка «не начислили ли
+       уже», а не выборка чьих-то данных. */
     const dup = await env.DB.prepare("SELECT 1 FROM point_ops WHERE ref = ?").bind(ref).first();
     if (dup) return { ok: false, reason: "уже начислено" };
   }
