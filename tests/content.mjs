@@ -1049,5 +1049,69 @@ console.log("\n— Согласие и редакция политики —");
      "под это есть миграция базы");
 }
 
+console.log("\n— Выключатели передачи за границу —");
+{
+  /* Смысл выключателя в том, что мимо него нельзя пройти. Если завтра
+     появится второй вызов модели в обход callProvider, запрет тихо
+     перестанет действовать — и никто этого не заметит, потому что
+     сервис будет работать. Поэтому проверяется не наличие флага, а
+     то, что дверь наружу по-прежнему одна.
+
+     Второе, что здесь стережётся: выключенным по умолчанию всё это
+     быть не должно. Флаг, случайно оставленный в положении «выкл»,
+     тише всего убивает платную функцию. */
+
+  const lib = read("../worker/src/lib.js");
+  ok(/export const abroadPaused = env =>/.test(lib), "выключатель модели объявлен");
+  ok(/export const telegramPaused = env =>/.test(lib), "выключатель мессенджера объявлен");
+  ok(/AI_ABROAD_OFF \|\| ""\) === "1"/.test(lib) && /TELEGRAM_OFF \|\| ""\) === "1"/.test(lib),
+     "выключено только при явном «1» — иначе работает");
+
+  const ai = read("../worker/src/ai.js");
+
+  /* Единственная дверь наружу к модели. */
+  const doors = (ai.match(/fetch\(/g) || []).length;
+  ok(doors === 1, `в модуле модели один вызов наружу, а не ${doors}`);
+  ok(/export async function callProvider[\s\S]{0,400}abroadPaused\(env\)/.test(ai),
+     "запрет стоит внутри callProvider — до обращения к поставщику");
+
+  /* Ответ должен объяснять, а не сообщать о поломке: «провайдер
+     недоступен» на намеренной остановке — неправда. */
+  ok(/e\.message === "paused"/.test(ai) && /PAUSED_AI/.test(ai),
+     "остановка отвечает объяснением, а не ошибкой поставщика");
+  ok(/PAUSED_AI =\s*\n?\s*"[^"]*Роскомнадзор/.test(lib) ||
+     /PAUSED_AI[\s\S]{0,200}Роскомнадзор/.test(lib),
+     "в тексте названа причина остановки");
+
+  /* Распознавание внутри страны за границу ничего не отправляет, и
+     останавливаться вместе с моделью не должно. */
+  ok(/abroadPaused\(env\) && !ocrReady\(env\) && !\(await localOcrReady\(\)\)/.test(ai),
+     "распознавание внутри страны продолжает работать на паузе");
+
+  const tg = read("../worker/src/telegram.js");
+  const tgDoors = (tg.match(/fetch\(/g) || []).length;
+  ok(tgDoors === 1, `у мессенджера один вызов наружу, а не ${tgDoors}`);
+  ok(/async function call\(env, method, payload\) {[\s\S]{0,300}!working\(env\)/.test(tg),
+     "остановка перекрывает и ответы бота, и рассылку напоминаний");
+  ok(/export async function webhook[\s\S]{0,1800}telegramPaused\(env\)/.test(tg),
+     "на паузе не разбираются и входящие сообщения");
+  ok(/paused: telegramPaused\(env\) \? PAUSED_TG : null/.test(tg),
+     "страница узнаёт причину, а не просто «недоступно»");
+
+  const dash = read("../dashboard.html");
+  ok(/tg\.paused/.test(dash), "кабинет показывает причину паузы, а не прячет блок");
+
+  /* Значения по умолчанию: включено. */
+  const pub = read("../worker/node/env-public.txt");
+  ok(/^#\s*AI_ABROAD_OFF=1/m.test(pub) && /^#\s*TELEGRAM_OFF=1/m.test(pub),
+     "в настройках выключатели описаны и закомментированы");
+  ok(!/^AI_ABROAD_OFF=1/m.test(pub) && !/^TELEGRAM_OFF=1/m.test(pub),
+     "и по умолчанию ничего не выключено");
+
+  const idx = read("../worker/src/index.js");
+  ok(/abroadPaused: abroadPaused\(env\)/.test(idx) && /telegramPaused: telegramPaused\(env\)/.test(idx),
+     "состояние видно снаружи одним запросом к health");
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

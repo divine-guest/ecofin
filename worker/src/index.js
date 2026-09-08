@@ -1,7 +1,8 @@
 /* ЭкоФин — единая точка входа API.
    Все проверки прав и лимитов живут здесь и в модулях, а не в браузере:
    клиент может врать о своём плане сколько угодно — это ни на что не влияет. */
-import { json, fail, corsHeaders, allowedOrigins, isSameOrigin, now } from "./lib.js";
+import { json, fail, corsHeaders, allowedOrigins, isSameOrigin, now,
+         abroadPaused, telegramPaused } from "./lib.js";
 import * as auth from "./auth.js";
 import * as ai from "./ai.js";
 import * as admin from "./admin.js";
@@ -265,7 +266,12 @@ export default {
         aiKey: Boolean(env.AI_API_KEY),
         db: Boolean(env.DB),
         billing: Boolean(env.YOOKASSA_SHOP_ID && env.YOOKASSA_SECRET_KEY),
-        telegram: Boolean(env.TELEGRAM_BOT_TOKEN),
+        telegram: Boolean(env.TELEGRAM_BOT_TOKEN) && !telegramPaused(env),
+        /* Видно снаружи одним запросом: остановлено направление или
+           просто сломалось. Без этого «ИИ не работает» пришлось бы
+           выяснять, заходя на сервер. */
+        abroadPaused: abroadPaused(env),
+        telegramPaused: telegramPaused(env),
         owners: auth.ownerEmails(env).length,
         admins: auth.adminEmails(env).length,
       });

@@ -23,8 +23,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=168">
-<link rel="stylesheet" href="css/style.css?v=168">
+<link rel="stylesheet" href="css/fonts.css?v=169">
+<link rel="stylesheet" href="css/style.css?v=169">
 </head>
 <body>
 <main class="section">
@@ -36,17 +36,17 @@
   </div>
 </main>
 
-<script src="js/rates.js?v=168"></script>
-<script src="js/book.js?v=168"></script>
-<script src="js/themes.js?v=168"></script>
-<script src="js/api.js?v=168"></script>
-<script src="js/app.js?v=168"></script>
-<script src="js/progress.js?v=168"></script>
-<script src="js/palette.js?v=168"></script>
-<script src="js/ai.js?v=168"></script>
-<script src="js/knowledge.js?v=168"></script>
-<script src="js/competencies.js?v=168"></script>
-<script src="js/courses.js?v=168"></script>
+<script src="js/rates.js?v=169"></script>
+<script src="js/book.js?v=169"></script>
+<script src="js/themes.js?v=169"></script>
+<script src="js/api.js?v=169"></script>
+<script src="js/app.js?v=169"></script>
+<script src="js/progress.js?v=169"></script>
+<script src="js/palette.js?v=169"></script>
+<script src="js/ai.js?v=169"></script>
+<script src="js/knowledge.js?v=169"></script>
+<script src="js/competencies.js?v=169"></script>
+<script src="js/courses.js?v=169"></script>
 <script>
 initPage("dashboard.html");
 
@@ -1161,6 +1161,15 @@ const REM = {
     if (!box) return;
     let tg;
     try { tg = await API.telegram.status(); } catch { return; }
+
+    /* Остановлено намеренно — говорим об этом. Молча спрятать блок
+       значило бы оставить человека гадать, куда делись уведомления,
+       которые он подключал. */
+    if (tg.paused) {
+      box.innerHTML = `<p class="hint" style="margin-bottom:12px">
+        <span class="badge">Telegram на паузе</span> ${tg.paused}</p>`;
+      return;
+    }
     if (!tg.enabled) return;
 
     if (tg.linked) {

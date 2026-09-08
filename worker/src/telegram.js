@@ -2,7 +2,7 @@
 
    Бот здесь не игрушка, а второй вход в сервис. В России его открывают чаще,
    чем почту, поэтому именно он делает напоминания по-настоящему работающими. */
-import { json, fail, now, isPro, normEmail } from "./lib.js";
+import { json, fail, now, isPro, normEmail, telegramPaused, PAUSED_TG } from "./lib.js";
 import { logAction } from "./auth.js";
 import { notify, localDay, addDays, nextDue } from "./reminders.js";
 import { aiQuota, spendAI, toolQuota, analyzeQuota } from "./quota.js";
@@ -13,10 +13,17 @@ import { codeFor } from "./referral.js";
 const TG = "https://api.telegram.org/bot";
 const LINK_TTL = 15 * 60 * 1000;
 
+/* Бот подключён — есть токен. Отдельно от этого он может быть
+   намеренно остановлен: см. telegramPaused. Разделять важно, потому
+   что «не настроен» и «выключен на время» человеку нужно объяснять
+   по-разному, а коду — обрабатывать одинаково осторожно. */
 export const configured = env => Boolean(env.TELEGRAM_BOT_TOKEN);
+export const working = env => configured(env) && !telegramPaused(env);
 
 async function call(env, method, payload) {
-  if (!configured(env)) return null;
+  /* Одна дверь наружу: и ответы бота, и рассылка напоминаний идут
+     через неё. Остановлено — не уходит ничего, включая рассылку. */
+  if (!working(env)) return null;
   try {
     const r = await fetch(`${TG}${env.TELEGRAM_BOT_TOKEN}/${method}`, {
       method: "POST",
@@ -51,6 +58,7 @@ const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(
 
 /* POST /api/telegram/link — кабинет просит одноразовый код. */
 export async function requestLink(request, env, origin, user) {
+  if (telegramPaused(env)) return fail(env, origin, PAUSED_TG, 503);
   if (!configured(env)) return fail(env, origin, "Бот пока не подключён", 503);
 
   await env.DB.prepare("DELETE FROM tg_link_codes WHERE email = ? OR expires_at < ?")
@@ -83,7 +91,10 @@ export async function unlink(request, env, origin, user) {
 
 export async function status(request, env, origin, user) {
   return json(env, origin, {
-    enabled: configured(env),
+    enabled: working(env),
+    /* Причину показываем рядом: иначе страница скажет «недоступно»
+       и человек будет думать, что это у него что-то не так. */
+    paused: telegramPaused(env) ? PAUSED_TG : null,
     linked: Boolean(user.tg_chat_id),
     username: user.tg_username || null,
     linkedAt: user.tg_linked_at || null,
@@ -172,6 +183,12 @@ export async function webhook(request, env, origin) {
      Вебхук — единственная ручка, которая проходит мимо проверки
      источника, входа и ограничения частоты. Цена ошибки здесь выше,
      чем где-либо ещё. */
+  /* Остановлен — входящее тоже не разбираем. Иначе получится, что
+     наружу мы ничего не шлём, а идентификаторы чатов и тексты
+     сообщений всё равно принимаем и пишем в базу: передача в одну
+     сторону — это тоже передача. */
+  if (telegramPaused(env)) return json(env, origin, { ok: true });
+
   if (!env.TELEGRAM_WEBHOOK_SECRET) {
     console.error("telegram: TELEGRAM_WEBHOOK_SECRET не задан — вебхук отклонён");
     return json(env, origin, { ok: true });
@@ -538,27 +555,36 @@ ${siteUrl(env)}book.html`);
   }
 
   await send(env, chatId, "Думаю…");
-  const { DEFAULT_SYSTEM } = await import("./ai.js");
+
+  /* Тот же путь, что и на сайте: обезличивание, общий вызов
+     поставщика, разворот меток обратно.
+
+     Раньше здесь стоял собственный запрос к поставщику — копия кода,
+     сделанная когда-то ради скорости. Из-за неё вопрос, заданный в
+     мессенджере, уходил за границу необезличенным: имена, ИНН и счета
+     как есть. На сайте они заменялись метками, а политика обещала это
+     всем. Копия кода не отстаёт от оригинала постепенно — она отстаёт
+     сразу и молча, при первой же правке оригинала. */
+  const { DEFAULT_SYSTEM, callProvider, MODEL_FOR } = await import("./ai.js");
+  const { redact, restore, redactOn } = await import("./redact.js");
+
+  const hide = redactOn(env) ? redact(text) : { text, map: new Map() };
   try {
-    const r = await fetch((env.AI_BASE_URL || "https://api.aitunnel.ru/v1") + "/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.AI_API_KEY },
-      body: JSON.stringify({
-        model: env.AI_MODEL || "deepseek-chat",
-        messages: [
-          { role: "system", content: DEFAULT_SYSTEM + "\n\nОтвечаешь в мессенджере: до 1200 знаков, без таблиц и markdown-разметки." },
-          { role: "user", content: text },
-        ],
-        max_tokens: 900,
-      }),
-      signal: AbortSignal.timeout(55000),
+    let answer = await callProvider(env, {
+      model: MODEL_FOR(env),
+      maxTokens: 900,
+      messages: [
+        { role: "system", content: DEFAULT_SYSTEM + "\n\nОтвечаешь в мессенджере: до 1200 знаков, без таблиц и markdown-разметки." },
+        { role: "user", content: hide.text },
+      ],
     });
-    const data = await r.json();
-    const answer = data?.choices?.[0]?.message?.content;
-    if (!answer) throw new Error("empty");
+    answer = restore(answer, hide.map);
     await send(env, chatId, esc(answer).slice(0, 4000));
-  } catch {
-    await send(env, chatId, "ИИ сейчас не отвечает. Попробуйте через минуту.");
+  } catch (e) {
+    /* Остановка передачи — не поломка, и объяснять её надо иначе. */
+    await send(env, chatId, e.message === "paused"
+      ? "Консультант временно отключён: оформляем уведомление в Роскомнадзор о передаче данных за границу. Напоминания и расчёты работают как обычно."
+      : "ИИ сейчас не отвечает. Попробуйте через минуту.");
   }
 }
 

@@ -1,10 +1,10 @@
 /* ЭкоФин — прокси к ИИ. Ключ живёт только в секретах воркера,
    лимиты проверяются здесь, до обращения к провайдеру. */
-import { json, fail, isPro } from "./lib.js";
+import { json, fail, isPro, abroadPaused, PAUSED_AI } from "./lib.js";
 import { aiQuota, toolQuota, spendAI, spendTool, analyzeQuota, spendAnalyze,
          refundAI, refundTool, refundAnalyze } from "./quota.js";
 import { logAction } from "./auth.js";
-import { recognize, ocrReady } from "./vision.js";
+import { recognize, ocrReady, localOcrReady } from "./vision.js";
 import { redact, restore, redactOn } from "./redact.js";
 import { rewardIfEarned } from "./referral.js";
 
@@ -79,6 +79,12 @@ const ANALYZE_SYSTEM = `Ты — юрист-аналитик сервиса «Э
 export const MODEL_FOR = (env) => env.AI_MODEL || "deepseek-chat";
 
 export async function callProvider(env, { model, messages, maxTokens }) {
+  /* Единственная дверь наружу к модели: и чат, и разбор документа, и
+     запасное распознавание картинки идут через неё. Поэтому и запрет
+     стоит здесь — не в каждом обработчике, где его однажды забудут
+     поставить, а в том месте, мимо которого пройти нельзя. */
+  if (abroadPaused(env)) throw Object.assign(new Error("paused"), { status: 503 });
+
   const base = env.AI_BASE_URL || "https://api.aitunnel.ru/v1";
   const r = await fetch(base + "/chat/completions", {
     method: "POST",
@@ -102,6 +108,8 @@ export async function callProvider(env, { model, messages, maxTokens }) {
 }
 
 export function upstreamError(env, origin, e) {
+  /* Выключено намеренно — это не сбой, и говорить о сбое нечестно. */
+  if (e.message === "paused") return fail(env, origin, PAUSED_AI, 503);
   if (e.name === "TimeoutError" || e.name === "AbortError")
     return fail(env, origin, "ИИ не ответил вовремя. Попробуйте ещё раз или сократите текст", 504);
   if (e.message === "empty")
@@ -119,6 +127,7 @@ const paywall = (env, origin, message, kind) =>
 /* POST /api/ai — чат-консультант и текстовые инструменты.
    kind:'chat' расходует дневной лимит ИИ, kind:'tool' — пробный запуск инструмента. */
 export async function handleAI(request, env, origin, user) {
+  if (abroadPaused(env)) return fail(env, origin, PAUSED_AI, 503);
   if (!env.AI_API_KEY) return fail(env, origin, "AI_API_KEY не задан в секретах воркера", 500);
 
   const b = await request.json().catch(() => ({}));
@@ -168,6 +177,7 @@ export async function handleAI(request, env, origin, user) {
 
 /* POST /api/analyze — разбор документа: текст из файла и/или страницы-картинки. */
 export async function handleAnalyze(request, env, origin, user) {
+  if (abroadPaused(env)) return fail(env, origin, PAUSED_AI, 503);
   if (!env.AI_API_KEY) return fail(env, origin, "AI_API_KEY не задан в секретах воркера", 500);
 
   const b = await request.json().catch(() => ({}));
@@ -270,7 +280,15 @@ export async function handleAnalyze(request, env, origin, user) {
    получать разбор в обход лимита — достаточно распознать, а потом
    отправить текст обычным инструментом. */
 export async function handleOcr(request, env, origin, user) {
-  if (!env.AI_API_KEY) return fail(env, origin, "AI_API_KEY не задан в секретах воркера", 500);
+  /* Здесь запрет условный, и это важно. Распознавание идёт тремя
+     путями, и первые два — Yandex Vision и tesseract на нашей же
+     машине — за границу ничего не отправляют. Останавливать их вместе
+     с моделью значило бы выключить работающее вместе с выключенным.
+     Отказываем только тогда, когда остаётся один путь — зарубежный. */
+  if (abroadPaused(env) && !ocrReady(env) && !(await localOcrReady()))
+    return fail(env, origin, PAUSED_AI, 503);
+  if (!env.AI_API_KEY && !ocrReady(env) && !(await localOcrReady()))
+    return fail(env, origin, "AI_API_KEY не задан в секретах воркера", 500);
 
   const b = await request.json().catch(() => ({}));
   const images = Array.isArray(b.images) ? b.images.slice(0, MAX_IMAGES) : [];
