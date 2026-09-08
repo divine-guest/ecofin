@@ -42,7 +42,7 @@ async function register(tag) {
   const email = `rem${tag}${Date.now()}@test.ru`;
   accounts.push(email);
   const r = await call("/api/auth/register", {
-    method: "POST", body: { name: "Проверка", email, password: "parol12345" },
+    method: "POST", body: { name: "Проверка", email, password: "parol12345", consent: true },
   });
   if (!r.data.token) throw new Error("не завести аккаунт: " + JSON.stringify(r.data));
   return { email, token: r.data.token };

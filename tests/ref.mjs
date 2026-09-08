@@ -11,7 +11,7 @@ async function call(p,{method="GET",body,token}={}){const r=await fetch(API+p,{m
 const st = Date.now();
 const inviter = `inv${st}@test.ru`, friend = `frn${st}@test.ru`;
 
-const a = await call("/api/auth/register",{method:"POST",body:{name:"Пригласивший Тест",email:inviter,password:"parol12345"}});
+const a = await call("/api/auth/register",{method:"POST",body:{name:"Пригласивший Тест",email:inviter,password:"parol12345", consent: true}});
 const at = a.data.token;
 const rs = await call("/api/referral",{token:at});
 const code = rs.data.code;
@@ -26,7 +26,7 @@ ok(!JSON.stringify(pv.data).includes(inviter), "почта пригласивш�
 ok((await call("/api/referral/check?code=PF-ZZZZZ")).status===404, "выдуманный код отклонён");
 
 console.log("\n— Регистрация по приглашению —");
-const b = await call("/api/auth/register",{method:"POST",body:{name:"Друг Тест",email:friend,password:"parol12345",ref:code}});
+const b = await call("/api/auth/register",{method:"POST",body:{name:"Друг Тест",email:friend,password:"parol12345", consent: true,ref:code}});
 const bt = b.data.token;
 ok(b.status===201, "друг зарегистрировался");
 ok(b.data.user.plan==="free", "награда НЕ выдана сразу — только за пустую регистрацию не платим");
@@ -55,9 +55,9 @@ await call("/api/ai",{method:"POST",token:bt,body:{kind:"chat",prompt:"ещё р
 const inv3 = await call("/api/auth/me",{token:at});
 const d2 = inv3.data.user.points ?? 0;
 ok(d2===150, `повторное использование не платит второй раз (баллов по-прежнему ${d2})`);
-const self = await call("/api/auth/register",{method:"POST",body:{name:"Сам Себя",email:`self${st}@test.ru`,password:"parol12345",ref:code}});
+const self = await call("/api/auth/register",{method:"POST",body:{name:"Сам Себя",email:`self${st}@test.ru`,password:"parol12345", consent: true,ref:code}});
 ok(self.status===201, "регистрация с чужим кодом проходит");
-const badref = await call("/api/auth/register",{method:"POST",body:{name:"Кривой Код",email:`bad${st}@test.ru`,password:"parol12345",ref:"PF-XXXXX"}});
+const badref = await call("/api/auth/register",{method:"POST",body:{name:"Кривой Код",email:`bad${st}@test.ru`,password:"parol12345", consent: true,ref:"PF-XXXXX"}});
 ok(badref.status===201, "неверный код не мешает зарегистрироваться");
 
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);

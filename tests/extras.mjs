@@ -45,10 +45,10 @@ const em2 = `ex2${st}@test.ru`;
 
 console.log("\n— Подготовка —");
 const a = await call("/api/auth/register", {
-  method: "POST", body: { name: "Хозяин Блокнота", email: em, password: "parol12345" },
+  method: "POST", body: { name: "Хозяин Блокнота", email: em, password: "parol12345", consent: true },
 });
 const b = await call("/api/auth/register", {
-  method: "POST", body: { name: "Посторонний", email: em2, password: "parol12345" },
+  method: "POST", body: { name: "Посторонний", email: em2, password: "parol12345", consent: true },
 });
 const t = a.data.token, t2 = b.data.token;
 ok(Boolean(t && t2), "два аккаунта заведены");

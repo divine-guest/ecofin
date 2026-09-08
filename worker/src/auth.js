@@ -66,16 +66,30 @@ export async function register(request, env, origin) {
   if (!validEmail(email)) return fail(env, origin, "Некорректный email");
   if (password.length < 8) return fail(env, origin, "Пароль минимум 8 символов");
 
+  /* Согласие на обработку данных проверяем здесь, а не только в форме.
+     Галочка в браузере ничего не доказывает: её можно не ставить, если
+     обратиться к API напрямую, — и до сих пор регистрация в этом случае
+     проходила. Доказывать получение согласия обязан оператор (часть 1
+     статьи 9 152-ФЗ), поэтому отметку сохраняем вместе с редакцией
+     политики, на которую человек соглашался. */
+  if (b.consent !== true)
+    return fail(env, origin, "Без согласия на обработку персональных данных регистрация невозможна");
+
   const exists = await env.DB.prepare("SELECT email FROM users WHERE email = ?").bind(email).first();
   if (exists) return fail(env, origin, "Аккаунт с таким email уже зарегистрирован", 409);
 
   const role = roleFor(env, email);
   await env.DB.prepare(
-    `INSERT INTO users (email, name, pass_hash, role, plan, pro_until, created_at, last_login_at)
-     VALUES (?, ?, ?, ?, 'free', NULL, ?, ?)`
-  ).bind(email, name, await hashPassword(password), role, now(), now()).run();
+    `INSERT INTO users (email, name, pass_hash, role, plan, pro_until, created_at, last_login_at,
+                        consent_at, consent_doc)
+     VALUES (?, ?, ?, ?, 'free', NULL, ?, ?, ?, ?)`
+  ).bind(email, name, await hashPassword(password), role, now(), now(),
+         now(), CFG.POLICY_VERSION).run();
 
   await logAction(env, email, role === "user" ? "Регистрация аккаунта" : `Регистрация (${role})`);
+  /* Отдельной строкой в журнале — чтобы согласие было видно и там, где
+     человек смотрит свою историю действий, а не только в служебном поле. */
+  await logAction(env, email, `Согласие на обработку персональных данных (редакция политики от ${CFG.POLICY_VERSION})`);
   /* Реферальный код привязываем один раз, здесь. Награда начислится позже,
      когда человек реально воспользуется сервисом. */
   if (b.ref) await attachReferral(env, email, b.ref).catch(() => {});
@@ -370,6 +384,11 @@ export async function exportAll(request, env, origin, user) {
       profile: user.profile ? JSON.parse(user.profile || "{}") : null,
       business: { form: user.biz_form || "", regime: user.biz_regime || "", workers: user.biz_workers || 0 },
       telegram: user.tg_username || null,
+      /* Согласие тоже относится к данным человека: он вправе видеть,
+         когда и под какой редакцией политики оно было дано. */
+      consent: user.consent_at
+        ? { at: user.consent_at, policyVersion: user.consent_doc }
+        : null,
     },
 
     documents: money(await q(

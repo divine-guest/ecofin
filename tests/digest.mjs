@@ -47,7 +47,7 @@ const chatId = 920000000 + (st % 1000000);
 
 console.log("\n— Подготовка —");
 const reg = await call("/api/auth/register", {
-  method: "POST", body: { name: "Сводка Тест", email: em, password: "parol12345" },
+  method: "POST", body: { name: "Сводка Тест", email: em, password: "parol12345", consent: true },
 });
 const t = reg.data.token;
 ok(Boolean(t), "аккаунт заведён");

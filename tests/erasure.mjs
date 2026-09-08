@@ -65,7 +65,7 @@ console.log("\n— Список удаления не отстал от схем
 
 const email = `era${Date.now()}@test.ru`;
 const reg = await call("/api/auth/register", {
-  method: "POST", body: { name: "Проверка", email, password: "parol12345" },
+  method: "POST", body: { name: "Проверка", email, password: "parol12345", consent: true },
 });
 const token = reg.data.token;
 if (!token) throw new Error("не завести аккаунт: " + JSON.stringify(reg.data));

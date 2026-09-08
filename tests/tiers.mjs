@@ -10,7 +10,7 @@ const st=Date.now();
 
 console.log("\n— Бесплатный тариф —");
 const em=`t${st}@test.ru`;
-const u=await call("/api/auth/register",{method:"POST",body:{name:"Тариф Тест",email:em,password:"parol12345"}});
+const u=await call("/api/auth/register",{method:"POST",body:{name:"Тариф Тест",email:em,password:"parol12345", consent: true}});
 const t=u.data.token;
 ok(u.data.user.tier==="free", `уровень: ${u.data.user.tier}, называется «${u.data.user.planTitle}»`);
 const q=await call("/api/quota",{token:t});

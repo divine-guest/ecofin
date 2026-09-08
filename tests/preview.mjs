@@ -4,7 +4,7 @@ let p=0,f=0; const ok=(c,l,x="")=>{c?(p++,console.log("  ✓",l)):(f++,console.l
 async function call(path,{method="GET",body,token}={}){const r=await fetch(API+path,{method,headers:{Origin:O,...(body?{"Content-Type":"application/json"}:{}),...(token?{Authorization:"Bearer "+token}:{})},body:body?JSON.stringify(body):undefined});return{status:r.status,data:await r.json().catch(()=>({}))};}
 
 const st=Date.now();
-const t=(await call("/api/auth/register",{method:"POST",body:{name:"Превью Тест",email:`pv${st}@test.ru`,password:"parol12345"}})).data.token;
+const t=(await call("/api/auth/register",{method:"POST",body:{name:"Превью Тест",email:`pv${st}@test.ru`,password:"parol12345", consent: true}})).data.token;
 
 console.log("\n— Бесплатный тариф —");
 const l0=await call("/api/courses/lesson?course=acc&lesson=0",{token:t});

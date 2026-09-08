@@ -44,7 +44,7 @@ const em = `qa${st}@test.ru`;
 
 console.log("\n— Автор задаёт вопрос —");
 const reg = await call("/api/auth/register", {
-  method: "POST", body: { name: "Автор Вопроса", email: em, password: "parol12345" },
+  method: "POST", body: { name: "Автор Вопроса", email: em, password: "parol12345", consent: true },
 });
 const t = reg.data.token;
 const asked = await call("/api/ai/ask", {
@@ -64,7 +64,7 @@ ok(done?.status === "done", `ответ получен: ${done?.status}`, done?.
 
 console.log("\n— Предложить можно только свой ответ —");
 const other = await call("/api/auth/register", {
-  method: "POST", body: { name: "Чужой", email: `oth${st}@test.ru`, password: "parol12345" },
+  method: "POST", body: { name: "Чужой", email: `oth${st}@test.ru`, password: "parol12345", consent: true },
 });
 const steal = await call("/api/qa/offer", {
   method: "POST", token: other.data.token, body: { jobId, topic: "Налоги" },

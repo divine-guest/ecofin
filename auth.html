@@ -23,8 +23,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=167">
-<link rel="stylesheet" href="css/style.css?v=167">
+<link rel="stylesheet" href="css/fonts.css?v=168">
+<link rel="stylesheet" href="css/style.css?v=168">
 </head>
 <body>
 <main class="section">
@@ -103,12 +103,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=167"></script>
-<script src="js/api.js?v=167"></script>
-<script src="js/app.js?v=167"></script>
-<script src="js/progress.js?v=167"></script>
-<script src="js/palette.js?v=167"></script>
-<script src="js/ai.js?v=167"></script>
+<script src="js/themes.js?v=168"></script>
+<script src="js/api.js?v=168"></script>
+<script src="js/app.js?v=168"></script>
+<script src="js/progress.js?v=168"></script>
+<script src="js/palette.js?v=168"></script>
+<script src="js/ai.js?v=168"></script>
 <script>
 initPage("auth.html");
 
@@ -180,7 +180,8 @@ async function doRegister(e) {
   e.preventDefault();
   const form = e.target;
   const pass = document.getElementById("regPass").value;
-  if (!document.getElementById("regConsent").checked)
+  const consent = document.getElementById("regConsent").checked;
+  if (!consent)
     return toast("Без согласия на обработку данных регистрация невозможна", "error");
   if (pass.length < 8) return toast("Пароль минимум 8 символов", "error");
   busy(form, true, "Создаём аккаунт…");
@@ -189,7 +190,8 @@ async function doRegister(e) {
       document.getElementById("regName").value.trim(),
       document.getElementById("regEmail").value.trim(),
       pass,
-      REF.code
+      REF.code,
+      consent
     );
     localStorage.setItem(SEEN_KEY, "1");
     trackEvent("register", { referred: REF.code ? 1 : 0 });

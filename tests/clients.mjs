@@ -15,8 +15,8 @@ const admin = await makeAdmin(call);
 const day = new Date().toISOString().slice(0, 10);
 
 const buh = `buh${st}@test.ru`, oth = `oth${st}@test.ru`;
-const T = (await call("/api/auth/register", { method: "POST", body: { name: "Бухгалтер Тест", email: buh, password: "parol12345" } })).data.token;
-const T2 = (await call("/api/auth/register", { method: "POST", body: { name: "Чужой Тест", email: oth, password: "parol12345" } })).data.token;
+const T = (await call("/api/auth/register", { method: "POST", body: { name: "Бухгалтер Тест", email: buh, password: "parol12345", consent: true } })).data.token;
+const T2 = (await call("/api/auth/register", { method: "POST", body: { name: "Чужой Тест", email: oth, password: "parol12345", consent: true } })).data.token;
 
 console.log("\n— Закрыто без подписки —");
 ok((await call("/api/clients", { token: T })).status === 402, "список дел требует платного тарифа");

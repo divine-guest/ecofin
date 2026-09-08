@@ -27,7 +27,7 @@ async function call(path, { method = "GET", body, token } = {}) {
 const email = `prof${Date.now()}@test.ru`;
 
 console.log("\n— Фото на аватарке —");
-const reg = await call("/api/auth/register", { method: "POST", body: { name: "Фото Тест", email, password: "parol12345" } });
+const reg = await call("/api/auth/register", { method: "POST", body: { name: "Фото Тест", email, password: "parol12345", consent: true } });
 const t = reg.data.token;
 
 const tinyJpeg = "data:image/jpeg;base64," + "A".repeat(2000);
@@ -83,7 +83,7 @@ console.log("\n— Удаление аккаунта уносит ВСЕ лич�
    заводим человека, оставляем следы в разных разделах, удаляем и
    пробуем достать следы заново. */
 const dEmail = `del${Date.now()}@test.ru`;
-const dReg = await call("/api/auth/register", { method: "POST", body: { name: "Удаляемый Тест", email: dEmail, password: "parol12345" } });
+const dReg = await call("/api/auth/register", { method: "POST", body: { name: "Удаляемый Тест", email: dEmail, password: "parol12345", consent: true } });
 const dT = dReg.data.token;
 
 const dueSoon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
@@ -99,7 +99,7 @@ ok((await call("/api/auth/me", { token: dT })).status === 401, "прежний �
 
 /* Заводим тот же адрес заново: если старые строки остались в базе,
    они прицепятся к новому аккаунту — это и есть проверка. */
-const again = await call("/api/auth/register", { method: "POST", body: { name: "Он Же Снова", email: dEmail, password: "parol12345" } });
+const again = await call("/api/auth/register", { method: "POST", body: { name: "Он Же Снова", email: dEmail, password: "parol12345", consent: true } });
 ok(again.status === 201, "адрес освободился, можно зарегистрироваться заново");
 const aT = again.data.token;
 ok(((await call("/api/reminders", { token: aT })).data.reminders || []).length === 0, "напоминаний от прошлого аккаунта не осталось");

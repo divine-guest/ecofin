@@ -25,7 +25,7 @@ const year = new Date().getFullYear();
 const thisMonth = new Date().toISOString().slice(0, 7);
 
 const me = `book${st}@test.ru`;
-const reg = await call("/api/auth/register", { method: "POST", body: { name: "Учёт Тест", email: me, password: "parol12345" } });
+const reg = await call("/api/auth/register", { method: "POST", body: { name: "Учёт Тест", email: me, password: "parol12345", consent: true } });
 const T = reg.data.token;
 
 console.log("\n— Профиль дела —");
@@ -98,7 +98,7 @@ ok(ex2.data.rows[0].day <= ex2.data.rows[1].day, "выгрузка отсорт�
 
 console.log("\n— Чужое трогать нельзя —");
 const other = `bookx${st}@test.ru`;
-const o2 = await call("/api/auth/register", { method: "POST", body: { name: "Чужой Тест", email: other, password: "parol12345" } });
+const o2 = await call("/api/auth/register", { method: "POST", body: { name: "Чужой Тест", email: other, password: "parol12345", consent: true } });
 const T2 = o2.data.token;
 const mineId = paid.data.ops[0].id;
 const steal = await call("/api/book/op/delete", { method: "POST", token: T2, body: { id: mineId } });

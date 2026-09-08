@@ -34,7 +34,7 @@ async function call(path, { method = "GET", token, body } = {}) {
 async function register(tag) {
   const email = `req${tag}${Date.now()}@test.ru`;
   const r = await call("/api/auth/register", {
-    method: "POST", body: { name: "Проверка", email, password: "parol12345" },
+    method: "POST", body: { name: "Проверка", email, password: "parol12345", consent: true },
   });
   return { email, token: r.data.token };
 }

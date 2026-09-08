@@ -36,8 +36,8 @@ const stamp = Date.now();
 const victim = `victim${stamp}@test.ru`;
 const attacker = `attacker${stamp}@test.ru`;
 
-const v = await call("/api/auth/register", { method: "POST", body: { name: "Жертва Тест", email: victim, password: "parol12345" } });
-const a = await call("/api/auth/register", { method: "POST", body: { name: "Злодей Тест", email: attacker, password: "parol12345" } });
+const v = await call("/api/auth/register", { method: "POST", body: { name: "Жертва Тест", email: victim, password: "parol12345", consent: true } });
+const a = await call("/api/auth/register", { method: "POST", body: { name: "Злодей Тест", email: attacker, password: "parol12345", consent: true } });
 const vt = v.data.token, at = a.data.token;
 
 console.log("\n— Повышение привилегий —");
@@ -80,7 +80,7 @@ for (const [label, payload] of [
   const r = label.includes("вход")
     ? await call("/api/auth/login", { method: "POST", body: { email: payload, password: "x" } })
     : label.includes("регистрац")
-      ? await call("/api/auth/register", { method: "POST", body: { name: "Тест Тест", email: payload, password: "parol12345" } })
+      ? await call("/api/auth/register", { method: "POST", body: { name: "Тест Тест", email: payload, password: "parol12345", consent: true } })
       : await call("/api/admin/users?q=" + encodeURIComponent(payload), { token: at });
   OK(r.status >= 400, `${label}: отклонено (${r.status})`);
 }
@@ -102,7 +102,7 @@ OK((await call("/api/ai", { method: "POST", token: vt, body: { prompt: "x", maxT
    "завышенный maxTokens не ломает сервер");
 OK((await call("/api/analyze", { method: "POST", token: vt, body: { images: ["javascript:alert(1)"] } })).status === 400,
    "не-картинка в анализе отклонена");
-OK((await call("/api/auth/register", { method: "POST", body: { name: "A".repeat(5000), email: `long${stamp}@t.ru`, password: "parol12345" } })).status <= 201,
+OK((await call("/api/auth/register", { method: "POST", body: { name: "A".repeat(5000), email: `long${stamp}@t.ru`, password: "parol12345", consent: true } })).status <= 201,
    "сверхдлинное имя обрезается, а не падает");
 
 console.log("\n— Промокоды и оплата —");

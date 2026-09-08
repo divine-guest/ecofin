@@ -48,7 +48,7 @@ export async function makeAdmin(call) {
   const email = `adm${Date.now()}@test.ru`;
   const reg = await call("/api/auth/register", {
     method: "POST",
-    body: { name: "Тест Админ", email, password: "parol12345" },
+    body: { name: "Тест Админ", email, password: "parol12345", consent: true },
   });
   if (!reg.data.token) throw new Error("не создан админ: " + JSON.stringify(reg.data));
   await sql(`UPDATE users SET role='admin' WHERE email='${email}'`);

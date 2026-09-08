@@ -5,7 +5,7 @@ async function call(path,{method="GET",body,token}={}){const r=await fetch(API+p
 
 const st=Date.now();
 const em=`crs${st}@test.ru`;
-const t=(await call("/api/auth/register",{method:"POST",body:{name:"Курсы Тест",email:em,password:"parol12345"}})).data.token;
+const t=(await call("/api/auth/register",{method:"POST",body:{name:"Курсы Тест",email:em,password:"parol12345", consent: true}})).data.token;
 
 console.log("\n— Без входа —");
 ok((await call("/api/courses/lesson?course=acc&lesson=0")).status===401,"аноним — 401");

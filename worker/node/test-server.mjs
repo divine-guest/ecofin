@@ -73,7 +73,7 @@ ok(reg.data.user.name === "Проверка Сервера", "кириллица
 const dup = await call("/api/auth/register", { method: "POST", body: { name: "Ещё раз", email, password } });
 ok(dup.status !== 200, "повторная регистрация на ту же почту отклоняется", `статус ${dup.status}`);
 
-const bad = await call("/api/auth/login", { method: "POST", body: { email, password: "неверный" } });
+const bad = await call("/api/auth/login", { method: "POST", body: { email, password: "неверный", consent: true } });
 ok(bad.status === 401 || bad.status === 400, "неверный пароль не пускает", `статус ${bad.status}`);
 
 const login = await call("/api/auth/login", { method: "POST", body: { email, password } });
@@ -153,7 +153,7 @@ let blocked = false, tries = 0;
 for (; tries < 30; tries++) {
   const r = await call("/api/auth/login", {
     method: "POST",
-    body: { email, password: "снова неверный" },
+    body: { email, password: "снова неверный", consent: true },
     headers: { "X-Real-IP": "203.0.113.77" },
   });
   if (r.status === 429) { blocked = true; break; }

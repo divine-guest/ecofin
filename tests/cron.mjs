@@ -11,7 +11,7 @@ async function call(p,{method="GET",body,token}={}){const r=await fetch(API+p,{m
 
 const admin = await makeAdmin(call);
 const ot = admin.token;
-if(!ot){ ot=(await call("/api/auth/register",{method:"POST",body:{name:"Егор",email:owner,password:"parol12345"}})).data.token; }
+if(!ot){ ot=(await call("/api/auth/register",{method:"POST",body:{name:"Егор",email:owner,password:"parol12345", consent: true}})).data.token; }
 
 const today=new Date(Date.now()+3*3600000).toISOString().slice(0,10);
 const in3=new Date(Date.now()+3*86400000+3*3600000).toISOString().slice(0,10);

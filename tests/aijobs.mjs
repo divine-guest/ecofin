@@ -44,7 +44,7 @@ const st = Date.now();
 console.log("\n— Вопрос переживает уход со страницы —");
 const em = `bg${st}@test.ru`;
 const reg = await call("/api/auth/register", {
-  method: "POST", body: { name: "Фоновый Тест", email: em, password: "parol12345" },
+  method: "POST", body: { name: "Фоновый Тест", email: em, password: "parol12345", consent: true },
 });
 const t = reg.data.token;
 
@@ -81,7 +81,7 @@ ok((done?.answer || "").length > 30, `ответ пришёл, ${(done?.answer |
 
 console.log("\n— Чужое не показываем —");
 const other = await call("/api/auth/register", {
-  method: "POST", body: { name: "Чужой", email: `oth${st}@test.ru`, password: "parol12345" },
+  method: "POST", body: { name: "Чужой", email: `oth${st}@test.ru`, password: "parol12345", consent: true },
 });
 const peek = await call("/api/ai/job?id=" + id, { token: other.data.token });
 ok(peek.status === 404, "чужая задача не отдаётся");
@@ -118,7 +118,7 @@ console.log("\n— Подвисшая задача оживает —");
     /* Лимит выбран предыдущим блоком — заводим отдельный аккаунт. */
     var rv = await call("/api/auth/register", {
       method: "POST",
-      body: { name: "Оживание", email: `rev${st}@test.ru`, password: "parol12345" },
+      body: { name: "Оживание", email: `rev${st}@test.ru`, password: "parol12345", consent: true },
     });
   }
   const rt = rv ? rv.data.token : t;

@@ -80,8 +80,11 @@ const API = {
   },
 
   /* --- Аккаунт --- */
-  async register(name, email, password, ref) {
-    const d = await this.request("/api/auth/register", { method: "POST", body: { name, email, password, ref } });
+  /* consent — отметка о согласии на обработку данных. Раньше она
+     оставалась в браузере, и сервер о ней не знал; теперь едет с
+     регистрацией и сохраняется в базе как доказательство. */
+  async register(name, email, password, ref, consent) {
+    const d = await this.request("/api/auth/register", { method: "POST", body: { name, email, password, ref, consent } });
     this.setSession(d.token, d.user);
     return d.user;
   },

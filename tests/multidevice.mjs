@@ -36,7 +36,7 @@ const email = `multi${Date.now()}@test.ru`;
 const PW = "parol12345";
 
 console.log("\n— Один аккаунт, три устройства —");
-const reg = await call("/api/auth/register", { method: "POST", body: { name: "Егор Многоустройств", email, password: PW } });
+const reg = await call("/api/auth/register", { method: "POST", body: { name: "Егор Многоустройств", email, password: PW, consent: true } });
 ok(reg.status === 201, "аккаунт создан на «телефоне»");
 const phone = reg.data.token;
 
@@ -88,7 +88,7 @@ ok((await call("/api/auth/login", { method: "POST", body: { email: upper, passwo
    "вход с email В ВЕРХНЕМ РЕГИСТРЕ работает");
 ok((await call("/api/auth/login", { method: "POST", body: { email: "  " + email + "  ", password: "novyj-parol-12345" } })).status === 200,
    "вход с пробелами по краям работает");
-ok((await call("/api/auth/register", { method: "POST", body: { name: "Дубль", email: upper, password: "parol12345" } })).status === 409,
+ok((await call("/api/auth/register", { method: "POST", body: { name: "Дубль", email: upper, password: "parol12345", consent: true } })).status === 409,
    "и зарегистрировать дубль в другом регистре нельзя");
 
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);

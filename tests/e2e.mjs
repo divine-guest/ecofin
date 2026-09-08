@@ -41,12 +41,12 @@ const alice = `alice${stamp}@test.ru`;
 const bob = `bob${stamp}@test.ru`;
 
 console.log("\n— Регистрация и роли —");
-const a = await call("/api/auth/register", { method: "POST", body: { name: "Алиса Тест", email: alice, password: "parol12345" } });
+const a = await call("/api/auth/register", { method: "POST", body: { name: "Алиса Тест", email: alice, password: "parol12345", consent: true } });
 ok(a.status === 201 && a.data.user.role === "user", "обычный пользователь получает роль user");
 ok(a.data.user.plan === "free", "и тариф free");
 const aliceT = a.data.token;
 
-const b = await call("/api/auth/register", { method: "POST", body: { name: "Боб Тест", email: bob, password: "parol12345" } });
+const b = await call("/api/auth/register", { method: "POST", body: { name: "Боб Тест", email: bob, password: "parol12345", consent: true } });
 const bobT = b.data.token;
 
 /* Работаем под одноразовым админом: настоящий аккаунт владельца
@@ -69,7 +69,7 @@ let ownerRow = (all.data.users || []).find(u => u.email === OWNER);
 if (!ownerRow) {
   const made = await call("/api/auth/register", {
     method: "POST",
-    body: { name: "Владелец", email: OWNER, password: "parol12345" },
+    body: { name: "Владелец", email: OWNER, password: "parol12345", consent: true },
   });
   ownerCreated = made.status === 201;
   all = await call("/api/admin/users", { token: ownerT });
@@ -180,8 +180,47 @@ ok(bp.data.enabled === false, "эквайринг пока не подключё
 ok((await call("/api/billing/create", { method: "POST", token: aliceT, body: { plan: "year" } })).status === 503,
    "создать платёж нельзя, пока нет ключей ЮKassa");
 
+console.log("\n— Согласие на обработку данных —");
+{
+  /* Галочка в форме — не доказательство. Обязанность доказать, что
+     согласие получено, лежит на операторе (часть 1 статьи 9 152-ФЗ),
+     а проверка в браузере обходится одним запросом к API мимо формы.
+     И обходилась: аккаунт заводился, в базе не оставалось ничего.
+
+     Здесь проверяется ровно это: без отметки сервер отказывает, с
+     отметкой сохраняет момент и редакцию политики, и человек видит
+     их в своей выгрузке. */
+  const noCons = `nocons${stamp}@test.ru`;
+  const r1 = await call("/api/auth/register", {
+    method: "POST", body: { name: "Без Согласия", email: noCons, password: "parol12345" },
+  });
+  ok(r1.status === 400, "регистрация без согласия отклоняется", r1.status);
+
+  const r2 = await call("/api/auth/register", {
+    method: "POST", body: { name: "Мимо Формы", email: noCons, password: "parol12345", consent: "да" },
+  });
+  ok(r2.status === 400, "строка вместо отметки согласием не считается", r2.status);
+
+  const consEmail = `cons${stamp}@test.ru`;
+  const r3 = await call("/api/auth/register", {
+    method: "POST", body: { name: "С Согласием", email: consEmail, password: "parol12345", consent: true },
+  });
+  ok(r3.status === 201, "с согласием регистрация проходит", r3.status);
+
+  const dump = await call("/api/auth/export", { token: r3.data.token });
+  const c = dump.data && dump.data.profile && dump.data.profile.consent;
+  ok(!!c && !!c.at, "момент согласия сохранён и виден в выгрузке", c);
+  ok(!!c && /^\d{4}-\d{2}-\d{2}/.test(String(c.policyVersion || "")),
+     "вместе с согласием сохранена редакция политики", c && c.policyVersion);
+
+  /* И в журнале действий — туда человек смотрит сам. */
+  const meRow = await call("/api/auth/me", { token: r3.data.token });
+  const acts = ((meRow.data && meRow.data.actions) || []).map(a => a.text).join(" | ");
+  ok(/Согласие на обработку/.test(acts), "согласие записано в журнал действий", acts.slice(0, 120));
+}
+
 console.log("\n— Гигиена —");
-ok((await call("/api/auth/register", { method: "POST", body: { name: "Дубль", email: alice, password: "parol12345" } })).status === 409,
+ok((await call("/api/auth/register", { method: "POST", body: { name: "Дубль", email: alice, password: "parol12345", consent: true } })).status === 409,
    "повторная регистрация того же email отклоняется");
 const wrongOrigin = await fetch(API + "/api/quota", { headers: { Origin: "https://zloj-sajt.example", Authorization: "Bearer " + aliceT } });
 ok(wrongOrigin.status === 403, "запрос с чужого домена отклоняется");

@@ -988,5 +988,66 @@ console.log("\n— Страница не ходит на чужие адреса
      "генератор статей не возвращает шрифты Google");
 }
 
+console.log("\n— Согласие и редакция политики —");
+{
+  /* Вместе с согласием сервер сохраняет редакцию политики: через год
+     будет видно не «согласился вообще», а под каким именно текстом.
+     Смысл в этом есть, только пока дата в коде и дата в политике —
+     одна и та же. Разойтись они могут молча: политику правят руками,
+     а константу забывают.
+
+     Ещё здесь проверяется сама галочка: она обязательна в форме и
+     ведёт на политику, а не просто стоит рядом с текстом. */
+
+  const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня",
+                  "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+
+  const lib = read("../worker/src/lib.js");
+  const mv = lib.match(/POLICY_VERSION:\s*"(\d{4})-(\d{2})-(\d{2})"/);
+  ok(!!mv, "в настройках задана редакция политики", mv && mv[0]);
+
+  const legal = read("../legal.html");
+  const md = legal.match(/Дата обновления политики:<\/b>\s*(\d{1,2})\s+([а-яё]+)\s+(\d{4})/i);
+  ok(!!md, "в политике указана дата обновления", md && md[0]);
+
+  if (mv && md) {
+    const fromLegal = [md[3], String(MONTHS.indexOf(md[2].toLowerCase()) + 1).padStart(2, "0"),
+                       md[1].padStart(2, "0")].join("-");
+    ok(fromLegal === `${mv[1]}-${mv[2]}-${mv[3]}`,
+       "редакция политики в коде совпадает с датой в самой политике",
+       [fromLegal, mv[0]]);
+  }
+
+  const auth = read("../auth.html");
+  ok(/id="regConsent"[^>]*required/.test(auth),
+     "галочка согласия обязательна в форме регистрации");
+  ok(/regConsent[\s\S]{0,400}legal\.html#privacy/.test(auth),
+     "рядом с галочкой стоит ссылка на политику");
+
+  /* Форма обязана передавать отметку серверу: иначе она снова
+     останется украшением, а доказывать согласие будет нечем. */
+  ok(/consent\s*=\s*document\.getElementById\("regConsent"\)\.checked/.test(auth),
+     "форма читает галочку в переменную");
+  ok(/register\([\s\S]{0,200}consent\s*\n?\s*\)/.test(auth) || /consent\s*\n\s*\);/.test(auth),
+     "и передаёт её в регистрацию");
+
+  const api = read("../js/api.js");
+  ok(/register\(name,\s*email,\s*password,\s*ref,\s*consent\)/.test(api),
+     "клиент шлёт согласие вместе с регистрацией");
+  ok(/body:\s*{[^}]*consent[^}]*}/.test(api),
+     "отметка попадает в тело запроса");
+
+  const authSrc = read("../worker/src/auth.js");
+  ok(/b\.consent\s*!==\s*true/.test(authSrc),
+     "сервер отказывает, если отметки нет — а не верит браузеру");
+  ok(/consent_at/.test(authSrc) && /consent_doc/.test(authSrc),
+     "момент согласия и редакция политики сохраняются в базе");
+
+  const mig = read("../worker/migrate-consent.sql");
+  ok(/ALTER TABLE users ADD COLUMN consent_at/.test(mig) &&
+     /ALTER TABLE users ADD COLUMN consent_doc/.test(mig),
+     "под это есть миграция базы");
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

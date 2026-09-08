@@ -65,7 +65,7 @@ const em = `bot${st}@test.ru`;
 
 console.log("\n— Подготовка: аккаунт, привязанный к чату —");
 const reg = await call("/api/auth/register", {
-  method: "POST", body: { name: "Бот Тест", email: em, password: "parol12345" },
+  method: "POST", body: { name: "Бот Тест", email: em, password: "parol12345", consent: true },
 });
 ok(Boolean(reg.data.token), "аккаунт заведён");
 await sql(`UPDATE users SET tg_chat_id = '${chatId}' WHERE email = '${em}'`);

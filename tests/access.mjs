@@ -30,7 +30,7 @@ const st = Date.now();
 
 async function make(name) {
   const email = `acc${st}${name}@test.ru`;
-  const r = await call("/api/auth/register", { method: "POST", body: { name: "Доступ " + name, email, password: "parol12345" } });
+  const r = await call("/api/auth/register", { method: "POST", body: { name: "Доступ " + name, email, password: "parol12345", consent: true } });
   return { email, token: r.data.token };
 }
 

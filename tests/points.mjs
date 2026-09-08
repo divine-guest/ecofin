@@ -10,14 +10,14 @@ const ot = admin.token;
 
 console.log("\n— Пригласивший и приглашённый —");
 const inv=`inv${st}@test.ru`, frn=`frn${st}@test.ru`;
-const a=await call("/api/auth/register",{method:"POST",body:{name:"Пригласивший Тест",email:inv,password:"parol12345"}});
+const a=await call("/api/auth/register",{method:"POST",body:{name:"Пригласивший Тест",email:inv,password:"parol12345", consent: true}});
 const at=a.data.token;
 const rs=await call("/api/referral",{token:at});
 const code=rs.data.code;
 ok(rs.data.balance===0, `у пригласившего 0 баллов на старте`);
 ok(rs.data.reward.inviterPaid===500, `награда за оплату друга: ${rs.data.reward.inviterPaid} баллов`);
 
-const b=await call("/api/auth/register",{method:"POST",body:{name:"Друг Тест",email:frn,password:"parol12345",ref:code}});
+const b=await call("/api/auth/register",{method:"POST",body:{name:"Друг Тест",email:frn,password:"parol12345", consent: true,ref:code}});
 const bt=b.data.token;
 const fp=await call("/api/points",{token:bt});
 ok(fp.data.balance===150, `приглашённому сразу начислено ${fp.data.balance} баллов`);

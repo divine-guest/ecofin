@@ -44,7 +44,7 @@ const em = `tr${st}@test.ru`;
 
 console.log("\n— Новому человеку пробный доступен —");
 const reg = await call("/api/auth/register", {
-  method: "POST", body: { name: "Пробный Тест", email: em, password: "parol12345" },
+  method: "POST", body: { name: "Пробный Тест", email: em, password: "parol12345", consent: true },
 });
 const t = reg.data.token;
 ok(reg.data.user.tier === "free", "начинает со «Старта»");
@@ -86,7 +86,7 @@ ok(after.data.used === true, "отмечен как использованный
 console.log("\n— Поверх действующей подписки не выдаётся —");
 const em2 = `tr2${st}@test.ru`;
 const reg2 = await call("/api/auth/register", {
-  method: "POST", body: { name: "С подпиской", email: em2, password: "parol12345" },
+  method: "POST", body: { name: "С подпиской", email: em2, password: "parol12345", consent: true },
 });
 const admin = await makeAdmin(call);
 await call("/api/admin/grant", {
