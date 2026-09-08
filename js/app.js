@@ -2219,11 +2219,67 @@ function initPage(active) {
   });
 
   refreshSession().then(user => {
-    if (user) { NOTIFY.load(); askPendingQuestion(); }
+    if (user) { NOTIFY.load(); askPendingQuestion(); askConsentOnce(user); }
     const header = document.querySelector(".site-header");
     if (header) { header.remove(); renderHeader(active); }
     document.dispatchEvent(new CustomEvent("pf:ready", { detail: { user } }));
   });
+}
+
+/* ============ Согласие у тех, кого не спросили как следует ============ */
+
+/* Галочка в форме регистрации стояла с 24 августа, но на сервер не
+   приезжала: доказательства согласия у этих аккаунтов нет. Дорисовать
+   дату задним числом нельзя — это и был бы подлог. Остаётся спросить
+   ещё раз.
+
+   Спрашиваем один раз и не запираем: обработка идёт и по договору
+   (п. 5 ч. 1 ст. 6 152-ФЗ), так что держать человека в окне, пока он
+   не нажмёт, было бы и грубо, и юридически лишним. Закрыл — спросим
+   при следующем заходе, но не два раза за сессию.
+
+   Окно намеренно объясняет причину. «Подтвердите согласие» без
+   объяснения выглядит как уловка и получает отказ. */
+function askConsentOnce(user) {
+  if (!user || !user.needsConsent) return;
+  if (sessionStorage.getItem("pf_consent_asked")) return;
+  sessionStorage.setItem("pf_consent_asked", "1");
+
+  setTimeout(() => {
+    MODAL.open("Подтвердите согласие на обработку данных", `
+      <p style="margin-bottom:10px">Вы регистрировались, когда отметка о согласии
+        сохранялась только в браузере и не доходила до нашего сервера. Мы это
+        исправили и просим подтвердить согласие ещё раз — чтобы у нас было
+        подтверждение, а не предположение.</p>
+      <p class="hint" style="margin-bottom:14px">Состав данных и то, как мы с ними
+        обращаемся, не изменились. Подробности —
+        <a href="legal.html#privacy" target="_blank" rel="noopener">в политике обработки</a>.</p>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:14px">
+        <input type="checkbox" id="reConsent">
+        <span>Я даю согласие на обработку персональных данных</span>
+      </label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="reConsentOk">Подтвердить</button>
+        <button class="btn ghost" onclick="MODAL.close()">Позже</button>
+      </div>`);
+
+    const btn = document.getElementById("reConsentOk");
+    if (!btn) return;
+    btn.onclick = async () => {
+      if (!document.getElementById("reConsent").checked)
+        return toast("Отметьте согласие, чтобы подтвердить", "error");
+      btn.disabled = true;
+      try {
+        await API.confirmConsent();
+        await API.me();
+        MODAL.close();
+        toast("Спасибо, отметили");
+      } catch (e) {
+        btn.disabled = false;
+        toast(e.message, "error");
+      }
+    };
+  }, 900);
 }
 
 /* Человек задал вопрос на главной до регистрации. После входа задаём его

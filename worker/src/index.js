@@ -40,6 +40,7 @@ const ROUTES = [
   /* Все данные одним файлом — право по ст. 14 152-ФЗ, и политика
      сервиса обещает его прямым текстом. */
   ["GET", "/api/auth/export", auth.exportAll, "user"],
+  ["POST", "/api/auth/consent", auth.confirmConsent, "user"],
   ["POST", "/api/auth/logout-all", auth.logoutEverywhere, "user"],
 
   ["POST", "/api/ai", ai.handleAI, "user"],

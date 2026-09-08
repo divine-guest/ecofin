@@ -219,7 +219,65 @@ console.log("\n— Согласие на обработку данных —");
   ok(/Согласие на обработку/.test(acts), "согласие записано в журнал действий", acts.slice(0, 120));
 }
 
+console.log("\n— Согласие у тех, кого не спросили как следует —");
+{
+  /* Аккаунты, заведённые до восьмого сентября, живут без отметки:
+     галочка в форме была, но на сервер не приезжала. Дорисовать дату
+     задним числом нельзя — это подлог. Значит спрашиваем ещё раз.
+
+     Здесь проверяется главное свойство этой ручки: она ставит
+     сегодняшнюю дату и НЕ переписывает уже стоящую. Иначе при каждом
+     входе согласие «обновлялось» бы, и первая — настоящая — дата
+     терялась. Доказательство, которое само себя затирает, ничего
+     не доказывает. */
+  await sql("DELETE FROM ratelimit WHERE bucket LIKE 'register:%'");
+  const oldEmail = `oldacc${stamp}@test.ru`;
+  const reg = await call("/api/auth/register", {
+    method: "POST", body: { name: "Старый Аккаунт", email: oldEmail, password: "parol12345", consent: true },
+  });
+  const T = reg.data.token;
+  ok(reg.data.user.needsConsent === false,
+     "у нового аккаунта окно не появляется", reg.data.user.needsConsent);
+
+  /* Приводим аккаунт в то состояние, в котором сейчас живут все,
+     кто зарегистрировался раньше. */
+  await sql(`UPDATE users SET consent_at = NULL, consent_doc = NULL WHERE email = '${oldEmail}'`);
+
+  const me1 = await call("/api/auth/me", { token: T });
+  ok(me1.data.user.needsConsent === true, "старый аккаунт помечен как «надо спросить»", me1.data.user.needsConsent);
+
+  const no = await call("/api/auth/consent", { method: "POST", token: T, body: { consent: false } });
+  ok(no.status === 400, "отказ не засчитывается за согласие", no.status);
+
+  const yes = await call("/api/auth/consent", { method: "POST", token: T, body: { consent: true } });
+  ok(yes.status === 200 && yes.data.consentAt, "подтверждение записывается", yes.data);
+
+  const me2 = await call("/api/auth/me", { token: T });
+  ok(me2.data.user.needsConsent === false, "и больше не спрашивается", me2.data.user.needsConsent);
+
+  const again = await call("/api/auth/consent", { method: "POST", token: T, body: { consent: true } });
+  ok(again.data.already === true && again.data.consentAt === yes.data.consentAt,
+     "повторное подтверждение не переписывает первую дату", [yes.data.consentAt, again.data.consentAt]);
+
+  /* Отметка должна дойти и до журнала, и до выгрузки — как у новых. */
+  const dump = await call("/api/auth/export", { token: T });
+  ok(dump.data.profile.consent && dump.data.profile.consent.at === yes.data.consentAt,
+     "подтверждение видно в выгрузке", dump.data.profile.consent);
+
+  /* Дата хранится в читаемом виде. Сначала она писалась числом
+     миллисекунд в текстовую колонку, SQLite дописывал «.0», и
+     значение в базе переставало совпадать с тем, что сервер вернул
+     в ответе. Доказательство, которое читают люди, должно читаться. */
+  ok(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(String(yes.data.consentAt)),
+     "дата согласия записана в читаемом виде", yes.data.consentAt);
+}
+
 console.log("\n— Гигиена —");
+/* Счётчик регистраций с одного адреса — восемь в час, и этот набор
+   заводит людей чаще. Без сброса проверка «повторный email отклонён»
+   получала бы 429 вместо 409 и падала, хотя сайт исправен. Ровно та
+   же ловушка, из-за которой перед каждой сюитой чистится ratelimit. */
+await sql("DELETE FROM ratelimit WHERE bucket LIKE 'register:%'");
 ok((await call("/api/auth/register", { method: "POST", body: { name: "Дубль", email: alice, password: "parol12345", consent: true } })).status === 409,
    "повторная регистрация того же email отклоняется");
 const wrongOrigin = await fetch(API + "/api/quota", { headers: { Origin: "https://zloj-sajt.example", Authorization: "Bearer " + aliceT } });

@@ -56,6 +56,12 @@ async function issueSession(env, email) {
   return { token: raw, expiresAt: expires };
 }
 
+/* Отметка о согласии хранится строкой, а не числом миллисекунд, как
+   остальные времена в базе. Причина простая: это доказательство, и
+   его читают люди — в выгрузке, в переписке, при проверке. Секунды
+   достаточно: точнее момент согласия никого не интересует. */
+const consentStamp = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+
 export async function register(request, env, origin) {
   const b = await request.json().catch(() => ({}));
   const email = normEmail(b.email);
@@ -84,7 +90,7 @@ export async function register(request, env, origin) {
                         consent_at, consent_doc)
      VALUES (?, ?, ?, ?, 'free', NULL, ?, ?, ?, ?)`
   ).bind(email, name, await hashPassword(password), role, now(), now(),
-         now(), CFG.POLICY_VERSION).run();
+         consentStamp(), CFG.POLICY_VERSION).run();
 
   await logAction(env, email, role === "user" ? "Регистрация аккаунта" : `Регистрация (${role})`);
   /* Отдельной строкой в журнале — чтобы согласие было видно и там, где
@@ -353,6 +359,33 @@ export async function deleteAccount(request, env, origin, user) {
    Собираем на сервере, потому что только он знает всё. Пароль и токены
    не отдаём: их хэши бесполезны субъекту и опасны в файле, который
    человек перешлёт себе на почту.                                   */
+
+/* POST /api/auth/consent — подтверждение согласия задним числом
+   не бывает, поэтому здесь ставится честное «сейчас».
+
+   Эта ручка нужна только тем, у кого отметки нет. Повторно нажать
+   нельзя: если согласие уже записано, дата остаётся прежней. Иначе
+   получилось бы, что при каждом входе оно «обновляется», и первая —
+   настоящая — дата теряется. */
+export async function confirmConsent(request, env, origin, user) {
+  const b = await request.json().catch(() => ({}));
+  if (b.consent !== true)
+    return fail(env, origin, "Без согласия на обработку персональных данных продолжить нельзя");
+
+  const row = await env.DB.prepare("SELECT consent_at FROM users WHERE email = ?")
+    .bind(user.email).first();
+  if (row && row.consent_at)
+    return json(env, origin, { ok: true, consentAt: row.consent_at, already: true });
+
+  const at = consentStamp();
+  await env.DB.prepare("UPDATE users SET consent_at = ?, consent_doc = ? WHERE email = ?")
+    .bind(at, CFG.POLICY_VERSION, user.email).run();
+  await logAction(env, user.email,
+    `Согласие на обработку персональных данных (редакция политики от ${CFG.POLICY_VERSION})`);
+
+  return json(env, origin, { ok: true, consentAt: at });
+}
+
 export async function exportAll(request, env, origin, user) {
   const q = async (sql, ...args) => {
     try {

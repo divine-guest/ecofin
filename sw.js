@@ -1,20 +1,20 @@
 /* ЭкоФин — service worker (офлайн-кэш).
    Версию поднимаем при каждом релизе: иначе у вернувшихся посетителей
    останется старый кэш и новый фронтенд не подхватится. */
-const CACHE = "pravofin-v169";
+const CACHE = "pravofin-v170";
 
 const ASSETS = [
   "index.html", "tools.html", "calc.html", "courses.html", "games.html",
   "knowledge.html", "dashboard.html", "auth.html", "expenses.html",
   "search.html", "faq.html", "about.html", "legal.html", "onboarding.html",
   "404.html", "situations.html", "book.html", "docs.html", "clients.html",
-  "css/style.css?v=169",
-  "js/contacts.js?v=169", "js/themes.js?v=169", "js/api.js?v=169", "js/app.js?v=169", "js/partners.js?v=169", "js/ai.js?v=169", "js/rates.js?v=169", "js/docscan.js?v=169",
-  "js/games.js?v=169", "js/knowledge.js?v=169", "js/templates.js?v=169", "js/courses.js?v=169",
-  "js/competencies.js?v=169",
-  "js/situations.js?v=169",
-  "js/progress.js?v=169",
-  "js/book.js?v=169", "js/qr.js?v=169", "js/templates.js?v=169",
+  "css/style.css?v=170",
+  "js/contacts.js?v=170", "js/themes.js?v=170", "js/api.js?v=170", "js/app.js?v=170", "js/partners.js?v=170", "js/ai.js?v=170", "js/rates.js?v=170", "js/docscan.js?v=170",
+  "js/games.js?v=170", "js/knowledge.js?v=170", "js/templates.js?v=170", "js/courses.js?v=170",
+  "js/competencies.js?v=170",
+  "js/situations.js?v=170",
+  "js/progress.js?v=170",
+  "js/book.js?v=170", "js/qr.js?v=170", "js/templates.js?v=170",
   "manifest.webmanifest", "icon.svg",
 ];
 
