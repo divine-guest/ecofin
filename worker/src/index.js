@@ -263,7 +263,7 @@ export default {
       return json(env, origin, {
         ok: true,
         service: "pravofin-api",
-        model: env.AI_MODEL || "deepseek-chat",
+        model: ai.MODEL_FOR(env) || "не задана",
         aiKey: Boolean(env.AI_API_KEY),
         db: Boolean(env.DB),
         billing: Boolean(env.YOOKASSA_SHOP_ID && env.YOOKASSA_SECRET_KEY),

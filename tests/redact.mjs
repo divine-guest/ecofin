@@ -199,24 +199,65 @@ console.log("\n— Снимки уходят только туда, что в у
 
   const src = new URL("../worker/src/", import.meta.url);
   const vision = fs.readFileSync(new URL("vision.js", src), "utf8");
+  const lib = fs.readFileSync(new URL("lib.js", src), "utf8");
+  const ai = fs.readFileSync(new URL("ai.js", src), "utf8");
 
-  /* Список закрытый и живёт в коде, а не в настройках. */
-  ok(/export const VISION_ALLOWED = \{/.test(vision),
-     "список разрешённых зрячих моделей задан в коде");
+  /* Оба списка закрытые и живут в коде, а не в настройках. Лежат в
+     lib.js: их видят и ai.js, и vision.js, а импортировать друг у
+     друга они не могут — вышло бы кольцо. */
+  ok(/export const VISION_ALLOWED = \{/.test(lib), "список зрячих моделей задан в коде");
+  ok(/export const TEXT_ALLOWED = \{/.test(lib), "список текстовых моделей тоже задан в коде");
 
-  const block = vision.slice(vision.indexOf("VISION_ALLOWED = {"),
-                             vision.indexOf("};", vision.indexOf("VISION_ALLOWED = {")));
-  const countries = [...block.matchAll(/"\s*:\s*"([^"]+)"/g)].map(m => m[1]);
-  ok(countries.length > 0, "в списке есть модели", countries.length);
-  ok(countries.every(c => c === "Китай"),
-     "все разрешённые модели — из одного государства, и оно в перечне", [...new Set(countries)]);
+  const listOf = name => {
+    const from = lib.indexOf(name + " = {");
+    return lib.slice(from, lib.indexOf("};", from));
+  };
+  const countries = block => [...block.matchAll(/"\s*:\s*"([^"]+)"/g)].map(m => m[1]);
 
-  /* Настройка не может обойти список: незнакомое значение выключает
-     распознавание, а не подставляет что-то своё. */
+  const visCountries = countries(listOf("VISION_ALLOWED"));
+  ok(visCountries.length > 0, "в списке зрячих есть модели", visCountries.length);
+  ok(visCountries.every(c => c === "Китай"),
+     "все зрячие модели — из одного государства, и оно в перечне", [...new Set(visCountries)]);
+
+  /* Текстовым разрешена ещё и Россия: туда передачи за границу нет
+     вовсе, и это самый безопасный вариант из возможных. */
+  const txtCountries = countries(listOf("TEXT_ALLOWED"));
+  ok(txtCountries.length > 0, "в списке текстовых есть модели", txtCountries.length);
+  ok(txtCountries.every(c => c === "Китай" || c === "Россия"),
+     "текстовые модели — только Россия и государство из перечня", [...new Set(txtCountries)]);
+
+  /* Настройка не может обойти список — ни та, ни другая. */
   ok(/if \(!VISION_ALLOWED\[want\]\)/.test(vision),
-     "незнакомая модель не проходит в обход списка");
+     "незнакомая зрячая модель не проходит в обход списка");
+  ok(/if \(!TEXT_ALLOWED\[want\]\)/.test(ai),
+     "незнакомая текстовая модель не проходит в обход списка");
   ok(/return null;/.test(vision.slice(vision.indexOf("export function visionModel"))),
      "и распознавание в этом случае выключается");
+
+  /* Дверь наружу одна, и запрет стоит в ней самой: сюда сходятся чат,
+     бот, фоновые задачи и распознавание. */
+  ok(/export async function callProvider[\s\S]{0,900}modelAllowed\(model\)/.test(ai),
+     "запрет стоит внутри единственного вызова наружу");
+  ok(/e\.message === "unlisted"/.test(ai),
+     "и отвечает про настройки сервиса, а не про сбой поставщика");
+
+  /* Выражения «env.AI_MODEL || что-то» больше не должно быть нигде:
+     копия выбора модели однажды разойдётся с оригиналом — именно так
+     бот полгода отправлял вопросы мимо обезличивания. */
+  const files = fs.readdirSync(src).filter(f => f.endsWith(".js"));
+  const copies = files.filter(f => {
+    const t = fs.readFileSync(new URL(f, src), "utf8");
+    return /env\.AI_MODEL\s*\|\|/.test(t.replace(/\/\*[\s\S]*?\*\//g, ""));
+  });
+  /* Читать настройку вправе только ai.js, и только внутри MODEL_FOR.
+     Любой второй читатель — это копия, которая однажды разойдётся
+     с оригиналом. Именно так бот полгода отправлял вопросы мимо
+     обезличивания. */
+  ok(copies.length === 1 && copies[0] === "ai.js",
+     "настройку модели читает ровно один файл", copies);
+  const inModelFor = ai.slice(ai.indexOf("export function MODEL_FOR"));
+  ok(/env\.AI_MODEL/.test(inModelFor.slice(0, 300)),
+     "и делает это внутри MODEL_FOR, а не где придётся");
 
   /* Порядок: сначала то, что не покидает страну. */
   const body = vision.slice(vision.indexOf("export async function recognize(env"));

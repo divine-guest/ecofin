@@ -1,6 +1,7 @@
 /* ЭкоФин — прокси к ИИ. Ключ живёт только в секретах воркера,
    лимиты проверяются здесь, до обращения к провайдеру. */
-import { json, fail, isPro, abroadPaused, PAUSED_AI } from "./lib.js";
+import { json, fail, isPro, abroadPaused, PAUSED_AI,
+         TEXT_ALLOWED, modelAllowed } from "./lib.js";
 /* Выверенные ставки едут вместе с вопросом. Собирается из js/rates.js
    скриптом scripts/make-rates-digest.mjs — руками не править. */
 import { RATES_DIGEST } from "./rates-digest.js";
@@ -81,7 +82,26 @@ const ANALYZE_SYSTEM = `Ты — юрист-аналитик сервиса «Э
    том самом месте, которое мы закрывали: политика обещает, что
    распознавание идёт внутри страны, и в коде не должно быть тихого
    обхода этого обещания. */
-export const MODEL_FOR = (env) => env.AI_MODEL || "deepseek-chat";
+/* Единственное место, где выбирается текстовая модель. Раньше
+   выражение env.AI_MODEL || "deepseek-chat" было переписано в пяти
+   местах — ровно та копипаста, из-за которой бот отправлял вопросы
+   мимо обезличивания.
+
+   Модель вне списка не подставляется молча: возвращаем null, и
+   обращение не состоится. Лучше временно неработающий консультант,
+   который об этом сообщает, чем работающий и уводящий данные не туда. */
+const FALLBACK_MODEL = "deepseek-v4-flash";
+
+export function MODEL_FOR(env) {
+  const want = String(env.AI_MODEL || "").trim() || FALLBACK_MODEL;
+  if (!TEXT_ALLOWED[want]) {
+    console.error(
+      `ai: модель «${want}» не в списке разрешённых. ` +
+      `Разрешены: ${Object.keys(TEXT_ALLOWED).join(", ")}`);
+    return null;
+  }
+  return want;
+}
 
 export async function callProvider(env, { model, messages, maxTokens }) {
   /* Единственная дверь наружу к модели: и чат, и разбор документа, и
@@ -89,6 +109,14 @@ export async function callProvider(env, { model, messages, maxTokens }) {
      стоит здесь — не в каждом обработчике, где его однажды забудут
      поставить, а в том месте, мимо которого пройти нельзя. */
   if (abroadPaused(env)) throw Object.assign(new Error("paused"), { status: 503 });
+
+  /* Модель вне списков — наружу не идём. Проверка стоит здесь, а не
+     только там, где модель выбирается: сюда сходятся все обращения,
+     включая бот, фоновые задачи и распознавание. */
+  if (!modelAllowed(model)) {
+    console.error("ai: обращение с моделью вне списка отклонено:", model);
+    throw Object.assign(new Error("unlisted"), { status: 503 });
+  }
 
   const base = env.AI_BASE_URL || "https://api.aitunnel.ru/v1";
   const r = await fetch(base + "/chat/completions", {
@@ -115,6 +143,10 @@ export async function callProvider(env, { model, messages, maxTokens }) {
 export function upstreamError(env, origin, e) {
   /* Выключено намеренно — это не сбой, и говорить о сбое нечестно. */
   if (e.message === "paused") return fail(env, origin, PAUSED_AI, 503);
+  /* Модель вне списка — это не сбой поставщика, а наша ошибка
+     в настройках. Врать про поставщика незачем. */
+  if (e.message === "unlisted")
+    return fail(env, origin, "ИИ-консультант временно недоступен из-за настроек сервиса. Мы уже знаем и разбираемся.", 503);
   if (e.name === "TimeoutError" || e.name === "AbortError")
     return fail(env, origin, "ИИ не ответил вовремя. Попробуйте ещё раз или сократите текст", 504);
   if (e.message === "empty")
@@ -161,7 +193,7 @@ export async function handleAI(request, env, origin, user) {
 
   try {
     let text = await callProvider(env, {
-      model: env.AI_MODEL || "deepseek-chat",
+      model: MODEL_FOR(env),
       messages: [{ role: "system", content: system }, { role: "user", content: hide.text }],
       maxTokens: Math.min(3000, Math.max(200, Number(b.maxTokens) || 1500)),
     });
@@ -235,7 +267,7 @@ export async function handleAnalyze(request, env, origin, user) {
     return fail(env, origin, "Не удалось прочитать документ: страница пустая или снимок нечёткий");
   }
 
-  const model = env.AI_MODEL || "deepseek-chat";
+  const model = MODEL_FOR(env);
   /* Распознанный текст документа обезличивается так же, как вопрос:
      в договоре и в требовании из налоговой опознавателей больше, чем
      где-либо ещё. */

@@ -272,7 +272,7 @@ export async function exportBook(request, env, origin, user) {
 export async function scanReceipt(request, env, origin, user) {
   const { isPro } = await import("./lib.js");
   const { spendAnalyze, spendTool, analyzeQuota, refundAnalyze, refundTool } = await import("./quota.js");
-  const { callProvider, quotaSnapshot } = await import("./ai.js");
+  const { callProvider, quotaSnapshot, MODEL_FOR } = await import("./ai.js");
 
   if (!env.AI_API_KEY) return fail(env, origin, "AI_API_KEY не задан в секретах воркера", 500);
 
@@ -321,7 +321,7 @@ export async function scanReceipt(request, env, origin, user) {
     const hide = redactOn(env) ? redact(scanned) : { text: scanned, map: new Map() };
 
     const rawMasked = await callProvider(env, {
-      model: env.AI_MODEL || "deepseek-chat",
+      model: MODEL_FOR(env),
       messages: [
         { role: "system", content: SCAN_SYSTEM },
         { role: "user", content:
