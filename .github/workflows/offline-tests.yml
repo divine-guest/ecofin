@@ -1,0 +1,56 @@
+name: Проверки без сервера
+
+# Что здесь и почему именно это.
+#
+# Полный набор (tests/run-all.mjs) требует живого сервера и базы —
+# в Actions его не запустить. Но добрая половина проверок сервера
+# не требует вовсе: они читают код и содержание сайта. Их и гоняем
+# на каждый пуш.
+#
+# Это те самые проверки, которые ловят молчаливые поломки: ставку,
+# разошедшуюся со статьями; правило обезличивания, переставшее
+# срабатывать; модель, не входящую в белый список; выжимку ставок,
+# отставшую от справочника. Ни одна из них не видна глазом на
+# работающем сайте.
+#
+# Раньше на каждый пуш запускалась выкатка на Cloudflare, которой
+# больше нет, и падала. Теперь на её месте то, что приносит пользу.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Разметка, ссылки, утечки ключей
+        run: python3 check.py
+
+      - name: Проверки, не требующие сервера
+        run: |
+          set -e
+          fail=0
+          for suite in rates content redact freshness plaintext calendar; do
+            echo "::group::$suite"
+            node "tests/$suite.mjs" || fail=1
+            echo "::endgroup::"
+          done
+          exit $fail
+
+      - name: Выжимка ставок собрана из нынешнего справочника
+        # Отдельным шагом, чтобы в списке было видно именно это:
+        # копия ставок отстаёт молча, и падение должно называться так,
+        # чтобы не пришлось искать причину в общем логе.
+        run: |
+          node scripts/make-rates-digest.mjs > /dev/null
+          git diff --exit-code -- worker/src/rates-digest.js \
+            || { echo "::error::выжимка ставок устарела — выполните node scripts/make-rates-digest.mjs"; exit 1; }
