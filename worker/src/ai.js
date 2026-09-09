@@ -15,6 +15,23 @@ import { rewardIfEarned } from "./referral.js";
 const MAX_PROMPT = 12000;
 const MAX_SYSTEM = 4000;
 const UPSTREAM_TIMEOUT = 60000;
+
+/* Нижняя граница лимита ответа. Не украшение — без неё думающая
+   модель молчит.
+
+   deepseek-v4-flash сначала рассуждает про себя, и рассуждение тратит
+   те же токены, что и ответ. При max_tokens=150 модель израсходовала
+   151 токен на размышление и вернула ПУСТОЙ ответ: формально успех,
+   фактически ничего. Инструменты просят короткие ответы и получали
+   пустоту — «Не удалось получить ответ».
+
+   Заметить это по одному запросу нельзя: чат просит 1500 токенов и
+   работает прекрасно. Ломаются ровно те места, где мы экономили.
+
+   800 токенов — с запасом на рассуждение и короткий ответ. Стоит это
+   доли копейки, а альтернатива — тихо пустой ответ там, где человек
+   ждал чек-лист. */
+const MIN_TOKENS = 800;
 const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024; // ~4,5 МБ исходника после base64
 
@@ -122,7 +139,7 @@ export async function callProvider(env, { model, messages, maxTokens }) {
   const r = await fetch(base + "/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: "Bearer " + env.AI_API_KEY },
-    body: JSON.stringify({ model, messages, max_tokens: maxTokens }),
+    body: JSON.stringify({ model, messages, max_tokens: Math.max(maxTokens || 0, MIN_TOKENS) }),
     signal: AbortSignal.timeout(UPSTREAM_TIMEOUT),
   });
   if (!r.ok) {
