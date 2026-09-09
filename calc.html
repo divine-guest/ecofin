@@ -22,8 +22,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=177">
-<link rel="stylesheet" href="css/style.css?v=177">
+<link rel="stylesheet" href="css/fonts.css?v=178">
+<link rel="stylesheet" href="css/style.css?v=178">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -387,8 +387,8 @@
               <input type="date" id="ivDate" aria-label="Дата счёта" onchange="renderInvoice()">
             </div>
           </div>
-          <div class="form-group"><label for="ivVat">НДС 20%?</label>
-            <select id="ivVat" onchange="renderInvoice()"><option value="no">Не облагается / УСН</option><option value="yes">Включить НДС 20%</option></select>
+          <div class="form-group"><label for="ivVat">Начислять НДС?</label>
+            <select id="ivVat" onchange="renderInvoice()"><option value="no">Не облагается / УСН</option><option value="yes" id="ivVatYes">Включить НДС</option></select>
           </div>
         </div>
       </div>
@@ -545,7 +545,7 @@
     </div>
 
     <!-- ===== НДС на упрощёнке =====
-         С 2025 года головная боль всех, кто перевалил за 60 млн: выбор
+         С 2026 года головная боль всех, кто перевалил за 20 млн: выбор
          между пониженной ставкой без вычетов и обычной с вычетами
          зависит от того, много ли входного НДС. -->
     <div class="tab-panel game-stage" id="calcUsnVat">
@@ -891,15 +891,15 @@
   <div class="container"><div id="partnersTax"></div></div>
 </main>
 
-<script src="js/qr.js?v=177"></script>
-<script src="js/partners.js?v=177"></script>
-<script src="js/rates.js?v=177"></script>
-<script src="js/themes.js?v=177"></script>
-<script src="js/api.js?v=177"></script>
-<script src="js/app.js?v=177"></script>
-<script src="js/progress.js?v=177"></script>
-<script src="js/palette.js?v=177"></script>
-<script src="js/ai.js?v=177"></script>
+<script src="js/qr.js?v=178"></script>
+<script src="js/partners.js?v=178"></script>
+<script src="js/rates.js?v=178"></script>
+<script src="js/themes.js?v=178"></script>
+<script src="js/api.js?v=178"></script>
+<script src="js/app.js?v=178"></script>
+<script src="js/progress.js?v=178"></script>
+<script src="js/palette.js?v=178"></script>
+<script src="js/ai.js?v=178"></script>
 <script>
 initPage("calc.html");
 
@@ -1334,9 +1334,17 @@ function renderInvoice() {
      а «Итого» и QR-код брали сумму БЕЗ него. Счёт получался
      противоречивым: в нём стоял налог, которого не было в сумме к
      оплате, и платёж по QR приходил меньше, чем написано в строке
-     НДС. Считаем 20/120 от итога — так пишут в счетах, и итог с QR
-     остаются теми же, что были, у всех уже выставленных счетов. */
-  const vatSum = vat ? total / 6 : 0;
+     НДС. Считаем долю от итога — так пишут в счетах, и итог с QR
+     остаются теми же, что были, у всех уже выставленных счетов.
+
+     Ставка берётся из RATES, а не пишется здесь. Раньше она стояла
+     в трёх местах: в подписи поля, в строке счёта и в виде `total / 6`
+     — последнее не находится поиском по «20» и пережило бы любую
+     правку ставки. Повышение НДС до 22% с 2026 года до счетов бы
+     не дошло. */
+  const vatRate = RATES.vatRate;
+  const vatSum = vat ? total * vatRate / (1 + vatRate) : 0;
+  const vatLabel = `${+(vatRate * 100).toFixed(2)}%`;
   document.getElementById("invoicePaper").innerHTML = `
     <div style="text-align:center;font-weight:800;font-size:var(--t-lg)">СЧЁТ № ${escapeHtml(g("ivNum") || "1")} от ${g("ivDate") || "___.___.20__"}</div>
     <table style="width:100%;margin:18px 0;font-size:var(--t-sm)">
@@ -1348,7 +1356,7 @@ function renderInvoice() {
       ${rowsHtml}
     </table>
     <div style="text-align:right;margin-top:14px;font-size:var(--t-md)">
-      ${vat ? `В том числе НДС 20%: <b>${vatSum.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽</b><br>`
+      ${vat ? `В том числе НДС ${vatLabel}: <b>${vatSum.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽</b><br>`
             : "Без НДС (УСН)<br>"}
       <span style="font-size:var(--t-lg)">Итого: <b>${total.toLocaleString("ru-RU")} ₽</b></span>
     </div>

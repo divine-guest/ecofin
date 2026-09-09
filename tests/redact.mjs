@@ -236,7 +236,7 @@ console.log("\n— Снимки уходят только туда, что в у
 
   /* Дверь наружу одна, и запрет стоит в ней самой: сюда сходятся чат,
      бот, фоновые задачи и распознавание. */
-  ok(/export async function callProvider[\s\S]{0,900}modelAllowed\(model\)/.test(ai),
+  ok(/async function callProviderOnce[\s\S]{0,900}modelAllowed\(model\)/.test(ai),
      "запрет стоит внутри единственного вызова наружу");
   ok(/e\.message === "unlisted"/.test(ai),
      "и отвечает про настройки сервиса, а не про сбой поставщика");

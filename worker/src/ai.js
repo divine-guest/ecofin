@@ -120,7 +120,35 @@ export function MODEL_FOR(env) {
   return want;
 }
 
-export async function callProvider(env, { model, messages, maxTokens }) {
+/* Одна повторная попытка при пустом ответе или сбое на стороне
+   поставщика.
+
+   Замечено на прогонах: примерно один запрос из полусотни возвращается
+   с пустым содержимым или пятисоткой. Причина не у нас — тот же запрос
+   через секунду отрабатывает нормально. Но человек видит «ИИ вернул
+   пустой ответ» и уходит, а у нас это ещё и списанный лимит.
+
+   Повтор ровно один. Два уже складываются в минуту ожидания, а
+   молчаливое упорство хуже честного отказа. Ошибки, где повтор
+   бессмыслен — отклонённый ключ, модель вне списка, остановка
+   передачи, — не повторяются. */
+async function withRetry(fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    const hopeless = e.message === "paused" || e.message === "unlisted"
+      || e.status === 401 || e.status === 403 || e.status === 429;
+    if (hopeless) throw e;
+    await new Promise(r => setTimeout(r, 1200));
+    return await fn();
+  }
+}
+
+export async function callProvider(env, opts) {
+  return withRetry(() => callProviderOnce(env, opts));
+}
+
+async function callProviderOnce(env, { model, messages, maxTokens }) {
   /* Единственная дверь наружу к модели: и чат, и разбор документа, и
      запасное распознавание картинки идут через неё. Поэтому и запрет
      стоит здесь — не в каждом обработчике, где его однажды забудут

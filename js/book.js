@@ -206,7 +206,7 @@ const BOOK = (() => {
 
     /* Порог, до которого считаем «осталось». Мягкий порог (НДС) наступает
        раньше жёсткого и практичнее: до 450 млн большинство не дойдёт
-       никогда, а до 60 млн — вполне. */
+       никогда, а до порога НДС — вполне. */
     const target = lim.soft && income < lim.soft ? lim.soft : lim.max;
     const targetWhat = lim.soft && income < lim.soft ? lim.softWhat : lim.what;
     if (!isFinite(target)) return null;
