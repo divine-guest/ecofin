@@ -61,7 +61,11 @@ export function buildDigest(src) {
   L.push(`НПД: лимит ${mln(R.npd.limit)} ₽ в год, ${pct(R.npd.ratePersons)} с доходов от физлиц и ${pct(R.npd.rateCompanies)} — от юрлиц и ИП.`);
   L.push(`ПСН: ${pct(R.psn.rate)}, лимит дохода ${mln(R.psn.incomeLimit)} ₽, до ${R.psn.workersLimit} работников.`);
   L.push(`АУСН: «Доходы» ${pct(R.ausn.incomeRate)}, «Доходы минус расходы» ${pct(R.ausn.profitRate)}, минимальный ${pct(R.ausn.minTaxRate)}; лимит ${mln(R.ausn.incomeLimit)} ₽, до ${R.ausn.workersLimit} работников; взносы заменены фиксированным взносом на травматизм ${rub(R.ausn.injuryFixed)} ₽.`);
-  L.push(`ЕСХН: ${pct(R.eshn.rate)}; НДС можно не платить до дохода ${mln(R.eshn.vatExemptUpTo)} ₽.`);
+  /* Освобождение от НДС на ЕСХН с 2026 года не автоматическое.
+     Число прежнее, поведение противоположное: кто не подал
+     уведомление, тот стал плательщиком НДС, не заметив этого.
+     Модель обязана сказать об этом, а не только назвать порог. */
+  L.push(`ЕСХН: ${pct(R.eshn.rate)}; освобождение от НДС при доходе до ${mln(R.eshn.vatExemptUpTo)} ₽, но с 2026 года ТОЛЬКО ПО УВЕДОМЛЕНИЮ по ст. 145 НК — автоматически оно больше не даётся.`);
   L.push(`ОСНО: налог на прибыль ${pct(R.osno.profitTaxRate)}; профвычет ИП без подтверждённых расходов ${pct(R.osno.proDeduction)}.`);
   L.push("");
 
