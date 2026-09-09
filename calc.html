@@ -22,8 +22,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=181">
-<link rel="stylesheet" href="css/style.css?v=181">
+<link rel="stylesheet" href="css/fonts.css?v=182">
+<link rel="stylesheet" href="css/style.css?v=182">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -899,15 +899,15 @@
   <div class="container"><div id="partnersTax"></div></div>
 </main>
 
-<script src="js/qr.js?v=181"></script>
-<script src="js/partners.js?v=181"></script>
-<script src="js/rates.js?v=181"></script>
-<script src="js/themes.js?v=181"></script>
-<script src="js/api.js?v=181"></script>
-<script src="js/app.js?v=181"></script>
-<script src="js/progress.js?v=181"></script>
-<script src="js/palette.js?v=181"></script>
-<script src="js/ai.js?v=181"></script>
+<script src="js/qr.js?v=182"></script>
+<script src="js/partners.js?v=182"></script>
+<script src="js/rates.js?v=182"></script>
+<script src="js/themes.js?v=182"></script>
+<script src="js/api.js?v=182"></script>
+<script src="js/app.js?v=182"></script>
+<script src="js/progress.js?v=182"></script>
+<script src="js/palette.js?v=182"></script>
+<script src="js/ai.js?v=182"></script>
 <script>
 initPage("calc.html");
 
@@ -2303,9 +2303,16 @@ function calcAlimony() {
 /* --- Налог с процентов по вкладу --- */
 function calcDeposit() {
   const interest = +document.getElementById("dpInterest").value || 0;
+  /* Подставляем МАКСИМАЛЬНУЮ ключевую ставку за год, а не текущую.
+     Необлагаемая сумма считается по максимуму из действовавших на
+     первое число каждого месяца (п. 1 ст. 214.2 НК РФ), и при
+     снижении ставки текущая занижает вычет: в 2026 году максимум
+     16%, а сейчас 14% — разница в двадцать тысяч необлагаемого
+     дохода и около 2 600 ₽ лишнего налога. */
   const rateField = document.getElementById("dpRate");
-  if (!rateField.value) rateField.value = RATES.keyRate.percent;
-  const maxKeyRate = +rateField.value || RATES.keyRate.percent;
+  const maxYear = RATES.deposits.maxKeyRateYear;
+  if (!rateField.value) rateField.value = maxYear;
+  const maxKeyRate = +rateField.value || maxYear;
 
   const r = RATES.depositTax({ interest, maxKeyRate });
 
