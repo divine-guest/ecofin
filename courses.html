@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Курсы — ЭкоФин</title>
 <!-- seo:start -->
-<meta name="description" content="Курсы ЭкоФин: финансовая грамотность, бухгалтерский учёт и юриспруденция с сертификатами по итогам обучения.">
+<meta name="description" content="Курсы ЭкоФин: финансовая грамотность, бухгалтерский учёт и право — короткие уроки с разбором и проверкой себя.">
 <link rel="canonical" href="https://ecofin26.ru/courses.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ЭкоФин">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:title" content="Курсы — ЭкоФин">
-<meta property="og:description" content="Курсы ЭкоФин: финансовая грамотность, бухгалтерский учёт и юриспруденция с сертификатами по итогам обучения.">
+<meta property="og:description" content="Курсы ЭкоФин: финансовая грамотность, бухгалтерский учёт и право — короткие уроки с разбором и проверкой себя.">
 <meta property="og:url" content="https://ecofin26.ru/courses.html">
 <meta property="og:image" content="https://ecofin26.ru/og-cover.png">
 <meta property="og:image:width" content="1200">
@@ -22,8 +22,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=179">
-<link rel="stylesheet" href="css/style.css?v=179">
+<link rel="stylesheet" href="css/fonts.css?v=180">
+<link rel="stylesheet" href="css/style.css?v=180">
 </head>
 <body>
 <main class="section tint-green">
@@ -38,14 +38,14 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=179"></script>
-<script src="js/api.js?v=179"></script>
-<script src="js/app.js?v=179"></script>
-<script src="js/progress.js?v=179"></script>
-<script src="js/palette.js?v=179"></script>
-<script src="js/ai.js?v=179"></script>
-<script src="js/competencies.js?v=179"></script>
-<script src="js/courses.js?v=179"></script>
+<script src="js/themes.js?v=180"></script>
+<script src="js/api.js?v=180"></script>
+<script src="js/app.js?v=180"></script>
+<script src="js/progress.js?v=180"></script>
+<script src="js/palette.js?v=180"></script>
+<script src="js/ai.js?v=180"></script>
+<script src="js/competencies.js?v=180"></script>
+<script src="js/courses.js?v=180"></script>
 <script>
 initPage("courses.html");
 
@@ -152,7 +152,7 @@ function completeLesson(id, i) {
   PF.logAction("Пройден урок " + (i + 1) + " курса " + id);
   openCourse(id);
   openLesson(id, i);
-  checkCertificate(id);
+  checkCourseDone(id);
 }
 
 function finishCourse(id) {
@@ -160,64 +160,46 @@ function finishCourse(id) {
   c.lessons.forEach((_, i) => COURSE_PROGRESS.done(id, i));
   COMP.award(COMP.courseArea[id] || "contracts", 8);
   openCourse(id);
-  checkCertificate(id);
+  checkCourseDone(id);
 }
 
-function checkCertificate(id) {
+function checkCourseDone(id) {
   const c = COURSES.find(x => x.id === id);
   const prog = new Set(COURSE_PROGRESS.get()[id] || []);
   if (prog.size < c.lessons.length) return;
-  const u = PF.user();
-  let bd = document.getElementById("certBackdrop");
+
+  /* Раньше здесь выдавался сертификат: бумага с номером, датой и
+     словами «ЭкоФин подтверждает, что…». Внизу стояла оговорка, что
+     это не документ государственного образца, но выглядело оно
+     документом, а распечатать и приложить его можно куда угодно.
+
+     Подтверждать нам нечего. За курсом стоит прочитанный текст и
+     тест — не проверенная квалификация. Выдавать за это бумагу
+     значит обещать человеку вес, которого у неё нет, и подставлять
+     того, кто на неё сошлётся.
+
+     Осталось то, что правда: курс пройден, баллы начислены. */
+  let bd = document.getElementById("courseDoneBackdrop");
   if (!bd) {
     bd = document.createElement("div");
-    bd.id = "certBackdrop";
+    bd.id = "courseDoneBackdrop";
     bd.className = "modal-backdrop";
     document.body.appendChild(bd);
   }
   bd.classList.add("open");
-  /* Номер сертификата детерминированный: у одного человека за один курс
-     он всегда один и тот же. Иначе при повторном открытии выдавался бы
-     новый номер, и документ переставал быть документом. */
-  const seed = (u ? u.email : "guest") + "|" + c.id;
-  let h = 0;
-  for (const ch of seed) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
-  const number = "ПФ-" + String(h % 100000).padStart(5, "0");
-  const date = new Date().toLocaleDateString("ru-RU");
-
   bd.innerHTML = `
-    <div class="modal cert-modal">
-      <div class="cert" id="certSheet">
-        <span class="cert-kicker">Сертификат</span>
-        <p class="cert-lead">ЭкоФин подтверждает, что</p>
-        <h3 class="cert-name">${escapeHtml(u ? u.name : "Пользователь")}</h3>
-        <p class="cert-lead">прошёл полный курс</p>
-        <h4 class="cert-course">«${escapeHtml(c.title)}»</h4>
-        <div class="cert-meta">
-          <span><b>${c.lessons.length}</b> ${plural(c.lessons.length, "урок", "урока", "уроков")}</span>
-          <span><b>${date}</b></span>
-          <span><b>${number}</b></span>
-        </div>
-        <p class="cert-note">Документ подтверждает прохождение курса в сервисе ЭкоФин.
-          Он не заменяет диплом или свидетельство государственного образца.</p>
-      </div>
-      <div class="cert-actions no-print">
-        <button class="btn" onclick="printCert()">Скачать / распечатать</button>
-        <button class="btn secondary" onclick="document.getElementById('certBackdrop').classList.remove('open')">Закрыть</button>
-      </div>
+    <div class="modal">
+      <h3 style="margin-bottom:10px">Курс пройден 🎉</h3>
+      <p style="margin-bottom:8px">«${escapeHtml(c.title)}» — все
+        ${c.lessons.length} ${plural(c.lessons.length, "урок", "урока", "уроков")} позади.</p>
+      <p class="hint" style="margin-bottom:16px">Начислено 100 баллов. Прогресс
+        сохранён в кабинете — вернуться к любому уроку можно в любой момент.</p>
+      <button class="btn" onclick="document.getElementById('courseDoneBackdrop').classList.remove('open')">Понятно</button>
     </div>`;
-  PF.logAction("Сертификат за курс: " + c.title + " (" + number + ")");
-  PF.addScore("quiz", 100);
-  trackEvent("certificate", { course: c.id });
-}
 
-/* Печатаем только сам сертификат. Раньше здесь стоял window.print(),
-   который выводил на бумагу всю страницу целиком — со списком курсов,
-   шапкой и подвалом. Документом это не выглядело. */
-function printCert() {
-  document.body.classList.add("printing-cert");
-  window.print();
-  setTimeout(() => document.body.classList.remove("printing-cert"), 500);
+  PF.logAction("Курс пройден: " + c.title);
+  PF.addScore("quiz", 100);
+  trackEvent("course_done", { course: c.id });
 }
 
 renderCourses();
