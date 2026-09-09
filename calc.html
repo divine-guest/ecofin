@@ -22,8 +22,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=180">
-<link rel="stylesheet" href="css/style.css?v=180">
+<link rel="stylesheet" href="css/fonts.css?v=181">
+<link rel="stylesheet" href="css/style.css?v=181">
 <style>
   @media print {
     .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
@@ -168,9 +168,13 @@
           <div class="form-group">
             <label for="slSmall">Предприятие</label>
             <select id="slSmall" onchange="calcSalary()">
-              <option value="1">Малое или среднее — льготные взносы</option>
-              <option value="0">Крупное — обычный тариф</option>
+              <option value="0">Общий тариф 30%</option>
+              <option value="1">Льготный тариф МСП — есть право с 2026 года</option>
             </select>
+            <p class="hint">С 2026 года льготы 15% мало быть в реестре МСП: нужен
+              основной ОКВЭД из перечня Правительства и не менее 70% дохода от него.
+              Если не уверены — оставьте общий тариф: заниженный расчёт взносов
+              обнаружит инспекция, а не вы.</p>
           </div>
           <p class="hint">Считаем и то, что получит человек, и то, во что он обходится работодателю.</p>
         </div>
@@ -616,11 +620,15 @@
             <input type="number" id="stPay" value="80000" oninput="calcStaff()"></div>
           <div class="form-group"><label for="stMonths">Месяцев</label>
             <input type="number" id="stMonths" value="12" min="1" max="12" oninput="calcStaff()"></div>
-          <div class="form-group"><label for="stSmall">Вы в реестре малого и среднего бизнеса?</label>
+          <div class="form-group"><label for="stSmall">Есть ли право на льготный тариф МСП?</label>
             <select id="stSmall" onchange="calcStaff()">
-              <option value="1">Да — льготный тариф (проверить на rmsp.nalog.ru)</option>
-              <option value="0">Нет — общий тариф 30%</option>
-            </select></div>
+              <option value="0">Нет или не уверен — общий тариф 30%</option>
+              <option value="1">Да — все три условия выполняются</option>
+            </select>
+            <p class="hint">С 2026 года условий три сразу: вы в реестре МСП
+              (rmsp.nalog.ru), ваш основной ОКВЭД в перечне Правительства
+              и он даёт не менее 70% дохода. Раньше хватало одного реестра.
+              Льготный тариф применяется к части выплаты свыше 1,5 МРОТ.</p></div>
           <div class="form-group"><label for="stInjury">Класс профессионального риска</label>
             <select id="stInjury" onchange="calcStaff()">
               <option value="0.002">I — офис, торговля, услуги (0,2%)</option>
@@ -891,15 +899,15 @@
   <div class="container"><div id="partnersTax"></div></div>
 </main>
 
-<script src="js/qr.js?v=180"></script>
-<script src="js/partners.js?v=180"></script>
-<script src="js/rates.js?v=180"></script>
-<script src="js/themes.js?v=180"></script>
-<script src="js/api.js?v=180"></script>
-<script src="js/app.js?v=180"></script>
-<script src="js/progress.js?v=180"></script>
-<script src="js/palette.js?v=180"></script>
-<script src="js/ai.js?v=180"></script>
+<script src="js/qr.js?v=181"></script>
+<script src="js/partners.js?v=181"></script>
+<script src="js/rates.js?v=181"></script>
+<script src="js/themes.js?v=181"></script>
+<script src="js/api.js?v=181"></script>
+<script src="js/app.js?v=181"></script>
+<script src="js/progress.js?v=181"></script>
+<script src="js/palette.js?v=181"></script>
+<script src="js/ai.js?v=181"></script>
 <script>
 initPage("calc.html");
 

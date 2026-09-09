@@ -466,6 +466,46 @@ console.log("\n— Документы и срок давности —");
   ok(y2.years.join() === "2026,2025,2024", "в новом году окно сдвигается", y2.years);
 }
 
+console.log("\n— Льгота МСП по взносам —");
+{
+  /* С 2026 года изменилось два условия сразу, и оба легко откатить
+     обратно по невнимательности.
+
+     Первое: льготный тариф применяется к части выплаты свыше ПОЛУТОРА
+     МРОТ, а не свыше одного. С той половины, что добавилась, теперь
+     берётся 30%, и раньше мы её считали по 15% — то есть занижали.
+
+     Второе: льгота положена не всем МСП, а только приоритетным видам
+     деятельности. Сервис ОКВЭД не знает, поэтому по умолчанию считает
+     по общему тарифу. Значение по умолчанию здесь — не стиль, а
+     защита: заниженный расчёт взносов человек примет с радостью и
+     узнает правду от инспекции. */
+  const mrot = R.sickLeave.minWageMonth;
+
+  ok(R.payrollContrib.smallMrotFactor === 1.5,
+     "порог льготы — полтора МРОТ", R.payrollContrib.smallMrotFactor);
+
+  /* Зарплата ровно на пороге: всё должно идти по полному тарифу. */
+  const atThreshold = mrot * 1.5 * 12;
+  const full = atThreshold * R.payrollContrib.rate;
+  const got = R.employerContrib(atThreshold, { small: true, injury: 0 });
+  ok(Math.abs(got - full) < 1,
+     "на пороге вся сумма идёт по общему тарифу", [Math.round(got), Math.round(full)]);
+
+  /* Рубль сверх порога — по льготному. */
+  const above = R.employerContrib(atThreshold + 1200, { small: true, injury: 0 });
+  const delta = above - got;
+  ok(Math.abs(delta - 1200 * R.payrollContrib.smallRateOverMrot) < 1,
+     "сверх порога — льготные 15%", Math.round(delta));
+
+  /* По умолчанию льготы нет: сервис не знает ОКВЭД работодателя. */
+  const byDefault = R.employerContrib(atThreshold * 2, { injury: 0 });
+  const asBig = R.employerContrib(atThreshold * 2, { small: false, injury: 0 });
+  ok(byDefault === asBig,
+     "по умолчанию считается общий тариф, а не льготный");
+}
+
+
 console.log("\n— У ставок есть срок годности —");
 {
   /* Почему это отдельная проверка.
