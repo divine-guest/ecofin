@@ -215,7 +215,11 @@ def check_cloud_init():
                "иначе машина поднимется без сервиса")
 
 def main():
-    pages = sorted(glob.glob("*.html"))
+    # Файлы подтверждения прав для Яндекса и Google — не страницы сайта.
+    # Их содержимое поисковик задаёт дословно, и любая «починка» вроде
+    # добавленного <title> ломает подтверждение. В проверку они не идут.
+    verification = re.compile(r"^(yandex_[0-9a-f]+|google[0-9a-f]+)\.html$")
+    pages = sorted(p for p in glob.glob("*.html") if not verification.match(p))
     names = set(pages)
     for page in pages:
         html = io.open(page, encoding="utf-8").read()
