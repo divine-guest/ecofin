@@ -113,23 +113,31 @@ def check_bootstrap(page, html):
     объявления, это ошибка.
     """
     for block in re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S):
-        lines = block.split("\n")
-        declared = {}
-        for i, line in enumerate(lines):
-            m = re.match(r"const\s+([A-Z][A-Z0-9_]*)\s*=", line)
-            if m and m.group(1) not in declared:
-                declared[m.group(1)] = i
-        if not declared:
+        check_bootstrap_block(page, block)
+
+
+def check_bootstrap_block(page, block):
+    """Сама проверка — для одного куска кода. Отдельной функцией, потому
+    что код калькуляторов переехал из calc.html в js/calc.js: встроенного
+    скрипта там больше нет, и без отдельного вызова проверка, ради которой
+    её заводили, перестала бы его видеть."""
+    lines = block.split("\n")
+    declared = {}
+    for i, line in enumerate(lines):
+        m = re.match(r"const\s+([A-Z][A-Z0-9_]*)\s*=", line)
+        if m and m.group(1) not in declared:
+            declared[m.group(1)] = i
+    if not declared:
+        return
+    for i, line in enumerate(lines):
+        # только код верхнего уровня: без отступа и не в комментарии
+        if not line or line[0] in " \t/*}":
             continue
-        for i, line in enumerate(lines):
-            # только код верхнего уровня: без отступа и не в комментарии
-            if not line or line[0] in " \t/*}":
-                continue
-            for m in re.finditer(r"\b([A-Z][A-Z0-9_]*)\s*(?:\.\w+\s*)?\(", line):
-                name = m.group(1)
-                if name in declared and i < declared[name]:
-                    err(page, f"строка {i + 1}: {name} вызывается до объявления "
-                              f"(строка {declared[name] + 1}) — весь скрипт упадёт молча")
+        for m in re.finditer(r"\b([A-Z][A-Z0-9_]*)\s*(?:\.\w+\s*)?\(", line):
+            name = m.group(1)
+            if name in declared and i < declared[name]:
+                err(page, f"строка {i + 1}: {name} вызывается до объявления "
+                          f"(строка {declared[name] + 1}) — весь скрипт упадёт молча")
 
 
 def check_meta(page, html):
@@ -229,6 +237,8 @@ def main():
         check_calls(page, html)
         check_bootstrap(page, html)
         check_meta(page, html)
+    if os.path.exists("js/calc.js"):
+        check_bootstrap_block("js/calc.js", io.open("js/calc.js", encoding="utf-8").read())
     check_tiers()
     check_secrets()
     check_cloud_init()

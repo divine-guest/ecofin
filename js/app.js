@@ -12,7 +12,8 @@ const PF = {
      подпапке такая ссылка вела бы в st/calc.html, то есть в никуда.
      Поправлять ссылки после отрисовки бесполезно: шапка перерисовывается
      ещё раз, когда сервер подтвердит сессию, и правки пропадают. */
-  base: location.pathname.includes("/st/") ? "../" : "",
+  /* Подпапки со страницами: st/ — статьи, calc/ — калькуляторы. */
+  base: /\/(st|calc)\//.test(location.pathname) ? "../" : "",
   href(page) { return /^(https?:|#|mailto:)/.test(page) ? page : this.base + page; },
 
   user() { return API.cached(); },
@@ -2195,11 +2196,11 @@ function initPage(active) {
   }
   initRevealAnimations();
 
-  /* Корень сайта. Страницы статей лежат в подпапке st/, и относительный
-     путь «manifest.webmanifest» вёл бы у них в никуда — вместе с ним
-     пропадало бы предложение установить приложение. */
-  const ROOT = location.pathname.includes("/st/")
-    ? location.pathname.replace(/\/st\/.*$/, "/")
+  /* Корень сайта. Страницы статей и калькуляторов лежат в подпапках st/
+     и calc/, и относительный путь «manifest.webmanifest» вёл бы у них
+     в никуда — вместе с ним пропадало бы предложение установить приложение. */
+  const ROOT = /\/(st|calc)\//.test(location.pathname)
+    ? location.pathname.replace(/\/(st|calc)\/.*$/, "/")
     : "./";
 
   if (!document.querySelector('link[rel="manifest"]')) {
@@ -2253,7 +2254,7 @@ function askConsentOnce(user) {
         подтверждение, а не предположение.</p>
       <p class="hint" style="margin-bottom:14px">Состав данных и то, как мы с ними
         обращаемся, не изменились. Подробности —
-        <a href="legal.html#privacy" target="_blank" rel="noopener">в политике обработки</a>.</p>
+        <a href="${PF.href("legal.html#privacy")}" target="_blank" rel="noopener">в политике обработки</a>.</p>
       <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:14px">
         <input type="checkbox" id="reConsent">
         <span>Я даю согласие на обработку персональных данных</span>

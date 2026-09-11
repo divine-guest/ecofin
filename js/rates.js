@@ -596,17 +596,21 @@ const RATES = {
     }
 
     /* ОСНО — считаем без НДС: он перекладывается на покупателя.
-       Зато прямо предупреждаем, что он появляется. */
+       Зато прямо предупреждаем, что он появляется.
+
+       Ставку берём из vatRate. Здесь было написано «20%» — с 2026 года
+       это неправда, а подсказка стояла прямо под итогом сравнения. */
+    const vat = `сверху НДС ${Math.round(this.vatRate * 100)}%`;
     if (who === "ooo") {
       add("osno", "ОСНО (налог на прибыль)",
         Math.max(0, income - expenses) * this.osno.profitTaxRate,
-        `${this.osno.profitTaxRate * 100}% с прибыли, сверху НДС 20%`, "");
+        `${this.osno.profitTaxRate * 100}% с прибыли, ${vat}`, "");
     } else {
       const base = expenses > 0 ? Math.max(0, income - expenses)
                                 : income * (1 - this.osno.proDeduction);
       add("osno", "ОСНО (НДФЛ)", this.ndfl(base) + contrib,
-        expenses > 0 ? "НДФЛ с прибыли + взносы, сверху НДС 20%"
-                     : `НДФЛ с дохода за вычетом ${this.osno.proDeduction * 100}% профвычета + взносы, сверху НДС 20%`, "");
+        expenses > 0 ? `НДФЛ с прибыли + взносы, ${vat}`
+                     : `НДФЛ с дохода за вычетом ${this.osno.proDeduction * 100}% профвычета + взносы, ${vat}`, "");
     }
 
     return out;
@@ -740,9 +744,17 @@ const RATES = {
   maternityPay({ pay1 = 0, pay2 = 0, days = 140, excluded = 0 } = {}) {
     const s = this.sickLeave, m = this.maternity;
     const capped = Math.min(pay1, s.bases[0]) + Math.min(pay2, s.bases[1]);
-    /* Из знаменателя вычитаются дни болезней и прошлых декретов —
+    /* Делитель — календарные дни двух лет расчётного периода (ч. 3.1
+       ст. 14 255-ФЗ), а не всегда 730. В периоде с високосным годом их
+       731: для 2024–2025 здесь стояло 730, и пособие выходило чуть выше
+       положенного. Ровно 730 закон оставляет больничному, потолку и
+       минимуму — они ниже по-прежнему считаются через s.days.
+
+       Из знаменателя вычитаются дни болезней и прошлых декретов —
        иначе пособие занижается за то, что человек болел. */
-    const divisor = Math.max(1, s.days - excluded);
+    const leap = y => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    const periodDays = s.baseYears.reduce((n, y) => n + (leap(y) ? 366 : 365), 0);
+    const divisor = Math.max(1, periodDays - excluded);
     const daily = capped / divisor;
 
     const maxDaily = (s.bases[0] + s.bases[1]) / s.days;

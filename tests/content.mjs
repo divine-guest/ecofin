@@ -1295,5 +1295,47 @@ console.log("\n— Шаблоны документов —");
      "и сказано, что согласие не подшивается в договор");
 }
 
+console.log("\n— Отдельные страницы калькуляторов —");
+{
+  /* У каждого калькулятора из calc-pages.mjs должна быть собранная
+     страница: со своей панелью и полем результата, своим адресом, в карте
+     сайта и со ссылкой с общей страницы. Иначе страница есть в плане, но
+     её не видит ни человек, ни поисковик. */
+  const { CALC_PAGES } = await import("../calc-pages.mjs");
+  const calcJs = read("../js/calc.js");
+  const hub = read("../calc.html");
+  const sitemap = read("../sitemap.xml");
+  const outs = Object.fromEntries(
+    [...calcJs.matchAll(/^\s+(\w+):\s*\{\s*out:\s*"(\w+)"/gm)].map(m => [m[1], m[2]]));
+
+  ok(CALC_PAGES.length >= 6, `страниц калькуляторов: ${CALC_PAGES.length}`);
+  for (const p of CALC_PAGES) {
+    const file = new URL(`../calc/${p.slug}.html`, import.meta.url);
+    const built = fs.existsSync(file);
+    ok(built, `calc/${p.slug}.html собрана`);
+    if (!built) continue;
+    const html = fs.readFileSync(file, "utf8");
+    ok(Boolean(outs[p.kind]) && html.includes(`id="${p.panel}"`) && html.includes(`id="${outs[p.kind]}"`),
+       `${p.slug}: на странице панель ${p.panel} и поле результата ${outs[p.kind]}`);
+    ok(html.includes(`<link rel="canonical" href="https://ecofin26.ru/calc/${p.slug}.html">`),
+       `${p.slug}: свой канонический адрес`);
+    ok(/src="\.\.\/js\/rates\.js\?v=\d+"/.test(html) && /src="\.\.\/js\/calc\.js\?v=\d+"/.test(html),
+       `${p.slug}: подключены rates.js и calc.js`);
+    /* Шаблон с опечаткой в имени ставки молча печатает «undefined»
+       прямо в тексте для человека. */
+    ok(!/undefined|NaN|\[object /.test(html), `${p.slug}: в тексте нет undefined и NaN`);
+    ok(sitemap.includes(`https://ecofin26.ru/calc/${p.slug}.html`), `${p.slug}: есть в карте сайта`);
+    ok(hub.includes(`href="calc/${p.slug}.html"`), `${p.slug}: общая страница ведёт на неё`);
+  }
+
+  /* Код калькуляторов обслуживает и общую страницу, и отдельные. Вызов
+     расчёта без отступа выполняется сразу при загрузке и на странице,
+     где его панели нет, роняет весь скрипт. */
+  const bare = calcJs.split("\n")
+    .filter(l => /^(calc\w+|render\w+|initTaxCal|KEYRATE\.init)\s*\(|^document\.getElementById/.test(l));
+  ok(bare.length === 0, "в js/calc.js нет безусловных расчётов при загрузке", bare.slice(0, 3));
+  ok(!/function calcTax\s*\(/.test(hub), "код калькуляторов не встроен в calc.html");
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

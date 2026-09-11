@@ -22,6 +22,7 @@
 import { readFile, writeFile, mkdir, readdir, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { CALC_PAGES, CALC_GROUPS } from "./calc-pages.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 /* Собственный домен. До покупки здесь стоял адрес GitHub Pages, и это
@@ -30,6 +31,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
    и весь вес уходил бы чужому поддомену, а свой домен считался копией. */
 const SITE = "https://ecofin26.ru";
 const OUT = join(HERE, "st");
+const CALC_OUT = join(HERE, "calc");
 
 /* ---------- Вспомогательное ---------- */
 
@@ -224,6 +226,185 @@ initPage("knowledge.html");
 `;
 }
 
+/* ---------- Страницы калькуляторов ---------- */
+
+/* Границы панели калькулятора в calc.html: от открывающего <div> с нужным
+   id до парного закрывающего. Считаем вложенность, а не ищем ближайший
+   </div>: внутри панели своих div десятки. */
+function panelBounds(html, id) {
+  const at = html.indexOf(`id="${id}"`);
+  if (at < 0) throw new Error(`в calc.html нет панели ${id}`);
+  const start = html.lastIndexOf("<div", at);
+  const tag = /<\/?div\b[^>]*>/g;
+  tag.lastIndex = start;
+  let depth = 0, m;
+  while ((m = tag.exec(html))) {
+    depth += m[0][1] === "/" ? -1 : 1;
+    if (depth === 0) return { start, close: m.index, end: m.index + m[0].length };
+  }
+  throw new Error(`панель ${id} в calc.html не закрыта`);
+}
+
+const HUB_LINK = /\n[ \t]*<p class="calc-page-link no-print">.*?<\/p>/g;
+
+/* Ссылки с общей страницы на отдельные ставит сборка, а не руки:
+   добавили страницу в calc-pages.mjs — ссылка появилась, убрали — пропала. */
+function syncHubLinks(html, pages) {
+  html = html.replace(HUB_LINK, "");
+  for (const p of pages) {
+    const b = panelBounds(html, p.panel);
+    html = html.slice(0, b.close).replace(/\s*$/, "") +
+      `\n      <p class="calc-page-link no-print"><a href="calc/${p.slug}.html">${esc(p.link)} →</a></p>\n    ` +
+      html.slice(b.close);
+  }
+  return html;
+}
+
+/* Панель для отдельной страницы: без ссылки на саму себя, сразу открытая,
+   а внутренние адреса — от корня сайта, раз страница лежит в подпапке. */
+function panelFor(html, id) {
+  const b = panelBounds(html, id);
+  return html.slice(b.start, b.end)
+    .replace(HUB_LINK, "")
+    .replace(/class="tab-panel\b(?: active)?/, 'class="tab-panel active')
+    .replace(/\b(href|src)="(?!https?:|#|mailto:|tel:|\/|\.\.\/|data:)([^"]+)"/g, '$1="../$2"');
+}
+
+/* Абзацы разбора: строка — абзац, массив — список. */
+const paras = items => items.map(x => Array.isArray(x)
+  ? `<ul>${x.map(li => `<li>${esc(li)}</li>`).join("")}</ul>`
+  : `<p>${esc(x)}</p>`).join("\n      ");
+
+function calcPage(p, { R, hub, pages, articles, version }) {
+  const url = `${SITE}/calc/${p.slug}.html`;
+  const title = p.title(R);
+  const desc = p.description(R);
+  const ex = p.example(R);
+  const group = CALC_GROUPS[p.group];
+  if (!group) throw new Error(`${p.slug}: нет группы ${p.group}`);
+  /* Опечатка в названии статьи или соседа должна валить сборку, а не
+     молча выпускать страницу с битой ссылкой. */
+  const article = p.article ? articles.find(a => a.title === p.article) : null;
+  if (p.article && !article) throw new Error(`${p.slug}: в базе знаний нет статьи «${p.article}»`);
+  const related = (p.related || []).map(s => {
+    const r = pages.find(x => x.slug === s);
+    if (!r) throw new Error(`${p.slug}: нет страницы калькулятора ${s}`);
+    return r;
+  });
+  const checked = R.checkedOn.split("-").reverse().join(".");
+
+  const app = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: p.h1,
+    url,
+    description: desc,
+    applicationCategory: "FinanceApplication",
+    operatingSystem: "Любая",
+    inLanguage: "ru-RU",
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "RUB" },
+    publisher: { "@type": "Organization", name: "ЭкоФин", url: `${SITE}/` },
+  };
+
+  const crumbs = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE}/` },
+      { "@type": "ListItem", position: 2, name: "Калькуляторы", item: `${SITE}/calc.html` },
+      { "@type": "ListItem", position: 3, name: p.h1, item: url },
+    ],
+  };
+
+  return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>${esc(title)} — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="${esc(desc)}">
+<link rel="canonical" href="${url}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(desc)}">
+<meta property="og:url" content="${url}">
+<meta property="og:image" content="${SITE}/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">${JSON.stringify(app)}</script>
+<script type="application/ld+json">${JSON.stringify(crumbs)}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=${version}">
+<link rel="stylesheet" href="../css/style.css?v=${version}">
+<link rel="stylesheet" href="../css/calc.css?v=${version}">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>${esc(group)}</span>
+    </nav>
+    <div class="section-title">
+      <h1>${esc(p.h1)}</h1>
+      <div class="line"></div>
+      <p class="subtitle">${esc(p.lead(R))}</p>
+    </div>
+
+    ${panelFor(hub, p.panel)}
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      ${paras(p.how(R))}
+      <h2>Пример</h2>
+      <p>${esc(ex.intro)}</p>
+      <table class="calc-table calc-example">
+        ${ex.rows.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join("\n        ")}
+      </table>
+      ${ex.outro ? `<p>${esc(ex.outro)}</p>` : ""}
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul>${p.mistakes(R).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>${p.law(R).map(x => esc(x)).join(" · ")}</p></div>
+      <p class="kb-checked">Ставки сверены ${checked}. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      ${article ? `<p style="margin-top:8px">Подробный разбор: <a href="../st/${slug(article.title)}.html">${esc(article.title)}</a></p>` : ""}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        ${related.map(r => `<a class="btn small secondary" href="${r.slug}.html">${esc(r.h1)}</a>`).join("\n        ")}
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=${version}"></script>
+<script src="../js/themes.js?v=${version}"></script>
+<script src="../js/api.js?v=${version}"></script>
+<script src="../js/app.js?v=${version}"></script>
+<script src="../js/progress.js?v=${version}"></script>
+<script src="../js/palette.js?v=${version}"></script>
+<script src="../js/ai.js?v=${version}"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/calc.js?v=${version}"></script>
+</body>
+</html>
+`;
+}
+
 /* ---------- Разметка вопросов и ответов ---------- */
 
 /* Собираем FAQPage из живого текста страницы, а не из отдельного списка:
@@ -262,7 +443,7 @@ async function buildFaq() {
 
 /* ---------- Карта сайта ---------- */
 
-async function buildSitemap(articles, today) {
+async function buildSitemap(articles, today, calcPages = []) {
   const pages = [
     ["", "1.0", "weekly"],
     ["situations.html", "0.95", "weekly"],
@@ -291,10 +472,11 @@ async function buildSitemap(articles, today) {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${pages.map(([l, p, f]) => url(l, p, f)).join("\n")}
 ${articles.map(a => url(`st/${slug(a.title)}.html`, "0.8", "monthly")).join("\n")}
+${calcPages.map(p => url(`calc/${p.slug}.html`, "0.85", "monthly")).join("\n")}
 </urlset>
 `;
   await writeFile(join(HERE, "sitemap.xml"), xml, "utf8");
-  return pages.length + articles.length;
+  return pages.length + articles.length + calcPages.length;
 }
 
 /* ---------- Запуск ---------- */
@@ -323,10 +505,29 @@ const main = async () => {
     await writeFile(join(OUT, `${slug(a.title)}.html`), articlePage(a, articles, version, updated), "utf8");
   }
 
+  /* Калькуляторы: разметка панелей — из calc.html, числа — из rates.js.
+     rates.js тоже обычный скрипт, выполняем его так же. */
+  const R = new Function((await readFile(join(HERE, "js", "rates.js"), "utf8")) + "\nreturn RATES;")();
+  const hubPath = join(HERE, "calc.html");
+  const hubBefore = await readFile(hubPath, "utf8");
+  const hub = syncHubLinks(hubBefore, CALC_PAGES);
+  if (hub !== hubBefore) await writeFile(hubPath, hub, "utf8");
+
+  await mkdir(CALC_OUT, { recursive: true });
+  const wantCalc = new Set(CALC_PAGES.map(p => `${p.slug}.html`));
+  for (const f of await readdir(CALC_OUT)) {
+    if (f.endsWith(".html") && !wantCalc.has(f)) await unlink(join(CALC_OUT, f));
+  }
+  for (const p of CALC_PAGES) {
+    await writeFile(join(CALC_OUT, `${p.slug}.html`),
+      calcPage(p, { R, hub, pages: CALC_PAGES, articles, version }), "utf8");
+  }
+
   const faq = await buildFaq();
-  const urls = await buildSitemap(articles, new Date().toISOString().slice(0, 10));
+  const urls = await buildSitemap(articles, new Date().toISOString().slice(0, 10), CALC_PAGES);
 
   console.log(`страниц статей: ${articles.length}`);
+  console.log(`страниц калькуляторов: ${CALC_PAGES.length}`);
   console.log(`вопросов в разметке FAQ: ${faq}`);
   console.log(`адресов в карте сайта: ${urls}`);
 };

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Калькулятор больничного 2026: сколько заплатят — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="Расчёт пособия по временной нетрудоспособности: средний заработок за два года, процент по стажу, потолок 6 827,40 ₽ в день и кто платит.">
+<link rel="canonical" href="https://ecofin26.ru/calc/bolnichnye.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Калькулятор больничного 2026: сколько заплатят">
+<meta property="og:description" content="Расчёт пособия по временной нетрудоспособности: средний заработок за два года, процент по стажу, потолок 6 827,40 ₽ в день и кто платит.">
+<meta property="og:url" content="https://ecofin26.ru/calc/bolnichnye.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Калькулятор больничного","url":"https://ecofin26.ru/calc/bolnichnye.html","description":"Расчёт пособия по временной нетрудоспособности: средний заработок за два года, процент по стажу, потолок 6 827,40 ₽ в день и кто платит.","applicationCategory":"FinanceApplication","operatingSystem":"Любая","inLanguage":"ru-RU","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"},"publisher":{"@type":"Organization","name":"ЭкоФин","url":"https://ecofin26.ru/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://ecofin26.ru/"},{"@type":"ListItem","position":2,"name":"Калькуляторы","item":"https://ecofin26.ru/calc.html"},{"@type":"ListItem","position":3,"name":"Калькулятор больничного","item":"https://ecofin26.ru/calc/bolnichnye.html"}]}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=196">
+<link rel="stylesheet" href="../css/style.css?v=196">
+<link rel="stylesheet" href="../css/calc.css?v=196">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>Зарплата и кадры</span>
+    </nav>
+    <div class="section-title">
+      <h1>Калькулятор больничного</h1>
+      <div class="line"></div>
+      <p class="subtitle">Введите заработок за два предыдущих года, стаж и число дней — калькулятор покажет пособие с учётом потолка и минимума.</p>
+    </div>
+
+    <div class="tab-panel active game-stage" id="calc3">
+      <div class="calc-row">
+        <div style="flex:1;min-width:240px">
+          <div class="form-group"><label for="blSum">Зарплата за 2 года, ₽</label><input type="number" id="blSum" value="1200000" oninput="calcSick()"></div>
+          <div class="form-group"><label for="blExp">Страховой стаж</label>
+            <select id="blExp" onchange="calcSick()">
+              <option value="0.6">Менее 5 лет (60%)</option>
+              <option value="0.8">5–8 лет (80%)</option>
+              <option value="1">Более 8 лет (100%)</option>
+            </select>
+          </div>
+          <div class="form-group"><label for="blDays">Дней больничного</label><input type="number" id="blDays" value="10" oninput="calcSick()"></div>
+        </div>
+        <div class="calc-result" id="blOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Больничные')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('sick')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      <p>Пособие считается из среднего дневного заработка за два календарных года перед годом болезни: заработок за оба года делится на 730 — всегда на 730, даже если один из годов високосный.</p>
+      <ul><li>страховой стаж до 5 лет — 60% среднего заработка</li><li>от 5 до 8 лет — 80%</li><li>8 лет и больше — 100%</li></ul>
+      <p>Заработок за каждый год учитывается не выше предельной базы: 2 225 000 ₽ за 2024 год и 2 759 000 ₽ за 2025 год. Поэтому пособие не бывает больше 6 827,40 ₽ в день, сколько бы человек ни зарабатывал.</p>
+      <p>Снизу — МРОТ. Если заработка не было или он маленький, средний заработок принимают равным МРОТ: 27 093 × 24 ÷ 730 = 890,73 ₽ в день, и уже к этой сумме применяют процент по стажу. При стаже меньше 6 месяцев пособие не выше МРОТ за полный месяц.</p>
+      <p>Первые три дня болезни оплачивает работодатель, с четвёртого — Социальный фонд, напрямую на карту. При уходе за больным ребёнком Фонд платит с первого дня. С пособия удерживается НДФЛ.</p>
+      <p>Если в одном из двух лет вы были в декрете или в отпуске по уходу за ребёнком, этот год можно заменить более ранним — по заявлению, если пособие от этого вырастет.</p>
+      <h2>Пример</h2>
+      <p>Заработок 1 200 000 ₽ за 2024 и 2025 годы, страховой стаж 6 лет, больничный — 10 дней.</p>
+      <table class="calc-table calc-example">
+        <tr><td>Средний дневной заработок</td><td>1 200 000 ÷ 730 = 1 643,84 ₽</td></tr>
+        <tr><td>Стаж от 5 до 8 лет — 80%</td><td>1 315,07 ₽ в день</td></tr>
+        <tr><td>Пособие за 10 дней</td><td>13 151 ₽</td></tr>
+      </table>
+      <p>Первые 3 дня оплатит работодатель, остальные 7 — Социальный фонд. С пособия удержат НДФЛ.</p>
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul><li>Делить на 24 месяца или на число отработанных дней — делитель всегда 730</li><li>Не принести справку о заработке с прошлого места работы — пособие посчитают только по текущему</li><li>Не заменить год, проведённый в декрете, — пособие выйдет меньше</li><li>Ждать пособие выше потолка при высокой зарплате</li></ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>ст. 7, 14 Федерального закона № 255-ФЗ · ст. 183 ТК РФ</p></div>
+      <p class="kb-checked">Ставки сверены 09.09.2026. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      <p style="margin-top:8px">Подробный разбор: <a href="../st/bolnichnyy-kak-schitaetsya-i-skolko-zaplatyat.html">Больничный: как считается и сколько заплатят</a></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn small secondary" href="dekretnye.html">Калькулятор декретных</a>
+        <a class="btn small secondary" href="otpusknye.html">Калькулятор отпускных</a>
+        <a class="btn small secondary" href="zarplata-na-ruki.html">Калькулятор зарплаты на руки</a>
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=196"></script>
+<script src="../js/themes.js?v=196"></script>
+<script src="../js/api.js?v=196"></script>
+<script src="../js/app.js?v=196"></script>
+<script src="../js/progress.js?v=196"></script>
+<script src="../js/palette.js?v=196"></script>
+<script src="../js/ai.js?v=196"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/calc.js?v=196"></script>
+</body>
+</html>

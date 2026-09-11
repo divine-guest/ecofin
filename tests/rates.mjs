@@ -168,10 +168,26 @@ console.log("\n— Пособия по материнству —");
   const s = R.sickLeave;
   const maxDaily = (s.bases[0] + s.bases[1]) / s.days;
 
+  /* Делитель среднего заработка — календарные дни расчётного периода
+     (ч. 3.1 ст. 14 255-ФЗ): в 2024–2025 их 731, потому что 2024 год
+     високосный. Ровно 730 закон оставляет только потолку и минимуму.
+     Раньше здесь везде стояло 730, и проверки закрепляли ошибку расчёта
+     вместо того, чтобы её ловить. */
+  const periodDays = s.baseYears.reduce((n, y) => n + (y % 4 === 0 ? 366 : 365), 0);
+  ok(s.baseYears.join() !== "2024,2025" || periodDays === 731,
+     `в периоде ${s.baseYears.join("–")} — ${periodDays} дней`);
+
   const hi = R.maternityPay({ pay1: 9e6, pay2: 9e6, days: 140 });
   ok(hi.atMax, "очень высокий заработок упирается в потолок");
-  ok(near(hi.daily, maxDaily, 0.01), `дневное пособие по потолку: ${Math.round(hi.daily)}`);
-  ok(near(hi.birth, maxDaily * 140, 1), `максимум за 140 дней: ${Math.round(hi.birth)}`);
+  ok(near(hi.daily, Math.min((s.bases[0] + s.bases[1]) / periodDays, maxDaily), 0.01),
+     `дневное по предельным базам: ${Math.round(hi.daily)}`);
+  ok(hi.daily <= maxDaily + 1e-9, "дневное пособие не выше потолка");
+
+  /* С исключёнными днями знаменатель меньше — и дневное упирается
+     именно в потолок, посчитанный через 730. */
+  const hiEx = R.maternityPay({ pay1: 9e6, pay2: 9e6, days: 140, excluded: 30 });
+  ok(near(hiEx.daily, maxDaily, 0.01), `потолок в день: ${Math.round(maxDaily)}`);
+  ok(near(hiEx.birth, maxDaily * 140, 1), `максимум за 140 дней: ${Math.round(hiEx.birth)}`);
 
   const lo = R.maternityPay({ pay1: 50000, pay2: 50000, days: 140 });
   ok(lo.atMin, "маленький заработок поднимается до минимума");
@@ -179,7 +195,7 @@ console.log("\n— Пособия по материнству —");
 
   const mid = R.maternityPay({ pay1: 900000, pay2: 1100000, days: 140 });
   ok(!mid.atMax && !mid.atMin, "обычный заработок — без границ");
-  ok(near(mid.daily, 2e6 / s.days, 0.01), `дневное: ${Math.round(mid.daily)}`);
+  ok(near(mid.daily, 2e6 / periodDays, 0.01), `дневное: 2 000 000 ÷ ${periodDays} = ${Math.round(mid.daily)}`);
   ok(near(mid.careMonthly, mid.daily * R.maternity.careMonthDays * 0.4, 1),
      `уход до 1,5 лет — 40%: ${Math.round(mid.careMonthly)}`);
 

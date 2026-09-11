@@ -1,0 +1,79 @@
+/* ============ ЭкоФин — калькуляторы: стили ============
+
+   Были встроены в calc.html. Вынесены, потому что те же панели теперь
+   показывают и отдельные страницы калькуляторов в папке calc/. */
+
+@media print {
+  .site-header, .site-footer, .chat-widget, .no-print, .tabs { display: none !important; }
+  .tab-panel { display: none !important; }
+  /* Печатается та панель, которую попросили. Раньше здесь был жёстко
+     прописан счёт — из-за этого расчёт налогов сохранить было нечем. */
+  .tab-panel.printing { display: block !important; }
+  #invoicePanel { display: block !important; }
+  body::before, body::after { display: none; }
+  #invoicePaper { box-shadow: none; border: none; }
+  .print-title { display: block !important; margin-bottom: 14px; }
+}
+.print-title { display: none; }
+.calc-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+.calc-result {
+  background: var(--surface-2); border-radius: 14px; padding: 18px; min-width: 240px; flex: 1;
+}
+/* Число — главное на экране.
+
+   Человек открыл калькулятор ради одной цифры, а она была набрана
+   почти тем же кеглем, что и подписи вокруг, да ещё градиентом —
+   то есть выглядела украшением, а не ответом.
+
+   Теперь это самое крупное на странице, плотным цветом и с чертой
+   подведения итога под ним: ровно так подчёркивают результат в
+   ведомости. */
+.calc-result .big {
+  font-size: clamp(2rem, 5.4vw, 2.9rem);
+  font-weight: 800; line-height: 1.1;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  padding-bottom: 5px;
+  border-bottom: 2.5px solid var(--primary);
+  box-shadow: 0 4px 0 -2.5px var(--primary);
+}
+.cmp-table { width: 100%; border-collapse: collapse; font-size:var(--t-sm); margin-top: 10px; }
+.cmp-table th, .cmp-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+.cmp-table tr.best td { background: color-mix(in srgb, var(--primary) 12%, transparent); font-weight: 700; }
+#invoicePaper {
+  background: #fff; color: #111; border-radius: 8px; padding: 36px;
+  max-width: 720px; margin: 20px auto; box-shadow: var(--shadow);
+}
+[data-theme="dark"] #invoicePaper { background: #fff; color: #111; }
+.inv-pos-row { display: grid; grid-template-columns: 1fr 70px 110px 110px 36px; gap: 8px; margin-bottom: 8px; }
+.inv-pos-row input { min-width: 0; }
+
+/* --- Ссылка с общей страницы на отдельную страницу калькулятора --- */
+.calc-page-link { margin-top: 14px; font-size: var(--t-sm); }
+.calc-page-link a { font-weight: 700; }
+
+/* --- Отдельная страница калькулятора --- */
+.calc-page .crumbs { margin-bottom: 14px; }
+.calc-guide { margin-top: 28px; }
+.calc-guide .calc-example { margin: 10px 0 14px; }
+/* В таблицах калькуляторов последней колонке запрещён перенос: там одно
+   число. В примере там формула вида «840 000 ÷ 12 ÷ 29,3 = 2 389,08 ₽»,
+   и без переноса на телефоне таблица вылезала за карточку. Числа при
+   этом не рвутся: пробелы внутри них неразрывные. */
+.calc-guide .calc-example td:first-child { padding-right: 12px; }
+.calc-guide .calc-example td:last-child { text-align: right; white-space: normal; }
+
+/* --- Таблицы калькуляторов на телефоне ---
+
+   Общее правило сайта на узком экране делает таблицы блоками с прокруткой
+   вбок и без переноса строк (style.css, раздел для телефона). Для широких
+   таблиц это разумно, для двухколоночных — нет. В сравнении режимов первая
+   колонка с названием и пояснением растягивалась до 447 пикселей при поле
+   в 285, и итоговые суммы — ради которых калькулятор открывают — уезжали
+   за край: их приходилось искать, листая таблицу вбок.
+
+   Здесь это обычные таблицы: пояснение переносится, сумма — нет (у ячеек
+   с суммой перенос запрещён отдельно). */
+.cmp-table,
+.calc-guide .calc-example { display: table; white-space: normal; }
