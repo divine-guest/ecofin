@@ -300,13 +300,24 @@ console.log("\n— Выходное пособие при сокращении (
 {
   const a = R.severancePay({ avgMonth: 60000, monthsUnemployed: 2 });
   ok(a.onDismissal === 60000, "пособие при увольнении — один средний заработок");
-  ok(a.forSearch === 120000, "плюс два месяца на поиск работы", a.forSearch);
-  ok(a.total === 180000, "всего три средних заработка", a.total);
+  /* Два месяца без работы — это пособие за первый и заработок за
+     второй. Раньше здесь ждали три заработка, и проверка закрепляла
+     ошибку калькулятора вместо того, чтобы её ловить. */
+  ok(a.forSearch === 60000, "за время поиска — только второй месяц", a.forSearch);
+  ok(a.total === 120000, "два месяца без работы — два заработка, не три", a.total);
 
-  /* Больше двух месяцев на поиск закон не даёт: третий — по решению
-     службы занятости, и его считать за гарантию нельзя. */
+  const one = R.severancePay({ avgMonth: 60000, monthsUnemployed: 1 });
+  ok(one.total === 60000, "устроился в первый месяц — только пособие", one.total);
+
+  const half = R.severancePay({ avgMonth: 60000, monthsUnemployed: 1.5 });
+  ok(half.forSearch === 30000, "за неполный второй месяц — пропорционально", half.forSearch);
+
+  const three = R.severancePay({ avgMonth: 60000, monthsUnemployed: 3 });
+  ok(three.total === 180000, "с третьим месяцем по решению службы занятости — три", three.total);
+
+  /* Больше трёх заработков закон не даёт ни при каких условиях. */
   const b = R.severancePay({ avgMonth: 60000, monthsUnemployed: 5 });
-  ok(b.extraMonths === 2, "сверх двух месяцев не считаем", b.extraMonths);
+  ok(b.extraMonths === 2, "сверх третьего месяца не считаем", b.extraMonths);
 
   const c = R.severancePay({ avgMonth: 60000, monthsUnemployed: 0 });
   ok(c.total === 60000, "сразу нашёл работу — только пособие", c.total);
