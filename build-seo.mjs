@@ -121,7 +121,10 @@ function articlePage(a, all, version, updated) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE}/index.html` },
+      /* Главная — корень, а не /index.html: в карте сайта и в canonical
+         стоит именно он, и два адреса одной страницы поисковик считает
+         разными страницами. */
+      { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE}/` },
       { "@type": "ListItem", position: 2, name: "База знаний", item: `${SITE}/knowledge.html` },
       { "@type": "ListItem", position: 3, name: a.title, item: url },
     ],

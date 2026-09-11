@@ -387,6 +387,41 @@ if [ -n "$CANON" ] && grep -q 'return 301 https://\$host\$request_uri' "$NGINX_L
   fi
 fi
 
+# ---------- Настоящий код 404 ----------
+#
+# В исходной настройке последний рубеж был таким:
+#     try_files $uri $uri/ /404.html;
+# Страница «не найдено» показывалась, но с кодом 200. Для поисковика это
+# значит, что любой адрес с опечаткой — настоящая страница, и все они
+# одинаковые: пачка дублей, которая размывает сайт. Проверено снаружи
+# 11.09.2026 — несуществующий адрес отвечал 200.
+#
+# Правильно отдавать ту же страницу, но с кодом 404:
+#     try_files $uri $uri/ =404;   плюс   error_page 404 /404.html;
+#
+# Настройка под сертификатом из репозитория уже не обновляется (см. выше),
+# поэтому правка точечная, как и переадресация: только пока старая строка
+# на месте, с проверкой nginx и возвратом прежнего файла при неудаче.
+# Ответы /api это не задевает: без proxy_intercept_errors nginx не
+# подменяет ошибки, пришедшие от Node.
+
+if grep -q 'try_files \$uri \$uri/ /404.html;' "$NGINX_LIVE" 2>/dev/null; then
+  BACKUP=$(mktemp)
+  cp "$NGINX_LIVE" "$BACKUP"
+  sed -i 's|try_files \$uri \$uri/ /404.html;|try_files $uri $uri/ =404;|' "$NGINX_LIVE"
+  grep -q 'error_page 404 /404.html;' "$NGINX_LIVE" || \
+    sed -i '0,/^\s*index index.html;/s||&\n  error_page 404 /404.html;|' "$NGINX_LIVE"
+  if nginx -t >/dev/null 2>&1; then
+    systemctl reload nginx 2>/dev/null || systemctl restart nginx
+    log "несуществующие адреса теперь отвечают кодом 404"
+    rm -f "$BACKUP"
+  else
+    cp "$BACKUP" "$NGINX_LIVE"
+    rm -f "$BACKUP"
+    log "правка кода 404 не прошла проверку, вернул как было"
+  fi
+fi
+
 # ---------- 9. Запуск ----------
 
 systemctl daemon-reload
