@@ -1364,6 +1364,30 @@ console.log("\n— Пакет для маркетплейсов —");
      "витрина для бизнеса ведёт на нишу");
 }
 
+console.log("\n— Пакет для тендеров —");
+{
+  const page = read("../tenders.html");
+  const { TEMPLATES } = load("../js/templates.js", ["TEMPLATES"]);
+
+  ok(page.includes("calc/uchastie-v-tendere.html"), "страница ниши ведёт на калькулятор");
+  ok(page.includes("st/goszakupki-chto-nuzhno-do-pervoy-zayavki-i-gde-teryayut-dengi.html"),
+     "и на статью о закупках");
+  for (const name of ["Запрос разъяснений положений извещения о закупке",
+                      "Жалоба в ФАС на действия заказчика (44-ФЗ)",
+                      "Претензия заказчику о просрочке оплаты по контракту",
+                      "Возражения на включение в реестр недобросовестных поставщиков"]) {
+    ok(Boolean(TEMPLATES[name]), `есть шаблон: ${name}`);
+    ok(page.includes(encodeURIComponent(name)), `страница ведёт на шаблон: ${name}`);
+  }
+  /* Сроки — то, из-за чего проигрывают, ничего не нарушив. */
+  ok(/105 44-ФЗ/.test(page) && /5 дней/.test(page), "назван срок жалобы в ФАС");
+  ok(/13\.1 ст\. 34/.test(page) && /7 рабочих дней/.test(page), "назван срок оплаты");
+  ok(/37 44-ФЗ/.test(page) && /25%/.test(page), "назван порог антидемпинга");
+  ok(read("../sitemap.xml").includes("https://ecofin26.ru/tenders.html"),
+     "страница ниши есть в карте сайта");
+  ok(read("../dlya-biznesa.html").includes("tenders.html"), "витрина для бизнеса ведёт на нишу");
+}
+
 console.log("\n— Почта при регистрации и избранное —");
 {
   /* Письма сервиса не должны уходить за границу: адрес человека — его

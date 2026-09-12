@@ -606,6 +606,7 @@ async function buildSitemap(articles, today, calcPages = []) {
     ["dlya-biznesa.html", "0.95", "weekly"],
     ["dlya-fizlic.html", "0.95", "weekly"],
     ["marketplace.html", "0.9", "monthly"],
+    ["tenders.html", "0.9", "monthly"],
     ["situations.html", "0.95", "weekly"],
     ["book.html", "0.9", "weekly"],
     ["docs.html", "0.9", "weekly"],
