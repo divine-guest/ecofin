@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Расчёт при увольнении 2026: зарплата, компенсация за отпуск, сроки — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="Сколько должны выплатить при увольнении: зарплата за отработанные дни, компенсация за неиспользованный отпуск и проценты за задержку расчёта.">
+<link rel="canonical" href="https://ecofin26.ru/calc/raschet-pri-uvolnenii.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Расчёт при увольнении 2026: зарплата, компенсация за отпуск, сроки">
+<meta property="og:description" content="Сколько должны выплатить при увольнении: зарплата за отработанные дни, компенсация за неиспользованный отпуск и проценты за задержку расчёта.">
+<meta property="og:url" content="https://ecofin26.ru/calc/raschet-pri-uvolnenii.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Калькулятор расчёта при увольнении","url":"https://ecofin26.ru/calc/raschet-pri-uvolnenii.html","description":"Сколько должны выплатить при увольнении: зарплата за отработанные дни, компенсация за неиспользованный отпуск и проценты за задержку расчёта.","applicationCategory":"FinanceApplication","operatingSystem":"Любая","inLanguage":"ru-RU","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"},"publisher":{"@type":"Organization","name":"ЭкоФин","url":"https://ecofin26.ru/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://ecofin26.ru/"},{"@type":"ListItem","position":2,"name":"Калькуляторы","item":"https://ecofin26.ru/calc.html"},{"@type":"ListItem","position":3,"name":"Калькулятор расчёта при увольнении","item":"https://ecofin26.ru/calc/raschet-pri-uvolnenii.html"}]}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=209">
+<link rel="stylesheet" href="../css/style.css?v=209">
+<link rel="stylesheet" href="../css/calc.css?v=209">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>Зарплата и кадры</span>
+    </nav>
+    <div class="section-title">
+      <h1>Калькулятор расчёта при увольнении</h1>
+      <div class="line"></div>
+      <p class="subtitle">Введите заработок и неотгулянные дни отпуска — калькулятор покажет сумму к выплате в последний рабочий день.</p>
+    </div>
+
+    <div class="tab-panel active game-stage" id="calcFire">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="frPay">Выплаты за 12 месяцев, ₽</label>
+            <input type="number" id="frPay" value="840000" oninput="calcFire()"></div>
+          <div class="form-group"><label for="frMonths">Отработано полных месяцев</label>
+            <input type="number" id="frMonths" value="10" oninput="calcFire()"></div>
+          <div class="form-group"><label for="frPerYear">Дней отпуска в год по договору</label>
+            <select id="frPerYear" onchange="calcFire()">
+              <option value="28">28 — обычный отпуск</option>
+              <option value="31">31 — ненормированный день</option>
+              <option value="35">35 — вредные условия</option>
+              <option value="56">56 — педагоги</option>
+            </select></div>
+          <div class="form-group"><label for="frUsed">Уже отгуляно дней</label>
+            <input type="number" id="frUsed" value="0" oninput="calcFire()"></div>
+        </div>
+        <div class="calc-result" id="frOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Расчёт при увольнении')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('dismissal')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      <p>Всё, что причитается работнику, выплачивается в день увольнения — это последний рабочий день (ст. 140 ТК РФ). Если человек в этот день не работал, расчёт производится не позднее следующего дня после его требования.</p>
+      <p>В расчёт входят: зарплата за отработанные дни месяца, компенсация за все неиспользованные дни отпуска, премии по положению об оплате труда, а при сокращении и ликвидации — выходное пособие.</p>
+      <p>Компенсация за отпуск считается по среднему дневному заработку: выплаты за 12 месяцев делятся на 12 и на 29,3 — среднемесячное число календарных дней (ст. 139 ТК РФ).</p>
+      <p>Дни копятся по 2,33 за каждый отработанный месяц при стандартных 28 днях отпуска. Месяц, отработанный больше половины, считается полным.</p>
+      <p>За задержку расчёта работодатель платит проценты — одну стопятидесятую ключевой ставки (сейчас 14%) от невыплаченной суммы за каждый день, начиная со следующего после срока (ст. 236 ТК РФ). Требовать их отдельным заявлением не нужно: они начисляются в силу закона.</p>
+      <p>Компенсация за отпуск облагается НДФЛ и взносами. Выходное пособие при сокращении налогом не облагается в пределах трёх средних заработков (шести — для Крайнего Севера).</p>
+      <h2>Пример</h2>
+      <p>Заработок за 12 месяцев 960 000 ₽, осталось 14 дней отпуска:</p>
+      <table class="calc-table calc-example">
+        <tr><td>Средний дневной заработок</td><td>960 000 ₽ ÷ 12 ÷ 29,3 = 2 730,38 ₽</td></tr>
+        <tr><td>Компенсация за 14 дней</td><td>38 225 ₽</td></tr>
+        <tr><td>НДФЛ 13%</td><td>−4 969 ₽</td></tr>
+        <tr><td>На руки</td><td>33 256 ₽</td></tr>
+        <tr><td>За полгода работы накопилось</td><td>14 дня отпуска</td></tr>
+      </table>
+      <p>Компенсация выплачивается за все неиспользованные дни, сколько бы их ни накопилось: срока давности у отпуска нет.</p>
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul><li>Делить годовой заработок на 12 и на 30 вместо 29,3 — компенсация выйдет меньше</li><li>«Сгорать» отпуск за прошлые годы: неиспользованные дни компенсируются все</li><li>Тянуть с выплатой до ближайшей зарплаты — расчёт производится в день увольнения</li><li>Забыть о процентах за задержку: они начисляются со следующего дня и без заявления работника</li><li>Не выдать трудовую книжку или сведения о трудовой деятельности в день увольнения</li></ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>ст. 84.1, 140 ТК РФ — день расчёта и выдача документов · ст. 127 ТК РФ — компенсация за неиспользованный отпуск · ст. 139 ТК РФ — средний заработок · ст. 236 ТК РФ — проценты за задержку выплат</p></div>
+      <p class="kb-checked">Ставки сверены 09.09.2026. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      <p style="margin-top:8px">Подробный разбор: <a href="../st/uvolnenie-zakonnye-varianty.html">Увольнение: законные варианты</a></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn small secondary" href="otpusknye.html">Калькулятор отпускных</a>
+        <a class="btn small secondary" href="zarplata-na-ruki.html">Калькулятор зарплаты на руки</a>
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=209"></script>
+<script src="../js/themes.js?v=209"></script>
+<script src="../js/api.js?v=209"></script>
+<script src="../js/app.js?v=209"></script>
+<script src="../js/progress.js?v=209"></script>
+<script src="../js/palette.js?v=209"></script>
+<script src="../js/ai.js?v=209"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/favorites.js?v=209"></script>
+<script src="../js/calc.js?v=209"></script>
+</body>
+</html>

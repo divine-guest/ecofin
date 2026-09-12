@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Калькулятор НДС 2026: ставка 22%, выделить и начислить — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="Начислить НДС сверху или выделить из суммы по ставкам 22%, 10%, 7%, 5% и 0%. С расчётными ставками и правилом, когда какая применяется.">
+<link rel="canonical" href="https://ecofin26.ru/calc/nds.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Калькулятор НДС 2026: ставка 22%, выделить и начислить">
+<meta property="og:description" content="Начислить НДС сверху или выделить из суммы по ставкам 22%, 10%, 7%, 5% и 0%. С расчётными ставками и правилом, когда какая применяется.">
+<meta property="og:url" content="https://ecofin26.ru/calc/nds.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Калькулятор НДС","url":"https://ecofin26.ru/calc/nds.html","description":"Начислить НДС сверху или выделить из суммы по ставкам 22%, 10%, 7%, 5% и 0%. С расчётными ставками и правилом, когда какая применяется.","applicationCategory":"FinanceApplication","operatingSystem":"Любая","inLanguage":"ru-RU","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"},"publisher":{"@type":"Organization","name":"ЭкоФин","url":"https://ecofin26.ru/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://ecofin26.ru/"},{"@type":"ListItem","position":2,"name":"Калькуляторы","item":"https://ecofin26.ru/calc.html"},{"@type":"ListItem","position":3,"name":"Калькулятор НДС","item":"https://ecofin26.ru/calc/nds.html"}]}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=209">
+<link rel="stylesheet" href="../css/style.css?v=209">
+<link rel="stylesheet" href="../css/calc.css?v=209">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>Налоги</span>
+    </nav>
+    <div class="section-title">
+      <h1>Калькулятор НДС</h1>
+      <div class="line"></div>
+      <p class="subtitle">Введите сумму и выберите ставку — калькулятор покажет налог, сумму с НДС и сумму без него.</p>
+    </div>
+
+    <div class="tab-panel active game-stage" id="calcVat">
+      <div class="calc-row">
+        <div style="flex:1;min-width:260px">
+          <div class="form-group">
+            <label for="vtSum">Сумма, ₽</label>
+            <input type="number" id="vtSum" value="120000" oninput="calcVat()">
+          </div>
+          <div class="form-group">
+            <label for="vtRate">Ставка</label>
+            <select id="vtRate" onchange="calcVat()"></select>
+          </div>
+          <div class="form-group">
+            <label for="vtMode">Что делаем</label>
+            <select id="vtMode" onchange="calcVat()">
+              <option value="extract">Выделить НДС из суммы (НДС уже внутри)</option>
+              <option value="add">Начислить НДС сверху</option>
+            </select>
+          </div>
+        </div>
+        <div class="calc-result" id="vtOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'НДС')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('vat')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      <p>Основная ставка с 1 января 2026 года — 22% (Федеральный закон от 28.11.2025 № 425-ФЗ). Переходного периода нет: применяется к отгрузкам 2026 года независимо от того, когда заключён договор.</p>
+      <p>Начислить сверху: сумма × 1,22. Выделить из суммы с НДС: сумма × 22 ÷ 122 — это и есть расчётная ставка 22/122.</p>
+      <p>Пониженные ставки: 10% — продукты из перечня, детские товары, лекарства и книги; 0% — экспорт и международные перевозки (это не освобождение, а именно ставка, дающая право на вычет).</p>
+      <p>Отдельно стоят ставки для упрощёнки: 5% при доходе от 20 млн ₽ до 272,5 млн ₽ и 7% до 490,5 млн ₽. Они не дают права на вычет входного налога — выбор между ними и обычной ставкой считает вкладка «НДС на УСН».</p>
+      <p>В счетах и актах сумму НДС выделяют отдельной строкой. Если в договоре про налог не сказано ни слова, он считается включённым в цену — и продавец получит меньше, чем рассчитывал.</p>
+      <p>НДС к уплате — это начисленный налог минус вычеты по входящим счетам-фактурам. Декларация сдаётся до 25-го числа после квартала, платится тремя равными частями до 28-го числа каждого месяца следующего квартала.</p>
+      <h2>Пример</h2>
+      <p>Ставка 22%:</p>
+      <table class="calc-table calc-example">
+        <tr><td>Начислить на 100 000 ₽</td><td>100 000 ₽ × 1,22 = 122 000 ₽, в том числе НДС 22 000 ₽</td></tr>
+        <tr><td>Выделить из 122 000 ₽</td><td>122 000 ₽ × 22/122 = 22 000 ₽</td></tr>
+        <tr><td>Сумма без НДС</td><td>100 000 ₽</td></tr>
+        <tr><td>По ставке 10% на 100 000 ₽</td><td>10 000 ₽</td></tr>
+      </table>
+      <p>Ошибка на копейки в расчётной ставке за квартал превращается в расхождение с декларацией контрагента — и в требование пояснений.</p>
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul><li>Выделять НДС как 22% от суммы с налогом вместо расчётной ставки 22/122</li><li>Не указать НДС в договоре: тогда он считается включённым в цену, а не сверх неё</li><li>Применить 10% к товару, которого нет в перечне Правительства</li><li>Путать ставку 0% с освобождением: при нуле право на вычет сохраняется, при освобождении — нет</li><li>Забыть, что на упрощёнке пониженные 5% и 7% вычетов не дают</li></ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>ст. 164 НК РФ — ставки налога · ст. 168 НК РФ — предъявление налога покупателю · ст. 171, 172 НК РФ — вычеты · Федеральный закон от 28.11.2025 № 425-ФЗ — ставка 22% с 2026 года</p></div>
+      <p class="kb-checked">Ставки сверены 09.09.2026. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      <p style="margin-top:8px">Подробный разбор: <a href="../st/nds-na-uproschenke-kogda-poyavlyaetsya-i-chto-delat.html">НДС на упрощёнке: когда появляется и что делать</a></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn small secondary" href="nalogovye-rezhimy.html">Калькулятор выбора налогового режима</a>
+        <a class="btn small secondary" href="strahovye-vznosy-ip.html">Калькулятор страховых взносов ИП за себя</a>
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=209"></script>
+<script src="../js/themes.js?v=209"></script>
+<script src="../js/api.js?v=209"></script>
+<script src="../js/app.js?v=209"></script>
+<script src="../js/progress.js?v=209"></script>
+<script src="../js/palette.js?v=209"></script>
+<script src="../js/ai.js?v=209"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/favorites.js?v=209"></script>
+<script src="../js/calc.js?v=209"></script>
+</body>
+</html>

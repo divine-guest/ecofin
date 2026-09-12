@@ -464,6 +464,30 @@
     <priority>0.85</priority>
   </url>
   <url>
+    <loc>https://ecofin26.ru/calc/alimenty.html</loc>
+    <lastmod>2026-09-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://ecofin26.ru/calc/strahovye-vznosy-ip.html</loc>
+    <lastmod>2026-09-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://ecofin26.ru/calc/nds.html</loc>
+    <lastmod>2026-09-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://ecofin26.ru/calc/raschet-pri-uvolnenii.html</loc>
+    <lastmod>2026-09-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
     <loc>https://ecofin26.ru/calc/uchastie-v-tendere.html</loc>
     <lastmod>2026-09-12</lastmod>
     <changefreq>monthly</changefreq>
