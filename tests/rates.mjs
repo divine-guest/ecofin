@@ -625,5 +625,50 @@ console.log("\n— У ставок есть срок годности —");
      [R.payrollContrib.base, R.sickLeave.bases[1]]);
 }
 
+console.log("\n— Юнит-экономика маркетплейса —");
+{
+  const base = { price: 2000, cost: 700, commission: 20, delivery: 80,
+                 backDelivery: 50, storage: 15, ads: 100, buyout: 70 };
+
+  const u = R.marketplaceUnit({ ...base, regime: "usn6" });
+  ok(near(u.fee, 400, 0.01), "комиссия считается от цены покупателя");
+
+  /* При выкупе 70% на одну продажу приходится 1/0,7 отправления
+     и 0,43 возврата: обратная дорога тоже за счёт продавца. */
+  ok(near(u.logistics, 80 / 0.7 + 50 * (1 / 0.7 - 1), 0.01),
+     `логистика с возвратами: ${Math.round(u.logistics)} вместо 80`);
+  ok(near(R.marketplaceUnit({ ...base, buyout: 100 }).logistics, 80, 0.01),
+     "при полном выкупе обратной логистики нет");
+
+  /* Главная ошибка продавцов: налог на «Доходах» берётся со всей цены,
+     комиссия его не уменьшает. */
+  ok(near(u.tax, 2000 * R.usn.incomeRate, 0.01),
+     "на «Доходах» налог со всей цены, а не с того, что перечислила площадка");
+  ok(u.taxOnFull, "расчёт сам говорит, что налог взят со всей цены");
+
+  const p = R.marketplaceUnit({ ...base, regime: "usn15" });
+  ok(near(p.tax, Math.max((2000 - p.spend) * R.usn.profitRate, 2000 * R.usn.minTaxRate), 0.01),
+     "на «Доходах минус расходах» налог с разницы, но не меньше минимального");
+  ok(p.profit > u.profit, "на этих числах «Доходы минус расходы» выгоднее");
+
+  /* В точке безубыточности прибыль ровно ноль — иначе это не она. */
+  const zero = R.marketplaceUnit({ ...base, price: u.breakEven, regime: "usn6" });
+  ok(Math.abs(zero.profit) < 1, `ноль при цене ${Math.round(u.breakEven)} ₽`);
+  ok(R.marketplaceUnit({ ...base, price: 900 }).profit < 0, "ниже этой цены — убыток");
+}
+
+console.log("\n— НДС на упрощёнке —");
+{
+  /* Границу пониженных ставок берём с дефлятором: 272,5 млн, а не голые
+     250 млн из кодекса. Здесь стояло 250 млн, и при доходе 260 млн
+     расчёт показывал 7% вместо 5% — почти вдвое больше налога. */
+  ok(R.usnVat({ income: 260e6 }).reducedRate === 0.05,
+     "при 260 млн ставка 5%: граница проходит по 272,5 млн");
+  ok(R.usnVat({ income: 300e6 }).reducedRate === 0.07, "при 300 млн — 7%");
+  ok(R.usnVat({ income: 10e6 }).exempt === true, "до порога НДС нет вовсе");
+  ok(R.usnVat({ income: 100e6, inputVat: 0 }).generalRate === R.vatRate,
+     `обычная ставка берётся из справочника: ${R.vatRate * 100}%`);
+}
+
 console.log(`\nИТОГО: ${pass} пройдено, ${fail} провалено\n`);
 process.exit(fail ? 1 : 0);

@@ -86,7 +86,8 @@ const AUDIENCE = {
     "calcFines": "biz",
     "calcSeverance": "both",
     "calcPropTax": "person",
-    "calcTransport": "person"
+    "calcTransport": "person",
+    "calcMarket": "biz"
   }
 };
 

@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Калькуляторы и счета — ЭкоФин</title>
 <!-- seo:start -->
-<meta name="description" content="30 калькуляторов: сравнение всех налоговых режимов, штрафы налоговой, взносы за неполный год, выходное пособие, налог с продажи квартиры и авто, декретные, алименты, пени, госпошлина и счёт с QR-кодом СБП.">
+<meta name="description" content="31 калькулятор: сравнение налоговых режимов, юнит-экономика маркетплейса, штрафы и пени налоговой, зарплата и взносы, отпускные, больничные, декретные, алименты, госпошлина и счёт с QR-кодом СБП.">
 <link rel="canonical" href="https://ecofin26.ru/calc.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ЭкоФин">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:title" content="Калькуляторы и счета — ЭкоФин">
-<meta property="og:description" content="30 калькуляторов: сравнение всех налоговых режимов, штрафы налоговой, взносы за неполный год, выходное пособие, налог с продажи квартиры и авто, декретные, алименты, пени, госпошлина и счёт с QR-кодом СБП.">
+<meta property="og:description" content="31 калькулятор: сравнение налоговых режимов, юнит-экономика маркетплейса, штрафы и пени налоговой, зарплата и взносы, отпускные, больничные, декретные, алименты, госпошлина и счёт с QR-кодом СБП.">
 <meta property="og:url" content="https://ecofin26.ru/calc.html">
 <meta property="og:image" content="https://ecofin26.ru/og-cover.png">
 <meta property="og:image:width" content="1200">
@@ -22,9 +22,9 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=202">
-<link rel="stylesheet" href="css/style.css?v=202">
-<link rel="stylesheet" href="css/calc.css?v=202">
+<link rel="stylesheet" href="css/fonts.css?v=204">
+<link rel="stylesheet" href="css/style.css?v=204">
+<link rel="stylesheet" href="css/calc.css?v=204">
 </head>
 <body>
 <main class="section tint-navy">
@@ -66,6 +66,7 @@
       <button class="tab" data-panel="calcSeverance" onclick="switchCalc(27,this)">Пособие при сокращении</button>
       <button class="tab" data-panel="calcPropTax" onclick="switchCalc(28,this)">Налог на квартиру</button>
       <button class="tab" data-panel="calcTransport" onclick="switchCalc(29,this)">Транспортный налог</button>
+      <button class="tab" data-panel="calcMarket" onclick="switchCalc(30,this)">Маркетплейс: юнит-экономика</button>
     </div>
 
     <!-- 1. Налоговые режимы -->
@@ -851,6 +852,54 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Транспортный налог')">Скачать / печать</button>
       </div>
     </div>
+
+    <!-- ===== 31. Маркетплейс: юнит-экономика =====
+         Главный вопрос продавца — не «какая выручка», а «сколько
+         останется с одной продажи». Комиссия, логистика с возвратами,
+         хранение, реклама и налог съедают её незаметно и по частям. -->
+    <div class="tab-panel game-stage" id="calcMarket">
+      <div class="calc-row">
+        <div style="flex:1;min-width:280px">
+          <div class="grid cols-2">
+            <div class="form-group"><label for="mkPrice">Цена для покупателя, ₽</label>
+              <input type="number" id="mkPrice" value="2000" min="0" oninput="calcMarket()"></div>
+            <div class="form-group"><label for="mkCost">Себестоимость, ₽</label>
+              <input type="number" id="mkCost" value="700" min="0" oninput="calcMarket()"></div>
+          </div>
+          <div class="grid cols-2">
+            <div class="form-group"><label for="mkComm">Комиссия площадки, %</label>
+              <input type="number" step="0.1" id="mkComm" value="20" min="0" max="90" oninput="calcMarket()"></div>
+            <div class="form-group"><label for="mkBuyout">Процент выкупа, %</label>
+              <input type="number" id="mkBuyout" value="70" min="1" max="100" oninput="calcMarket()">
+              <p class="hint">Сколько заказов доходит до покупки. Остальное вернётся и поедет обратно.</p></div>
+          </div>
+          <div class="grid cols-2">
+            <div class="form-group"><label for="mkDeliv">Логистика до покупателя, ₽</label>
+              <input type="number" id="mkDeliv" value="80" min="0" oninput="calcMarket()"></div>
+            <div class="form-group"><label for="mkBack">Обратная логистика, ₽</label>
+              <input type="number" id="mkBack" value="50" min="0" oninput="calcMarket()"></div>
+          </div>
+          <div class="grid cols-2">
+            <div class="form-group"><label for="mkStore">Хранение на единицу, ₽</label>
+              <input type="number" id="mkStore" value="15" min="0" oninput="calcMarket()"></div>
+            <div class="form-group"><label for="mkAds">Реклама на единицу, ₽</label>
+              <input type="number" id="mkAds" value="100" min="0" oninput="calcMarket()"></div>
+          </div>
+          <div class="form-group"><label for="mkRegime">Налоговый режим</label>
+            <select id="mkRegime" onchange="calcMarket()">
+              <option value="usn6">УСН «Доходы»</option>
+              <option value="usn15">УСН «Доходы минус расходы»</option>
+              <option value="ausn">АУСН «Доходы»</option>
+            </select>
+            <p class="hint">Самозанятость не подходит: на НПД можно продавать только товар
+              своего производства, перепродажа запрещена.</p></div>
+        </div>
+        <div class="calc-result" id="mkOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Юнит-экономика маркетплейса')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('market')">Сохранить в кабинет</button>
+      </div>
+      <p class="calc-page-link no-print"><a href="calc/marketplace-unit.html">Как считать юнит-экономику: комиссия, возвраты и налог со всей цены →</a></p>
+    </div>
   </div>
   <!-- Партнёрский блок. Вызов PARTNERS.render был, а контейнера не
        было: блок не показался бы ни разу даже после подключения
@@ -859,16 +908,16 @@
   <div class="container"><div id="partnersTax"></div></div>
 </main>
 
-<script src="js/qr.js?v=202"></script>
-<script src="js/partners.js?v=202"></script>
-<script src="js/rates.js?v=202"></script>
-<script src="js/themes.js?v=202"></script>
-<script src="js/api.js?v=202"></script>
-<script src="js/app.js?v=202"></script>
-<script src="js/progress.js?v=202"></script>
-<script src="js/favorites.js?v=202"></script>
-<script src="js/palette.js?v=202"></script>
-<script src="js/ai.js?v=202"></script>
+<script src="js/qr.js?v=204"></script>
+<script src="js/partners.js?v=204"></script>
+<script src="js/rates.js?v=204"></script>
+<script src="js/themes.js?v=204"></script>
+<script src="js/api.js?v=204"></script>
+<script src="js/app.js?v=204"></script>
+<script src="js/progress.js?v=204"></script>
+<script src="js/favorites.js?v=204"></script>
+<script src="js/palette.js?v=204"></script>
+<script src="js/ai.js?v=204"></script>
 <script>
 initPage("calc.html");
 
@@ -878,6 +927,6 @@ document.addEventListener("pf:ready", () => PARTNERS.render("partnersTax", "tax"
 </script>
 <!-- Код всех калькуляторов — в js/calc.js: тот же файл подключают
      отдельные страницы калькуляторов в папке calc/. -->
-<script src="js/calc.js?v=202"></script>
+<script src="js/calc.js?v=204"></script>
 </body>
 </html>

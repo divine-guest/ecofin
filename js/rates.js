@@ -903,13 +903,93 @@ const RATES = {
     if (income <= this.usn.vatThreshold) {
       return { exempt: true, threshold: this.usn.vatThreshold };
     }
-    const reduced = income > 250000000 ? 0.07 : 0.05;
+    /* Границу берём с дефлятором, а не голые 250 млн из кодекса:
+       при доходе, скажем, 260 млн ставка уже 5%, а не 7%, и расчёт
+       завышал налог почти вдвое. */
+    const reduced = income > this.usnVatBands.reduced5UpTo ? 0.07 : 0.05;
     return {
       exempt: false,
       reducedRate: reduced,
       reduced: income * reduced,             // без права на вычеты
       general: Math.max(0, income * this.vatRate - inputVat),
       generalRate: this.vatRate,
+    };
+  },
+
+  /* --- Юнит-экономика маркетплейса ---
+
+     Считает не «сколько заработаю», а сколько останется с одной
+     ПРОДАННОЙ единицы. Три вещи, на которых теряют деньги чаще всего,
+     и все три здесь учтены явно:
+
+     1. Комиссия площадки не уменьшает доход на УСН «Доходы». Налог
+        берётся со всей цены, которую заплатил покупатель, а не с того,
+        что площадка перечислила на счёт: доходом комитента считается
+        вся выручка от продажи (ст. 346.15 и 346.17 НК РФ). Продавцы
+        считают налог с «прихода» и недоплачивают его весь год.
+
+     2. Логистика считается на ОТПРАВЛЕНИЕ, а не на продажу. При выкупе
+        70% на каждую проданную единицу приходится 1,43 отправления и
+        0,43 возврата — обратная дорога съедает больше, чем кажется.
+
+     3. Хранение и реклама уходят из кармана независимо от того, купили
+        товар или нет.
+
+     Режимы: УСН «Доходы», УСН «Доходы минус расходы» и АУСН. НПД в
+     список не входит намеренно: самозанятый вправе продавать только
+     товар собственного производства, перепродажа ему запрещена
+     (ст. 4 Федерального закона № 422-ФЗ), а на маркетплейсах торгуют
+     в основном закупленным. */
+  marketplaceUnit(opts = {}) {
+    const o = {
+      price: 0, cost: 0, commission: 0, delivery: 0, backDelivery: 0,
+      storage: 0, ads: 0, buyout: 100, regime: "usn6", ...opts,
+    };
+    const share = Math.min(1, Math.max(0.01, o.buyout / 100));
+    const shipments = 1 / share;          // отправлений на одну продажу
+    const returns = shipments - 1;        // из них вернулось
+    const logistics = Math.max(0, o.delivery) * shipments
+                    + Math.max(0, o.backDelivery) * returns;
+    const fixed = Math.max(0, o.cost) + logistics
+                + Math.max(0, o.storage) + Math.max(0, o.ads);
+    const rate = Math.max(0, o.commission) / 100;
+
+    const at = price => {
+      const fee = price * rate;
+      const spend = fixed + fee;
+      let tax;
+      if (o.regime === "usn15") {
+        tax = Math.max((price - spend) * this.usn.profitRate, price * this.usn.minTaxRate);
+      } else if (o.regime === "ausn") {
+        tax = price * this.ausn.incomeRate;
+      } else {
+        tax = price * this.usn.incomeRate;
+      }
+      return { fee, spend, tax, profit: price - spend - tax };
+    };
+
+    const price = Math.max(0, o.price);
+    const now = at(price);
+
+    /* Цена, при которой выходим в ноль. Прибыль растёт с ценой
+       монотонно, поэтому ищем половинным делением: у каждого режима
+       своя формула, а ответ нужен один и тот же. */
+    let breakEven = null;
+    let lo = 0, hi = Math.max(1000, fixed * 5, price * 3);
+    if (at(hi).profit > 0) {
+      for (let i = 0; i < 60; i++) {
+        const mid = (lo + hi) / 2;
+        if (at(mid).profit >= 0) hi = mid; else lo = mid;
+      }
+      breakEven = hi;
+    }
+
+    return {
+      ...now, price, logistics, shipments, returns, breakEven,
+      margin: price > 0 ? now.profit / price : 0,
+      /* На «Доходах» и АУСН налог берётся со всей цены: об этом надо
+         сказать прямо, здесь теряют чаще всего. */
+      taxOnFull: o.regime !== "usn15",
     };
   },
 

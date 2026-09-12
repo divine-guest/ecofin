@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Юнит-экономика маркетплейса 2026: сколько остаётся с продажи — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="Сколько останется с одной продажи после комиссии площадки, логистики, возвратов, хранения, рекламы и налога. С поправкой на процент выкупа.">
+<link rel="canonical" href="https://ecofin26.ru/calc/marketplace-unit.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Юнит-экономика маркетплейса 2026: сколько остаётся с продажи">
+<meta property="og:description" content="Сколько останется с одной продажи после комиссии площадки, логистики, возвратов, хранения, рекламы и налога. С поправкой на процент выкупа.">
+<meta property="og:url" content="https://ecofin26.ru/calc/marketplace-unit.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Калькулятор юнит-экономики маркетплейса","url":"https://ecofin26.ru/calc/marketplace-unit.html","description":"Сколько останется с одной продажи после комиссии площадки, логистики, возвратов, хранения, рекламы и налога. С поправкой на процент выкупа.","applicationCategory":"FinanceApplication","operatingSystem":"Любая","inLanguage":"ru-RU","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"},"publisher":{"@type":"Organization","name":"ЭкоФин","url":"https://ecofin26.ru/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://ecofin26.ru/"},{"@type":"ListItem","position":2,"name":"Калькуляторы","item":"https://ecofin26.ru/calc.html"},{"@type":"ListItem","position":3,"name":"Калькулятор юнит-экономики маркетплейса","item":"https://ecofin26.ru/calc/marketplace-unit.html"}]}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=204">
+<link rel="stylesheet" href="../css/style.css?v=204">
+<link rel="stylesheet" href="../css/calc.css?v=204">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>Маркетплейсы</span>
+    </nav>
+    <div class="section-title">
+      <h1>Калькулятор юнит-экономики маркетплейса</h1>
+      <div class="line"></div>
+      <p class="subtitle">Введите цену, себестоимость и условия площадки — калькулятор покажет прибыль с одной проданной единицы и цену, ниже которой продажа уходит в минус.</p>
+    </div>
+
+    <div class="tab-panel active game-stage" id="calcMarket">
+      <div class="calc-row">
+        <div style="flex:1;min-width:280px">
+          <div class="grid cols-2">
+            <div class="form-group"><label for="mkPrice">Цена для покупателя, ₽</label>
+              <input type="number" id="mkPrice" value="2000" min="0" oninput="calcMarket()"></div>
+            <div class="form-group"><label for="mkCost">Себестоимость, ₽</label>
+              <input type="number" id="mkCost" value="700" min="0" oninput="calcMarket()"></div>
+          </div>
+          <div class="grid cols-2">
+            <div class="form-group"><label for="mkComm">Комиссия площадки, %</label>
+              <input type="number" step="0.1" id="mkComm" value="20" min="0" max="90" oninput="calcMarket()"></div>
+            <div class="form-group"><label for="mkBuyout">Процент выкупа, %</label>
+              <input type="number" id="mkBuyout" value="70" min="1" max="100" oninput="calcMarket()">
+              <p class="hint">Сколько заказов доходит до покупки. Остальное вернётся и поедет обратно.</p></div>
+          </div>
+          <div class="grid cols-2">
+            <div class="form-group"><label for="mkDeliv">Логистика до покупателя, ₽</label>
+              <input type="number" id="mkDeliv" value="80" min="0" oninput="calcMarket()"></div>
+            <div class="form-group"><label for="mkBack">Обратная логистика, ₽</label>
+              <input type="number" id="mkBack" value="50" min="0" oninput="calcMarket()"></div>
+          </div>
+          <div class="grid cols-2">
+            <div class="form-group"><label for="mkStore">Хранение на единицу, ₽</label>
+              <input type="number" id="mkStore" value="15" min="0" oninput="calcMarket()"></div>
+            <div class="form-group"><label for="mkAds">Реклама на единицу, ₽</label>
+              <input type="number" id="mkAds" value="100" min="0" oninput="calcMarket()"></div>
+          </div>
+          <div class="form-group"><label for="mkRegime">Налоговый режим</label>
+            <select id="mkRegime" onchange="calcMarket()">
+              <option value="usn6">УСН «Доходы»</option>
+              <option value="usn15">УСН «Доходы минус расходы»</option>
+              <option value="ausn">АУСН «Доходы»</option>
+            </select>
+            <p class="hint">Самозанятость не подходит: на НПД можно продавать только товар
+              своего производства, перепродажа запрещена.</p></div>
+        </div>
+        <div class="calc-result" id="mkOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Юнит-экономика маркетплейса')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('market')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      <p>Считаем на одну ПРОДАННУЮ единицу, а не на отправление. Разница принципиальная: отправлений всегда больше, чем продаж, и разницу оплачивает продавец.</p>
+      <p>Налог на УСН «Доходы» берётся со ВСЕЙ цены, которую заплатил покупатель, а не с того, что площадка перечислила на счёт. Комиссия доход не уменьшает: доходом считается вся выручка от продажи (ст. 346.15 и 346.17 НК РФ). Площадка присылает отчёт с суммой за вычетом комиссии, продавец считает 6% от неё — и недоплачивает налог весь год.</p>
+      <p>Логистика зависит от процента выкупа. Если выкупают 70 заказов из 100, на каждую продажу приходится 1,43 отправления и 0,43 возврата: товар дважды проехал склад и вернулся. Обратная дорога в отчётах почти не видна, а в расчёте она есть.</p>
+      <ul><li>комиссия площадки — процент от цены;</li><li>логистика до покупателя и обратно — с учётом выкупа;</li><li>хранение и реклама — уходят независимо от того, купили товар или нет;</li><li>налог — по вашему режиму.</li></ul>
+      <p>Самозанятость не подходит: на НПД можно продавать только товар собственного производства, перепродажа запрещена (ст. 4 Федерального закона № 422-ФЗ). Поэтому в расчёте три режима: УСН «Доходы» 6%, УСН «Доходы минус расходы» 15% и АУСН 8%.</p>
+      <p>Что не учтено: приёмка, платная утилизация, штрафы площадки и эквайринг, если он у вас отдельный. И помните про НДС: он появляется при доходе свыше 20 млн ₽ за год.</p>
+      <h2>Пример</h2>
+      <p>Товар за 2 000 ₽, себестоимость 700 ₽, комиссия 20%, выкуп 70%, логистика 80 ₽ туда и 50 ₽ обратно, хранение 15 ₽, реклама 100 ₽.</p>
+      <table class="calc-table calc-example">
+        <tr><td>Комиссия площадки</td><td>−400 ₽</td></tr>
+        <tr><td>Логистика: 1.43 отправления и 0.43 возврата</td><td>−136 ₽</td></tr>
+        <tr><td>Себестоимость, хранение, реклама</td><td>−815 ₽</td></tr>
+        <tr><td>Налог на УСН «Доходы» — со всей цены</td><td>−120 ₽</td></tr>
+        <tr><td>Остаётся с продажи</td><td>529 ₽</td></tr>
+        <tr><td>Маржа</td><td>26.5%</td></tr>
+        <tr><td>Ниже этой цены — минус</td><td>1 285 ₽</td></tr>
+      </table>
+      <p>На тех же числах УСН «Доходы минус расходы» оставляет 552 ₽: налог там считается с разницы, и комиссия с логистикой его уменьшают. Разница 23 ₽ с каждой продажи — на тысяче продаж это 22 607 ₽.</p>
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul><li>Считать налог с суммы, которую перечислила площадка: на «Доходах» он берётся со всей цены покупателя</li><li>Забыть обратную логистику — при выкупе 70% она добавляет к каждой продаже почти половину доставки</li><li>Не разносить рекламу на единицу: она съедает маржу быстрее комиссии</li><li>Ставить цену как «себестоимость плюс наценка», не проверив, где проходит ноль</li></ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>ст. 346.15, 346.17 НК РФ — доходом считается вся выручка от продажи · ст. 4 Федерального закона № 422-ФЗ — НПД и перепродажа · Федеральный закон № 289-ФЗ о платформенной экономике — с 1 октября 2026 года</p></div>
+      <p class="kb-checked">Ставки сверены 09.09.2026. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      <p style="margin-top:8px">Подробный разбор: <a href="../st/rabota-s-marketpleysom-dogovor-shtrafy-vozvraty.html">Работа с маркетплейсом: договор, штрафы, возвраты</a></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn small secondary" href="nalogovye-rezhimy.html">Калькулятор выбора налогового режима</a>
+        <a class="btn small secondary" href="zarplata-na-ruki.html">Калькулятор зарплаты на руки</a>
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=204"></script>
+<script src="../js/themes.js?v=204"></script>
+<script src="../js/api.js?v=204"></script>
+<script src="../js/app.js?v=204"></script>
+<script src="../js/progress.js?v=204"></script>
+<script src="../js/palette.js?v=204"></script>
+<script src="../js/ai.js?v=204"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/favorites.js?v=204"></script>
+<script src="../js/calc.js?v=204"></script>
+</body>
+</html>

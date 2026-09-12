@@ -975,6 +975,50 @@ const KEYRATE = {
   },
 };
 
+/* --- Маркетплейс: юнит-экономика ---
+   Считает RATES.marketplaceUnit, здесь только показ. Главное в выводе —
+   не итог, а строка налога: на «Доходах» он берётся со всей цены, и
+   именно это чаще всего ломает расчёт продавца. */
+function calcMarket() {
+  const g = id => +document.getElementById(id).value || 0;
+  const regime = document.getElementById("mkRegime").value;
+  const r = RATES.marketplaceUnit({
+    price: g("mkPrice"), cost: g("mkCost"), commission: g("mkComm"),
+    delivery: g("mkDeliv"), backDelivery: g("mkBack"), storage: g("mkStore"),
+    ads: g("mkAds"), buyout: g("mkBuyout"), regime,
+  });
+
+  const loss = r.profit < 0;
+  document.getElementById("mkOut").innerHTML = `
+    <p>${loss ? "Убыток с одной продажи:" : "Остаётся с одной продажи:"}</p>
+    <div class="big">${fmt(r.profit)}</div>
+    <table class="calc-table">
+      <tr><td>Цена для покупателя</td><td>${fmt(r.price)}</td></tr>
+      <tr><td>Себестоимость</td><td>−${fmt(g("mkCost"))}</td></tr>
+      <tr><td>Комиссия площадки ${g("mkComm")}%</td><td>−${fmt(r.fee)}</td></tr>
+      <tr><td>Логистика с учётом возвратов</td><td>−${fmt(r.logistics)}</td></tr>
+      <tr><td>Хранение и реклама</td><td>−${fmt(g("mkStore") + g("mkAds"))}</td></tr>
+      <tr><td>Налог</td><td>−${fmt(r.tax)}</td></tr>
+      <tr><td><b>Прибыль с единицы</b></td><td><b>${fmt(r.profit)}</b></td></tr>
+      <tr><td>Маржа</td><td>${(r.margin * 100).toFixed(1)}%</td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+      При выкупе ${g("mkBuyout")}% на одну продажу приходится
+      ${r.shipments.toFixed(2)} отправления и ${r.returns.toFixed(2)} возврата —
+      поэтому логистика в расчёте больше, чем цена одной доставки.</p>
+    ${r.taxOnFull ? `<p class="calc-warn">Налог посчитан со ВСЕЙ цены, а не с того, что
+      перечислила площадка: комиссия доход не уменьшает (ст. 346.15 и 346.17 НК РФ).
+      На этом теряют чаще всего — площадка присылает «приход» за вычетом своей комиссии,
+      и продавец платит налог с него.</p>` : ""}
+    ${loss && r.breakEven ? `<p class="calc-warn">Сейчас продажа в минусе. Ноль наступает
+      при цене от ${fmt(r.breakEven)}.</p>`
+      : r.breakEven ? `<p style="color:var(--muted);font-size:var(--t-sm)">Запас по цене:
+        ниже ${fmt(r.breakEven)} продажа уходит в минус.</p>` : ""}
+    <p style="font-size:var(--t-xs);color:var(--muted);margin-top:8px">
+      Не учтены: приёмка, платная утилизация, штрафы площадки и эквайринг, если он
+      у вас отдельный. ${RATES.disclaimer()}</p>`;
+}
+
 /* --- Пени по налогам, ст. 75 НК РФ --- */
 function calcTaxPen() {
   const sum = +document.getElementById("tpSum").value || 0;
@@ -1095,18 +1139,18 @@ function calcUsnVat() {
 
   const cheaper = r.reduced <= r.general ? "reduced" : "general";
   document.getElementById("uvOut").innerHTML = `
-    <p>Выгоднее: ${cheaper === "reduced" ? `пониженная ставка ${r.reducedRate * 100}%` : "обычные 20% с вычетами"}</p>
+    <p>Выгоднее: ${cheaper === "reduced" ? `пониженная ставка ${r.reducedRate * 100}%` : `обычная ставка ${r.generalRate * 100}% с вычетами`}</p>
     <div class="big">${fmt(Math.min(r.reduced, r.general))}</div>
     <table class="calc-table">
       <tr class="${cheaper === "reduced" ? "best" : ""}">
         <td>Ставка ${r.reducedRate * 100}% без вычетов</td><td>${fmt(r.reduced)}</td></tr>
       <tr class="${cheaper === "general" ? "best" : ""}">
-        <td>Ставка 20% минус входной НДС</td><td>${fmt(r.general)}</td></tr>
+        <td>Ставка ${r.generalRate * 100}% минус входной НДС</td><td>${fmt(r.general)}</td></tr>
       <tr><td><b>Разница</b></td><td><b>${fmt(Math.abs(r.reduced - r.general))}</b> в год</td></tr>
     </table>
     <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
       Пониженную ставку выбирают на три года и отказаться раньше нельзя. Она выгодна,
-      когда входного НДС мало: у услуг, аренды, консалтинга. Обычные 20% выгоднее
+      когда входного НДС мало: у услуг, аренды, консалтинга. Обычная ставка выгоднее
       торговле и производству, где закупки идут с НДС.</p>
     <p class="calc-warn">Ваши покупатели на общей системе принимают к вычету только тот НДС,
       что вы им предъявили. Пониженная ставка делает вас менее удобным поставщиком —
@@ -1545,6 +1589,9 @@ const CALC_FIELDS = {
                fields: ["ptKind","ptCad","ptArea","ptShare","ptKids"], run: "calcPropTax" },
   transport: { out: "trOut", title: "Транспортный налог",
                fields: ["trHp","trMonths","trPrice"], run: "calcTransport" },
+  market:    { out: "mkOut", title: "Маркетплейс: юнит-экономика",
+               fields: ["mkPrice","mkCost","mkComm","mkBuyout","mkDeliv","mkBack",
+                        "mkStore","mkAds","mkRegime"], run: "calcMarket" },
 };
 
 function readFields(kind) {

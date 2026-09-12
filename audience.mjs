@@ -140,6 +140,7 @@ export const CALC_AUDIENCE = {
   calcSeverance: "both",   // пособие при сокращении
   calcPropTax: "person",   // налог на квартиру
   calcTransport: "person",
+  calcMarket: "biz",       // юнит-экономика маркетплейса
 };
 
 /* Материал показывается аудитории, если помечен ею или «обоими». */
