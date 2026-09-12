@@ -439,7 +439,7 @@ console.log("\n— Числа на странице «О сервисе» —");
   /* И в перечне возможностей ниже — те же числа, а не свои. */
   const listCalc = num(/✓ (\d+) калькулятор/);
   const listArt = num(/✓ (\d+) стат/);
-  const listDoc = num(/✓ (\d+) готовых документ/);
+  const listDoc = num(/✓ (\d+) готов\S+ документ/);
   ok(listCalc === calcCount, `в перечне калькуляторов: ${listCalc}`, listCalc);
   ok(listArt === artCount, `в перечне статей: ${listArt}`, listArt);
   ok(listDoc === docCount, `в перечне документов: ${listDoc}`, listDoc);
@@ -1335,6 +1335,33 @@ console.log("\n— Отдельные страницы калькуляторо�
     .filter(l => /^(calc\w+|render\w+|initTaxCal|KEYRATE\.init)\s*\(|^document\.getElementById/.test(l));
   ok(bare.length === 0, "в js/calc.js нет безусловных расчётов при загрузке", bare.slice(0, 3));
   ok(!/function calcTax\s*\(/.test(hub), "код калькуляторов не встроен в calc.html");
+}
+
+console.log("\n— Пакет для маркетплейсов —");
+{
+  /* Ниша собирается из уже готовых кусков: калькулятор, статьи, шаблоны.
+     Страница ценна ровно тем, что связывает их в одно место, поэтому
+     проверяем именно связи. */
+  const page = read("../marketplace.html");
+  const { TEMPLATES } = load("../js/templates.js", ["TEMPLATES"]);
+
+  ok(page.includes("calc/marketplace-unit.html"), "страница ниши ведёт на калькулятор");
+  ok(page.includes("st/rabota-s-marketpleysom-dogovor-shtrafy-vozvraty.html"),
+     "и на подробную статью");
+  for (const name of ["Претензия маркетплейсу (утрата или порча товара)",
+                      "Возражение на штраф маркетплейса",
+                      "Возражения по отчёту комиссионера"]) {
+    ok(Boolean(TEMPLATES[name]), `есть шаблон: ${name}`);
+    ok(page.includes(encodeURIComponent(name)), `страница ведёт на шаблон: ${name}`);
+  }
+  /* Сроки в тексте — те, на которых теряют деньги. Пусть останутся. */
+  ok(/999 ГК/.test(page) && /30 дней/.test(page),
+     "назван срок возражений по отчёту комиссионера");
+  ok(/998 ГК/.test(page), "названа ответственность площадки за утрату товара");
+  ok(read("../sitemap.xml").includes("https://ecofin26.ru/marketplace.html"),
+     "страница ниши есть в карте сайта");
+  ok(read("../dlya-biznesa.html").includes("marketplace.html"),
+     "витрина для бизнеса ведёт на нишу");
 }
 
 console.log("\n— Почта при регистрации и избранное —");

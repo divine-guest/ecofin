@@ -36,6 +36,13 @@ const CALC_OUT = join(HERE, "calc");
 
 /* ---------- Вспомогательное ---------- */
 
+const plural = (n, one, few, many) => {
+  const t = Math.abs(n) % 100, d = t % 10;
+  if (t > 10 && t < 20) return many;
+  if (d > 1 && d < 5) return few;
+  return d === 1 ? one : many;
+};
+
 const esc = s => String(s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   .replace(/"/g, "&quot;");
@@ -515,13 +522,20 @@ function audiencePage(who, { articles, hub, templates, version }) {
 
     <div class="card">
       <h2 style="font-size:var(--t-lg)">Оформить</h2>
-      <p>${templates} готовых документов с подсказками: договоры, претензии, заявления,
+      <p>${templates} ${plural(templates, "готовый документ", "готовых документа", "готовых документов")} с подсказками: договоры, претензии, заявления,
         приказы и письма в налоговую. Заполняются в браузере, скачиваются файлом.</p>
       <p style="margin-top:12px">
         <a class="btn small secondary" href="docs.html">Документы</a>
         <a class="btn small secondary" href="situations.html">Что делать в моей ситуации</a>
       </p>
     </div>
+
+    ${(a.niches || []).length ? `
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Ниши</h2>
+      ${a.niches.map(([href, label, hint]) =>
+        `<p style="margin-top:8px"><a href="${href}">${esc(label)}</a> — ${esc(hint)}</p>`).join("")}
+    </div>` : ""}
 
     <div class="card kb-cta">
       <h2 style="font-size:var(--t-lg)">Спросить про свой случай</h2>
@@ -591,6 +605,7 @@ async function buildSitemap(articles, today, calcPages = []) {
     ["", "1.0", "weekly"],
     ["dlya-biznesa.html", "0.95", "weekly"],
     ["dlya-fizlic.html", "0.95", "weekly"],
+    ["marketplace.html", "0.9", "monthly"],
     ["situations.html", "0.95", "weekly"],
     ["book.html", "0.9", "weekly"],
     ["docs.html", "0.9", "weekly"],
