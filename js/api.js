@@ -133,6 +133,19 @@ const API = {
     this.setSession(null, d.user);
     return d.user;
   },
+  /* Смена забытого пароля по коду из письма. resetState спрашивают
+     до показа формы: если почта не настроена, кнопки быть не должно. */
+  resetState() { return this.request("/api/auth/reset/state"); },
+  resetRequest(email) {
+    return this.request("/api/auth/reset/request", { method: "POST", body: { email } });
+  },
+  async resetConfirm(email, code, newPassword) {
+    const d = await this.request("/api/auth/reset/confirm", { method: "POST", body: { email, code, newPassword } });
+    /* Верный код — это вход: сервер сразу выдаёт сессию. */
+    this.setSession(d.token, d.user);
+    return d.user;
+  },
+
   changePassword(oldPassword, newPassword) {
     return this.request("/api/auth/password", { method: "POST", body: { oldPassword, newPassword } });
   },

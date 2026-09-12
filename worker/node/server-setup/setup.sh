@@ -208,6 +208,29 @@ else
   cp "$DIR/env" "$BUILT"
 fi
 
+# Секреты из метаданных машины.
+#
+# Раньше ключи попадали на диск только при создании машины: ssh закрыт,
+# в репозиторий им нельзя. Значит, каждый новый ключ — почта, хранилище
+# копий, эквайринг — стоил пересоздания машины вместе с базой. Так никто
+# делать не станет, и ключи просто не появлялись.
+#
+# Метаданные меняются снаружи одной командой и без перезапуска:
+#   yc compute instance add-metadata --name pravofin \
+#      --metadata-from-file extra-env=secrets.txt
+# где secrets.txt — обычные строки вида КЛЮЧ=значение.
+#
+# Кладём их последними: пришедшее из метаданных перебивает и машинное,
+# и открытое. Мусор отсекаем — посторонняя строка в .env валит запуск.
+EXTRA=$(curl -fsS --max-time 5 -H "Metadata-Flavor: Google" \
+  "http://169.254.169.254/computeMetadata/v1/instance/attributes/extra-env" 2>/dev/null || true)
+if [ -n "$EXTRA" ]; then
+  N=$(printf '%s\n' "$EXTRA" | grep -cE '^[A-Z][A-Z0-9_]*=' || true)
+  printf '%s\n' "$EXTRA" | grep -E '^[A-Z][A-Z0-9_]*=' >> "$BUILT" || true
+  # В журнал — только количество: значения там и есть секреты.
+  [ "$N" -gt 0 ] && log "из метаданных машины добавлено настроек: $N"
+fi
+
 if ! cmp -s "$BUILT" "$REPO/worker/.env"; then
   install -m 600 -o pravofin -g pravofin "$BUILT" "$REPO/worker/.env"
   log "настройки обновлены"

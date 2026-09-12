@@ -5,6 +5,7 @@ import {
 } from "./lib.js";
 import { attachReferral } from "./referral.js";
 import { penalize, forgive } from "./ratelimit.js";
+import { mailReady, sendMail } from "./mail.js";
 
 /* Три уровня доступа:
      owner — задан в OWNER_EMAILS, может выдавать и снимать админку через сайт;
@@ -521,4 +522,142 @@ export async function ownerRecover(request, env, origin) {
   ]);
   await logAction(env, email, "Аварийное восстановление доступа владельца");
   return json(env, origin, { ok: true });
+}
+
+/* ============ Смена забытого пароля по коду из письма ============
+
+   Пароль хранится необратимым хэшем: «напомнить» его нельзя, можно
+   только заменить. Раньше замену делал администратор руками, и человек
+   ждал ответа. Теперь — код из письма, но оговорки здесь важнее самой
+   возможности.
+
+   • Нет ключа почтового провайдера — нет и сброса. Форма «пришлём код»,
+     после которой ничего не приходит, хуже отсутствующей: человек ждёт
+     письмо вместо того, чтобы написать нам.
+   • Ответ на запрос одинаковый и для существующего адреса, и для любого
+     другого. Иначе форма превращается в проверку «есть ли у этого
+     человека аккаунт в ЭкоФине», а это сведения о нём, которые мы
+     раздавать не вправе.
+   • Код шестизначный, живёт 15 минут, попыток пять. Шесть цифр
+     перебираются за минуты, и только счётчик попыток отличает
+     восстановление от подарка чужому аккаунту.
+   • Верный код — это вход: выдаём сессию сразу, а все прежние закрываем.
+     Пароль меняют и тогда, когда аккаунт увели, и чужие сессии должны
+     умереть в тот же момент.                                          */
+
+const RESET_TTL_MS = 15 * 60 * 1000;
+const RESET_MAX_TRIES = 5;
+
+/* Только цифры: код диктуют по телефону и набирают на мобильной
+   клавиатуре. Буквы дали бы несколько бит стойкости и на порядок
+   больше опечаток. */
+function newResetCode() {
+  const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
+  return String(n).padStart(6, "0");
+}
+const codeHash = (email, code) => sha256(`reset:${email}:${code}`);
+
+/* Умеет ли сервис отправлять письма. Страница входа спрашивает это
+   перед тем, как показать форму. */
+export async function resetState(request, env, origin) {
+  return json(env, origin, { mail: mailReady(env) });
+}
+
+export async function resetRequest(request, env, origin) {
+  const b = await request.json().catch(() => ({}));
+  const email = normEmail(b.email);
+  if (!validEmail(email)) return fail(env, origin, "Неверный адрес почты");
+  if (!mailReady(env)) return json(env, origin, { sent: false, mail: false });
+
+  const row = await env.DB.prepare("SELECT email, name FROM users WHERE email = ?")
+    .bind(email).first();
+
+  if (row) {
+    const code = newResetCode();
+    /* Одна строка на адрес: новый запрос затирает прежний код. Иначе
+       три нажатия «прислать код» дают три рабочих кода — три двери. */
+    await env.DB.prepare(
+      `INSERT INTO password_resets (email, code_hash, expires, tries, created)
+       VALUES (?, ?, ?, 0, ?)
+       ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash,
+         expires = excluded.expires, tries = 0, created = excluded.created`
+    ).bind(email, await codeHash(email, code), now() + RESET_TTL_MS, now()).run();
+
+    const site = env.SITE_URL || "https://ecofin26.ru";
+    const sent = await sendMail(env, {
+      to: email,
+      subject: `Код для смены пароля: ${code}`,
+      text: [
+        `Здравствуйте${row.name ? ", " + row.name : ""}.`,
+        "",
+        `Код для смены пароля в ЭкоФине: ${code}`,
+        "Он действует 15 минут и вводится на странице входа.",
+        "",
+        "Если пароль меняете не вы — просто удалите это письмо. Без кода",
+        "в аккаунт никто не войдёт, менять ничего не нужно.",
+        "",
+        "Мы никогда не спрашиваем пароль, коды из писем и данные карты",
+        "ни в переписке, ни по телефону.",
+        "",
+        `${site}/recovery.html`,
+      ].join("\n"),
+    });
+
+    if (!sent.ok) {
+      /* Код без письма бесполезен и только занимает место: убираем,
+         чтобы следующая попытка началась с чистого листа. */
+      await env.DB.prepare("DELETE FROM password_resets WHERE email = ?")
+        .bind(email).run().catch(() => {});
+      return fail(env, origin, "Письмо не удалось отправить. Попробуйте позже или напишите нам", 502);
+    }
+    await logAction(env, email, "Запрошен код для смены пароля");
+  }
+
+  /* Ответ одинаковый независимо от того, есть такой аккаунт или нет. */
+  return json(env, origin, { sent: true, mail: true });
+}
+
+export async function resetConfirm(request, env, origin) {
+  const b = await request.json().catch(() => ({}));
+  const email = normEmail(b.email);
+  const code = String(b.code || "").replace(/\D/g, "");
+  const next = String(b.newPassword || "");
+  if (!validEmail(email)) return fail(env, origin, "Неверный адрес почты");
+  if (next.length < 8) return fail(env, origin, "Пароль минимум 8 символов");
+
+  const row = await env.DB.prepare("SELECT * FROM password_resets WHERE email = ?")
+    .bind(email).first();
+  if (!row) return fail(env, origin, "Код не запрашивали или он уже использован");
+
+  if (row.expires < now()) {
+    await env.DB.prepare("DELETE FROM password_resets WHERE email = ?").bind(email).run();
+    return fail(env, origin, "Код устарел — запросите новый");
+  }
+  if (row.tries >= RESET_MAX_TRIES) {
+    await env.DB.prepare("DELETE FROM password_resets WHERE email = ?").bind(email).run();
+    return fail(env, origin, "Слишком много попыток — запросите новый код");
+  }
+  if ((await codeHash(email, code)) !== row.code_hash) {
+    await env.DB.prepare("UPDATE password_resets SET tries = tries + 1 WHERE email = ?")
+      .bind(email).run();
+    const left = RESET_MAX_TRIES - row.tries - 1;
+    return fail(env, origin, `Неверный код. Осталось попыток: ${left}`);
+  }
+
+  const user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+  if (!user) return fail(env, origin, "Аккаунт не найден", 404);
+
+  await env.DB.batch([
+    env.DB.prepare("UPDATE users SET pass_hash = ? WHERE email = ?")
+      .bind(await hashPassword(next), email),
+    env.DB.prepare("DELETE FROM sessions WHERE email = ?").bind(email),
+    env.DB.prepare("DELETE FROM password_resets WHERE email = ?").bind(email),
+    /* Снимаем блокировку входа: иначе новый пароль тоже не пустит. */
+    env.DB.prepare("DELETE FROM ratelimit WHERE bucket LIKE ?").bind(`login:key:${email}`),
+  ]);
+  await logAction(env, email, "Пароль изменён по коду из письма");
+
+  const role = roleFor(env, email, user.role);
+  const session = await issueSession(env, email);
+  return json(env, origin, { ...session, user: publicUser({ ...user, role }) });
 }

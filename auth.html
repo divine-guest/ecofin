@@ -23,8 +23,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=197">
-<link rel="stylesheet" href="css/style.css?v=197">
+<link rel="stylesheet" href="css/fonts.css?v=198">
+<link rel="stylesheet" href="css/style.css?v=198">
 </head>
 <body>
 <main class="section">
@@ -69,10 +69,46 @@
         </div>
         <button class="btn" style="width:100%">Войти</button>
         <p class="hint" style="text-align:center;margin-top:10px">
-          Забыли пароль или не пускает? <a href="recovery.html">Восстановление доступа</a> — что проверить и куда писать.
+          <!-- Ссылка на форму появляется, только если сервер умеет слать
+               письма: кнопка «пришлём код» без почты обманывает. Проверку
+               делает initReset() ниже. -->
+          <a href="#" id="resetLink" style="display:none" onclick="showReset();return false">Забыли пароль? Пришлём код на почту</a>
+          <span id="resetManual">Забыли пароль или не пускает?
+            <a href="recovery.html">Восстановление доступа</a> — что проверить и куда писать.</span>
         </p>
         <p class="hint" style="text-align:center;margin-top:4px">
           Ещё нет аккаунта? <a href="#" onclick="switchAuth('reg');return false">Зарегистрироваться за 30 секунд</a>
+        </p>
+      </form>
+
+      <!-- Смена забытого пароля: два шага в одной форме. Сначала адрес,
+           потом код и новый пароль. Отдельной страницы нет намеренно —
+           человек уже здесь и адрес уже вводил. -->
+      <form id="resetForm" style="display:none" onsubmit="doReset(event)">
+        <div class="form-group">
+          <label for="resEmail">Электронная почта</label>
+          <input type="email" id="resEmail" autocomplete="email" inputmode="email" required placeholder="you@mail.ru">
+        </div>
+        <div id="resStep2" style="display:none">
+          <div class="form-group">
+            <label for="resCode">Код из письма</label>
+            <input type="text" id="resCode" inputmode="numeric" autocomplete="one-time-code"
+                   maxlength="6" placeholder="6 цифр">
+            <p class="hint">Код действует 15 минут. Не пришёл — посмотрите в папке «Спам».</p>
+          </div>
+          <div class="form-group">
+            <label for="resPass">Новый пароль</label>
+            <div class="pass-wrap">
+              <input type="password" id="resPass" autocomplete="new-password" placeholder="минимум 8 символов">
+              <button type="button" class="pass-eye" onclick="togglePass('resPass', this)"
+                      aria-label="Показать пароль">Показать</button>
+            </div>
+          </div>
+        </div>
+        <button class="btn" style="width:100%" id="resBtn">Прислать код</button>
+        <p class="hint" style="text-align:center;margin-top:10px">
+          <a href="#" onclick="switchAuth('login');return false">Вернуться ко входу</a> ·
+          <a href="recovery.html">Другие способы восстановить доступ</a>
         </p>
       </form>
 
@@ -111,12 +147,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=197"></script>
-<script src="js/api.js?v=197"></script>
-<script src="js/app.js?v=197"></script>
-<script src="js/progress.js?v=197"></script>
-<script src="js/palette.js?v=197"></script>
-<script src="js/ai.js?v=197"></script>
+<script src="js/themes.js?v=198"></script>
+<script src="js/api.js?v=198"></script>
+<script src="js/app.js?v=198"></script>
+<script src="js/progress.js?v=198"></script>
+<script src="js/palette.js?v=198"></script>
+<script src="js/ai.js?v=198"></script>
 <script>
 initPage("auth.html");
 
@@ -125,6 +161,10 @@ function switchAuth(mode) {
   document.getElementById("tabReg").classList.toggle("active", mode === "reg");
   document.getElementById("loginForm").style.display = mode === "login" ? "block" : "none";
   document.getElementById("regForm").style.display = mode === "reg" ? "block" : "none";
+  /* Форма смены пароля живёт рядом со входом и закрывается вместе
+     с переключением вкладок — иначе останется висеть поверх. */
+  const res = document.getElementById("resetForm");
+  if (res) res.style.display = "none";
   /* Заголовок должен совпадать с тем, что человек видит под ним:
      «Вход в ЭкоФин» над формой регистрации сбивает с толку. */
   const reg = mode === "reg";
@@ -181,6 +221,71 @@ async function doLogin(e) {
   } catch (err) {
     toast(err.message, "error");
     busy(form, false, "Войти");
+  }
+}
+
+/* --- Смена забытого пароля по коду --- */
+
+let resetStage = "email";
+
+/* Спрашиваем сервер, умеет ли он слать письма. Пока не умеет — на
+   странице остаётся прежняя ссылка на ручное восстановление. */
+async function initReset() {
+  try {
+    const d = await API.resetState();
+    if (!d || !d.mail) return;
+    document.getElementById("resetLink").style.display = "";
+    document.getElementById("resetManual").style.display = "none";
+  } catch {}
+}
+initReset();
+
+function showReset() {
+  switchAuth("login");
+  document.getElementById("loginForm").style.display = "none";
+  document.getElementById("resetForm").style.display = "block";
+  document.getElementById("authTitle").textContent = "Смена пароля";
+  document.getElementById("authSub").textContent = "Пришлём код на почту аккаунта";
+  const typed = document.getElementById("loginEmail").value.trim();
+  if (typed) document.getElementById("resEmail").value = typed;
+  document.getElementById("resEmail").focus();
+}
+
+async function doReset(e) {
+  e.preventDefault();
+  const btn = document.getElementById("resBtn");
+  const email = document.getElementById("resEmail").value.trim();
+  btn.disabled = true;
+  try {
+    if (resetStage === "email") {
+      const d = await API.resetRequest(email);
+      if (!d.mail) {
+        toast("Письма пока не отправляем — восстановим вручную");
+        return void (location.href = "recovery.html");
+      }
+      resetStage = "code";
+      document.getElementById("resStep2").style.display = "block";
+      document.getElementById("resEmail").readOnly = true;
+      btn.textContent = "Сохранить пароль и войти";
+      document.getElementById("resCode").focus();
+      /* Формулировка нарочно обтекаемая: подтверждать, что аккаунт
+         с таким адресом есть, мы не вправе. */
+      toast("Если аккаунт с таким адресом есть, код уже отправлен");
+    } else {
+      const user = await API.resetConfirm(
+        email,
+        document.getElementById("resCode").value.trim(),
+        document.getElementById("resPass").value
+      );
+      localStorage.setItem(SEEN_KEY, "1");
+      trackEvent("password_reset");
+      toast(`Пароль изменён. Здравствуйте, ${user.name}!`);
+      location.href = "dashboard.html";
+    }
+  } catch (err) {
+    toast(err.message, "error");
+  } finally {
+    btn.disabled = false;
   }
 }
 

@@ -31,6 +31,12 @@ const ROUTES = [
   ["POST", "/api/auth/register", auth.register, "public"],
   ["POST", "/api/auth/login", auth.login, "public"],
   ["POST", "/api/auth/owner-recover", auth.ownerRecover, "public"],
+  /* Смена забытого пароля по коду из письма. Все три — публичные:
+     человек по определению не вошёл. Защита — в лимитах ниже и в самом
+     обработчике (срок кода и счётчик попыток). */
+  ["GET", "/api/auth/reset/state", auth.resetState, "public"],
+  ["POST", "/api/auth/reset/request", auth.resetRequest, "public"],
+  ["POST", "/api/auth/reset/confirm", auth.resetConfirm, "public"],
   ["POST", "/api/auth/logout", auth.logout, "public"],
   ["GET", "/api/auth/me", auth.me, "user"],
   ["POST", "/api/auth/profile", auth.updateProfile, "user"],
@@ -200,6 +206,10 @@ const THROTTLED = {
   "/api/billing/promo": "promo",
   "/api/billing/trial": "promo",
   "/api/admin/reset-password": "reset",
+  /* Письма шлём мы, а просит их кто угодно: без лимита форма сброса
+     превращается в рассылку с нашего адреса по чужим ящикам. */
+  "/api/auth/reset/request": "reset",
+  "/api/auth/reset/confirm": "reset",
   /* Аварийный ключ владельца. Без ограничения он подбирался со скоростью
      сотен попыток в секунду — а успех означает полный захват сервиса. */
   "/api/auth/owner-recover": "recover",
@@ -211,7 +221,8 @@ async function throttle(request, env, origin, path) {
 
   /* Ключ второго уровня достаём из тела, не ломая его для обработчика. */
   let key = "";
-  if (action === "login" || action === "register" || action === "promo" || action === "recover") {
+  if (action === "login" || action === "register" || action === "promo"
+      || action === "recover" || action === "reset") {
     const clone = request.clone();
     const body = await clone.json().catch(() => ({}));
     key = String(body.email || body.code || "").trim().toLowerCase().slice(0, 120);
@@ -226,7 +237,7 @@ async function throttle(request, env, origin, path) {
 
   const minutes = Math.ceil(retryAfter / 60);
   const message = action === "login"
-    ? `Слишком много попыток входа. Попробуйте через ${minutes} мин. Забыли пароль — напишите в поддержку`
+    ? `Слишком много попыток входа. Попробуйте через ${minutes} мин. Забыли пароль — нажмите «Забыли пароль?» под формой`
     : action === "register"
       ? `С этого адреса уже создано много аккаунтов. Попробуйте через ${minutes} мин.`
       : action === "recover"
