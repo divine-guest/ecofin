@@ -238,6 +238,32 @@ const RATES = {
     yearsBack: 3,          // за сколько лет можно вернуть
   },
 
+  /* --- Госзакупки, 44-ФЗ ---
+     Участие в тендере стоит денег ещё до того, как контракт выигран,
+     и почти все эти расходы считаются от НМЦК, а не от вашей цены.
+     Поэтому снижение бьёт дважды: выручка падает, а обеспечение —
+     нет. Самая дорогая ловушка здесь — антидемпинг: снизили цену на
+     четверть и больше, и обеспечение исполнения выросло в полтора
+     раза (ст. 37 44-ФЗ). */
+  tender: {
+    bidFrom: 1000000,        // обеспечение заявки обязательно, если НМЦК больше
+    bidLargeFrom: 20000000,  // граница, после которой заказчик вправе просить до 5%
+    bidMaxSmall: 1,          // % от НМЦК до этой границы (0,5–1%)
+    bidMaxLarge: 5,          // % от НМЦК после неё (0,5–5%)
+    oikMax: 30,              // % — предел обеспечения исполнения контракта
+    warrantyMax: 10,         // % — предел обеспечения гарантийных обязательств
+    feeRate: 0.01,           // плата оператору площадки с победителя, ПП № 564
+    feeCap: 5000,            // потолок платы, ₽ без НДС
+    feeCapSmp: 2000,         // для закупок среди СМП и СОНКО
+    dumpingCut: 0.25,        // снижение, с которого включается антидемпинг
+    dumpingMult: 1.5,        // во столько раз растёт обеспечение
+    dumpingMinPct: 10,       // но не меньше этой доли НМЦК
+    goodFaithUpTo: 15000000, // до этой НМЦК вместо денег принимают опыт контрактов
+    payDays: 7,              // рабочих дней на оплату после приёмки, ч. 13.1 ст. 34
+    complaintDays: 5,        // дней на жалобу в ФАС, ст. 105
+    rnpYears: 2,             // срок в реестре недобросовестных поставщиков
+  },
+
   /* Основная ставка НДС повышена с 20% до 22% с 01.01.2026
      (ФЗ от 28.11.2025 № 425-ФЗ). Переходного периода нет: в 2026 году
      применяется 22% независимо от того, когда заключён договор.
@@ -990,6 +1016,109 @@ const RATES = {
       /* На «Доходах» и АУСН налог берётся со всей цены: об этом надо
          сказать прямо, здесь теряют чаще всего. */
       taxOnFull: o.regime !== "usn15",
+    };
+  },
+
+  /* Сколько на самом деле стоит участие в тендере и что останется
+     после исполнения контракта, 44-ФЗ.
+
+     Три вещи, из-за которых расчёт «цена минус себестоимость» врёт:
+
+     1. Обеспечение считается от НМЦК, а не от вашей цены. Снизили
+        цену вдвое — обеспечение осталось прежним.
+
+     2. Антидемпинг (ст. 37). Снижение на четверть и больше означает
+        обеспечение в полтора раза выше указанного в извещении, но не
+        менее 10% НМЦК. При НМЦК до 15 млн вместо денег можно
+        подтвердить добросовестность — три исполненных контракта за
+        три года без неустоек.
+
+     3. Деньги заморожены. Своими вносите — они не работают; берёте
+        независимую гарантию — платите банку. И то и другое расход,
+        которого в цене контракта нет.
+
+     Налог считается со ВСЕЙ цены контракта: на «Доходах» ни
+     обеспечение, ни комиссия площадки его не уменьшают.            */
+  tenderCost(opts = {}) {
+    const T = this.tender;
+    const o = {
+      nmck: 0, price: 0, cost: 0,
+      bidPct: 1, oikPct: 5, warrantyPct: 0,
+      months: 6, bidMonths: 1,
+      guaranteeRate: 5, guaranteeMin: 3000, moneyRate: 18,
+      byGuarantee: true, smp: true, goodFaith: false, regime: "usn6",
+      ...opts,
+    };
+    const nmck = Math.max(0, o.nmck);
+    const months = Math.max(0, o.months);
+
+    /* Плата площадке — с победителя и от НМЦК: 1%, но не больше
+       потолка. Для закупок среди СМП потолок ниже (ПП № 564). */
+    const fee = nmck ? Math.min(nmck * T.feeRate, o.smp ? T.feeCapSmp : T.feeCap) : 0;
+    const bid = nmck > T.bidFrom ? nmck * Math.max(0, o.bidPct) / 100 : 0;
+    const warranty = nmck * Math.max(0, o.warrantyPct) / 100;
+    const oikBase = nmck * Math.max(0, o.oikPct) / 100;
+
+    const at = price => {
+      const cut = nmck > 0 ? (nmck - price) / nmck : 0;
+      /* Антидемпинг включается от размера снижения, поэтому обеспечение
+         зависит от цены — и точка безубыточности перестаёт быть прямой. */
+      const dumping = cut >= T.dumpingCut && oikBase > 0;
+      const relief = dumping && nmck <= T.goodFaithUpTo && o.goodFaith;
+      const oik = dumping && !relief
+        ? Math.max(oikBase * T.dumpingMult, nmck * T.dumpingMinPct / 100)
+        : oikBase;
+
+      /* Стоимость обеспечения. Гарантия — прямой платёж банку, свои
+         деньги — упущенная выгода за срок, пока они заморожены. */
+      const held = oik + warranty;
+      const guarantee = o.byGuarantee && held
+        ? Math.max(held * Math.max(0, o.guaranteeRate) / 100 * (months / 12), o.guaranteeMin)
+        : 0;
+      const frozenCost = (o.byGuarantee ? 0 : held * Math.max(0, o.moneyRate) / 100 * (months / 12))
+        + bid * Math.max(0, o.moneyRate) / 100 * (Math.max(0, o.bidMonths) / 12);
+
+      const spend = Math.max(0, o.cost) + fee + guarantee + frozenCost;
+      let tax;
+      if (o.regime === "usn15") {
+        tax = Math.max((price - spend) * this.usn.profitRate, price * this.usn.minTaxRate);
+      } else if (o.regime === "ausn") {
+        tax = price * this.ausn.incomeRate;
+      } else if (o.regime === "none") {
+        tax = 0;
+      } else {
+        tax = price * this.usn.incomeRate;
+      }
+      return {
+        cut, dumping, relief, oik, guarantee, frozenCost, spend, tax,
+        frozen: (o.byGuarantee ? 0 : held) + bid,
+        profit: price - spend - tax,
+      };
+    };
+
+    const price = Math.max(0, o.price);
+    const now = at(price);
+
+    /* Цена, ниже которой участвовать незачем. Прибыль по цене не
+       убывает (обеспечение только растёт со снижением), поэтому
+       ищем половинным делением. */
+    let breakEven = null;
+    let lo = 0, hi = Math.max(nmck, price) * 1.5 + 1000;
+    if (at(hi).profit > 0) {
+      for (let i = 0; i < 60; i++) {
+        const mid = (lo + hi) / 2;
+        if (at(mid).profit >= 0) hi = mid; else lo = mid;
+      }
+      breakEven = hi;
+    }
+
+    return {
+      ...now, nmck, price, bid, fee, warranty, oikBase, breakEven,
+      bidRequired: nmck > T.bidFrom,
+      /* Цена, до которой можно снижаться без антидемпинга. */
+      dumpingFrom: nmck * (1 - T.dumpingCut),
+      margin: price > 0 ? now.profit / price : 0,
+      taxOnFull: o.regime !== "usn15" && o.regime !== "none",
     };
   },
 

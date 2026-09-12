@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Калькуляторы и счета — ЭкоФин</title>
 <!-- seo:start -->
-<meta name="description" content="31 калькулятор: сравнение налоговых режимов, юнит-экономика маркетплейса, штрафы и пени налоговой, зарплата и взносы, отпускные, больничные, декретные, алименты, госпошлина и счёт с QR-кодом СБП.">
+<meta name="description" content="32 калькулятора: сравнение налоговых режимов, стоимость участия в тендере, юнит-экономика маркетплейса, штрафы и пени налоговой, зарплата и взносы, отпускные, больничные, декретные, алименты, госпошлина и счёт с QR-кодом СБП.">
 <link rel="canonical" href="https://ecofin26.ru/calc.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ЭкоФин">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:title" content="Калькуляторы и счета — ЭкоФин">
-<meta property="og:description" content="31 калькулятор: сравнение налоговых режимов, юнит-экономика маркетплейса, штрафы и пени налоговой, зарплата и взносы, отпускные, больничные, декретные, алименты, госпошлина и счёт с QR-кодом СБП.">
+<meta property="og:description" content="32 калькулятора: сравнение налоговых режимов, стоимость участия в тендере, юнит-экономика маркетплейса, штрафы и пени налоговой, зарплата и взносы, отпускные, больничные, декретные, алименты, госпошлина и счёт с QR-кодом СБП.">
 <meta property="og:url" content="https://ecofin26.ru/calc.html">
 <meta property="og:image" content="https://ecofin26.ru/og-cover.png">
 <meta property="og:image:width" content="1200">
@@ -22,9 +22,9 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=206">
-<link rel="stylesheet" href="css/style.css?v=206">
-<link rel="stylesheet" href="css/calc.css?v=206">
+<link rel="stylesheet" href="css/fonts.css?v=207">
+<link rel="stylesheet" href="css/style.css?v=207">
+<link rel="stylesheet" href="css/calc.css?v=207">
 </head>
 <body>
 <main class="section tint-navy">
@@ -67,6 +67,7 @@
       <button class="tab" data-panel="calcPropTax" onclick="switchCalc(28,this)">Налог на квартиру</button>
       <button class="tab" data-panel="calcTransport" onclick="switchCalc(29,this)">Транспортный налог</button>
       <button class="tab" data-panel="calcMarket" onclick="switchCalc(30,this)">Маркетплейс: юнит-экономика</button>
+      <button class="tab" data-panel="calcTender" onclick="switchCalc(31,this)">Тендер: стоимость участия</button>
     </div>
 
     <!-- 1. Налоговые режимы -->
@@ -900,6 +901,74 @@
       </div>
       <p class="calc-page-link no-print"><a href="calc/marketplace-unit.html">Как считать юнит-экономику: комиссия, возвраты и налог со всей цены →</a></p>
     </div>
+    <!-- ===== 32. Тендер: стоимость участия =====
+         Участие стоит денег до того, как контракт выигран, и почти все
+         расходы считаются от НМЦК, а не от вашей цены. Поэтому снижение
+         бьёт дважды: выручка падает, обеспечение остаётся. -->
+    <div class="tab-panel game-stage" id="calcTender">
+      <div class="calc-row">
+        <div style="flex:1;min-width:280px">
+          <div class="grid cols-2">
+            <div class="form-group"><label for="tdNmck">НМЦК (начальная цена), ₽</label>
+              <input type="number" id="tdNmck" value="3000000" min="0" oninput="calcTender()"></div>
+            <div class="form-group"><label for="tdPrice">Ваша цена, ₽</label>
+              <input type="number" id="tdPrice" value="2600000" min="0" oninput="calcTender()">
+              <p class="hint">Сколько вы готовы предложить на торгах.</p></div>
+          </div>
+          <div class="form-group"><label for="tdCost">Себестоимость исполнения, ₽</label>
+            <input type="number" id="tdCost" value="2100000" min="0" oninput="calcTender()">
+            <p class="hint">Всё, что вы потратите на контракт: закупка, работы, доставка, зарплата.</p></div>
+          <div class="grid cols-2">
+            <div class="form-group"><label for="tdBid">Обеспечение заявки, % НМЦК</label>
+              <input type="number" step="0.1" id="tdBid" value="1" min="0" max="5" oninput="calcTender()"></div>
+            <div class="form-group"><label for="tdOik">Обеспечение контракта, % НМЦК</label>
+              <input type="number" step="0.1" id="tdOik" value="10" min="0" max="30" oninput="calcTender()"></div>
+          </div>
+          <div class="grid cols-2">
+            <div class="form-group"><label for="tdWar">Гарантийные обязательства, % НМЦК</label>
+              <input type="number" step="0.1" id="tdWar" value="0" min="0" max="10" oninput="calcTender()"></div>
+            <div class="form-group"><label for="tdMonths">Срок контракта, мес.</label>
+              <input type="number" id="tdMonths" value="6" min="1" max="60" oninput="calcTender()"></div>
+          </div>
+          <div class="form-group"><label for="tdHow">Чем обеспечиваете контракт</label>
+            <select id="tdHow" onchange="calcTender()">
+              <option value="guarantee">Независимой гарантией банка</option>
+              <option value="money">Своими деньгами</option>
+            </select></div>
+          <div class="grid cols-2">
+            <div class="form-group"><label for="tdGrate">Комиссия банка за гарантию, % годовых</label>
+              <input type="number" step="0.1" id="tdGrate" value="5" min="0" oninput="calcTender()"></div>
+            <div class="form-group"><label for="tdMoney">Цена своих денег, % годовых</label>
+              <input type="number" step="0.1" id="tdMoney" value="18" min="0" oninput="calcTender()">
+              <p class="hint">Ставка кредита или вклада: во столько обходится заморозка.</p></div>
+          </div>
+          <div class="grid cols-2">
+            <div class="form-group"><label for="tdSmp">Закупка среди СМП и СОНКО</label>
+              <select id="tdSmp" onchange="calcTender()">
+                <option value="1">Да</option>
+                <option value="0">Нет</option>
+              </select></div>
+            <div class="form-group"><label for="tdGood">Подтверждаете добросовестность</label>
+              <select id="tdGood" onchange="calcTender()">
+                <option value="0">Нет</option>
+                <option value="1">Да, есть исполненные контракты</option>
+              </select>
+              <p class="hint">Заменяет полуторное обеспечение при НМЦК до 15 млн ₽.</p></div>
+          </div>
+          <div class="form-group"><label for="tdRegime">Налоговый режим</label>
+            <select id="tdRegime" onchange="calcTender()">
+              <option value="usn6">УСН «Доходы»</option>
+              <option value="usn15">УСН «Доходы минус расходы»</option>
+              <option value="ausn">АУСН «Доходы»</option>
+              <option value="none">Не считать налог</option>
+            </select></div>
+        </div>
+        <div class="calc-result" id="tdOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Стоимость участия в тендере')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('tender')">Сохранить в кабинет</button>
+      </div>
+      <p class="calc-page-link no-print"><a href="calc/uchastie-v-tendere.html">Сколько стоит участие в тендере: обеспечение, антидемпинг и налог →</a></p>
+    </div>
   </div>
   <!-- Партнёрский блок. Вызов PARTNERS.render был, а контейнера не
        было: блок не показался бы ни разу даже после подключения
@@ -908,16 +977,16 @@
   <div class="container"><div id="partnersTax"></div></div>
 </main>
 
-<script src="js/qr.js?v=206"></script>
-<script src="js/partners.js?v=206"></script>
-<script src="js/rates.js?v=206"></script>
-<script src="js/themes.js?v=206"></script>
-<script src="js/api.js?v=206"></script>
-<script src="js/app.js?v=206"></script>
-<script src="js/progress.js?v=206"></script>
-<script src="js/favorites.js?v=206"></script>
-<script src="js/palette.js?v=206"></script>
-<script src="js/ai.js?v=206"></script>
+<script src="js/qr.js?v=207"></script>
+<script src="js/partners.js?v=207"></script>
+<script src="js/rates.js?v=207"></script>
+<script src="js/themes.js?v=207"></script>
+<script src="js/api.js?v=207"></script>
+<script src="js/app.js?v=207"></script>
+<script src="js/progress.js?v=207"></script>
+<script src="js/favorites.js?v=207"></script>
+<script src="js/palette.js?v=207"></script>
+<script src="js/ai.js?v=207"></script>
 <script>
 initPage("calc.html");
 
@@ -927,6 +996,6 @@ document.addEventListener("pf:ready", () => PARTNERS.render("partnersTax", "tax"
 </script>
 <!-- Код всех калькуляторов — в js/calc.js: тот же файл подключают
      отдельные страницы калькуляторов в папке calc/. -->
-<script src="js/calc.js?v=206"></script>
+<script src="js/calc.js?v=207"></script>
 </body>
 </html>

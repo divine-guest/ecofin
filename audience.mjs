@@ -144,6 +144,7 @@ export const CALC_AUDIENCE = {
   calcPropTax: "person",   // налог на квартиру
   calcTransport: "person",
   calcMarket: "biz",       // юнит-экономика маркетплейса
+  calcTender: "biz",       // стоимость участия в тендере
 };
 
 /* Материал показывается аудитории, если помечен ею или «обоими». */

@@ -54,6 +54,9 @@ function openCalcKind(kind) {
   return true;
 }
 const fmt = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
+/* Дробное число по-русски: «12,8», а не «12.8». */
+const dec = (n, d = 1) => Number(n).toLocaleString("ru-RU",
+  { minimumFractionDigits: d, maximumFractionDigits: d });
 
 /* --- 1. Налоговые режимы --- */
 /* Раньше УСН 6% показывалась БЕЗ взносов, а УСН 15% — СО взносами, поэтому
@@ -259,7 +262,7 @@ function calcVacation() {
   document.getElementById("vpOut").innerHTML = `
     <p>Среднедневной заработок:</p><div class="big">${fmt(day)}</div>
     <p style="margin-top:10px">Начислено за ${d} дн.: <b>${fmt(gross)}</b></p>
-    <p>К выплате (− НДФЛ ${(effective * 100).toFixed(1)}%): <b>${fmt(gross - ndfl)}</b></p>
+    <p>К выплате (− НДФЛ ${dec(effective * 100)}%): <b>${fmt(gross - ndfl)}</b></p>
     <p style="color:var(--muted);font-size:var(--t-xs);margin-top:8px">
       Ставка НДФЛ рассчитана по прогрессивной шкале от годового дохода. ${RATES.disclaimer()}
     </p>`;
@@ -822,7 +825,7 @@ function calcSalary() {
       ${kids && monthsWithDeduction < 12
         ? `Вычет перестаёт действовать с ${monthsWithDeduction + 1}-го месяца: доход с начала года превышает ${fmt(cd.incomeLimit)}. `
         : ""}
-      В стоимость включён взнос на травматизм по минимальной ставке ${(RATES.payrollContrib.injuryMin * 100).toFixed(1)}% — у рискованных видов деятельности он выше.
+      В стоимость включён взнос на травматизм по минимальной ставке ${dec(RATES.payrollContrib.injuryMin * 100)}% — у рискованных видов деятельности он выше.
     </p>`;
 }
 
@@ -909,7 +912,7 @@ function calcCourtFee() {
     const claim = +document.getElementById("gpClaim").value || 0;
     fee = RATES.courtFeeFor(claim);
     note = claim > 0
-      ? `${(fee / claim * 100).toFixed(2)}% от цены иска. Пошлина взыскивается с проигравшей стороны.`
+      ? `${dec(fee / claim * 100, 2)}% от цены иска. Пошлина взыскивается с проигравшей стороны.`
       : "Укажите цену иска.";
   } else {
     fee = kind === "org" ? RATES.courtFee.nonPropertyOrg : RATES.courtFee.nonProperty;
@@ -1000,11 +1003,11 @@ function calcMarket() {
       <tr><td>Хранение и реклама</td><td>−${fmt(g("mkStore") + g("mkAds"))}</td></tr>
       <tr><td>Налог</td><td>−${fmt(r.tax)}</td></tr>
       <tr><td><b>Прибыль с единицы</b></td><td><b>${fmt(r.profit)}</b></td></tr>
-      <tr><td>Маржа</td><td>${(r.margin * 100).toFixed(1)}%</td></tr>
+      <tr><td>Маржа</td><td>${dec(r.margin * 100)}%</td></tr>
     </table>
     <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
       При выкупе ${g("mkBuyout")}% на одну продажу приходится
-      ${r.shipments.toFixed(2)} отправления и ${r.returns.toFixed(2)} возврата —
+      ${dec(r.shipments, 2)} отправления и ${dec(r.returns, 2)} возврата —
       поэтому логистика в расчёте больше, чем цена одной доставки.</p>
     ${r.taxOnFull ? `<p class="calc-warn">Налог посчитан со ВСЕЙ цены, а не с того, что
       перечислила площадка: комиссия доход не уменьшает (ст. 346.15 и 346.17 НК РФ).
@@ -1017,6 +1020,66 @@ function calcMarket() {
     <p style="font-size:var(--t-xs);color:var(--muted);margin-top:8px">
       Не учтены: приёмка, платная утилизация, штрафы площадки и эквайринг, если он
       у вас отдельный. ${RATES.disclaimer()}</p>`;
+}
+
+/* --- Тендер: стоимость участия ---
+   Считает RATES.tenderCost, здесь только показ. Главное в выводе — две
+   строки: обеспечение считается от НМЦК (а не от вашей цены) и налог
+   берётся со всей цены контракта. На них и уходит прибыль, которую
+   продавец видел в расчёте «цена минус себестоимость». */
+function calcTender() {
+  const g = id => +document.getElementById(id).value || 0;
+  const v = id => document.getElementById(id).value;
+  const byGuarantee = v("tdHow") === "guarantee";
+
+  const r = RATES.tenderCost({
+    nmck: g("tdNmck"), price: g("tdPrice"), cost: g("tdCost"),
+    bidPct: g("tdBid"), oikPct: g("tdOik"), warrantyPct: g("tdWar"),
+    months: g("tdMonths"), guaranteeRate: g("tdGrate"), moneyRate: g("tdMoney"),
+    byGuarantee, smp: v("tdSmp") === "1", goodFaith: v("tdGood") === "1",
+    regime: v("tdRegime"),
+  });
+
+  const loss = r.profit < 0;
+  const secure = byGuarantee ? r.guarantee : r.frozenCost;
+  document.getElementById("tdOut").innerHTML = `
+    <p>${loss ? "Контракт в убыток:" : "Остаётся после исполнения:"}</p>
+    <div class="big">${fmt(r.profit)}</div>
+    <table class="calc-table">
+      <tr><td>Цена контракта</td><td>${fmt(r.price)}</td></tr>
+      <tr><td>Снижение от НМЦК</td><td>${dec(r.cut * 100)}%</td></tr>
+      <tr><td>Себестоимость исполнения</td><td>−${fmt(g("tdCost"))}</td></tr>
+      <tr><td>Плата площадке</td><td>−${fmt(r.fee)}</td></tr>
+      <tr><td>${byGuarantee ? "Комиссия банка за гарантию" : "Цена замороженных денег"}</td><td>−${fmt(secure)}</td></tr>
+      <tr><td>Налог</td><td>−${fmt(r.tax)}</td></tr>
+      <tr><td><b>Остаётся</b></td><td><b>${fmt(r.profit)}</b></td></tr>
+      <tr><td>Маржа</td><td>${dec(r.margin * 100)}%</td></tr>
+    </table>
+    <table class="calc-table" style="margin-top:10px">
+      <tr><td>Обеспечение заявки</td><td>${r.bidRequired ? fmt(r.bid) : "не требуется"}</td></tr>
+      <tr><td>Обеспечение контракта</td><td>${fmt(r.oik)}${r.dumping && !r.relief ? " (с антидемпингом)" : ""}</td></tr>
+      ${r.warranty ? `<tr><td>Гарантийные обязательства</td><td>${fmt(r.warranty)}</td></tr>` : ""}
+      <tr><td>Выведено из оборота</td><td>${fmt(r.frozen)}</td></tr>
+    </table>
+    ${r.dumping && !r.relief ? `<p class="calc-warn">Снижение ${dec(r.cut * 100)}% —
+      это антидемпинг: обеспечение контракта выросло с ${fmt(r.oikBase)} до ${fmt(r.oik)}
+      (ст. 37 44-ФЗ: в полтора раза, но не менее 10% НМЦК).${r.nmck <= RATES.tender.goodFaithUpTo
+        ? " При НМЦК до 15 млн ₽ вместо денег можно подтвердить добросовестность — три исполненных контракта за три года без неустоек." : ""}</p>` : ""}
+    ${!r.dumping && r.dumpingFrom > 0 ? `<p style="color:var(--muted);font-size:var(--t-sm)">
+      Антидемпинг включится, если опуститесь ниже ${fmt(r.dumpingFrom)}: обеспечение сразу
+      вырастет в полтора раза.</p>` : ""}
+    ${r.taxOnFull ? `<p class="calc-warn">Налог посчитан со ВСЕЙ цены контракта: ни обеспечение,
+      ни плата площадке его не уменьшают.</p>` : ""}
+    ${loss && r.breakEven ? `<p class="calc-warn">Ниже этой цены участвовать незачем:
+      ноль наступает при ${fmt(r.breakEven)}.</p>`
+      : r.breakEven ? `<p style="color:var(--muted);font-size:var(--t-sm)">Запас по цене:
+        при ${fmt(r.breakEven)} контракт выходит в ноль.</p>` : ""}
+    <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+      Деньги придут не сразу: на оплату у заказчика ${RATES.tender.payDays} рабочих дней
+      с даты приёмки (ч. 13.1 ст. 34 44-ФЗ), а до этого контракт исполняется за ваш счёт.</p>
+    <p style="font-size:var(--t-xs);color:var(--muted);margin-top:8px">
+      Не учтены: электронная подпись, обучение, банковские комиссии по счёту и возможные
+      штрафы за просрочку. ${RATES.disclaimer()}</p>`;
 }
 
 /* --- Пени по налогам, ст. 75 НК РФ --- */
@@ -1107,12 +1170,12 @@ function calcFire() {
     <div class="big">${fmt(total)}</div>
     <table class="calc-table">
       <tr><td>Средний дневной заработок</td><td>${fmt(daily)}</td></tr>
-      <tr><td>Накоплено дней отпуска</td><td>${days.toFixed(2)}</td></tr>
+      <tr><td>Накоплено дней отпуска</td><td>${dec(days, 2)}</td></tr>
       <tr><td>НДФЛ с компенсации</td><td>−${fmt(ndfl)}</td></tr>
       <tr><td><b>На руки</b></td><td><b>${fmt(total - ndfl)}</b></td></tr>
     </table>
     <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
-      Отпуск копится по ${(perYear / 12).toFixed(2)} дня за отработанный месяц. Месяц,
+      Отпуск копится по ${dec(perYear / 12, 2)} дня за отработанный месяц. Месяц,
       отработанный больше чем наполовину, считается полным.
       Весь расчёт выдают в последний рабочий день — иначе включается ст. 236 ТК.</p>
     <p style="font-size:var(--t-xs);color:var(--muted);margin-top:8px">${RATES.disclaimer()}</p>`;
@@ -1589,6 +1652,9 @@ const CALC_FIELDS = {
                fields: ["ptKind","ptCad","ptArea","ptShare","ptKids"], run: "calcPropTax" },
   transport: { out: "trOut", title: "Транспортный налог",
                fields: ["trHp","trMonths","trPrice"], run: "calcTransport" },
+  tender:    { out: "tdOut", title: "Тендер: стоимость участия",
+               fields: ["tdNmck","tdPrice","tdCost","tdBid","tdOik","tdWar","tdMonths",
+                        "tdHow","tdGrate","tdMoney","tdSmp","tdGood","tdRegime"], run: "calcTender" },
   market:    { out: "mkOut", title: "Маркетплейс: юнит-экономика",
                fields: ["mkPrice","mkCost","mkComm","mkBuyout","mkDeliv","mkBack",
                         "mkStore","mkAds","mkRegime"], run: "calcMarket" },
