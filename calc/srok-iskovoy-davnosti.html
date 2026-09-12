@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Срок исковой давности 2026: когда истекает право на иск — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="Три года с того дня, когда узнали о нарушении, предельные десять лет и приостановка на досудебный порядок — с расчётом конкретной даты.">
+<link rel="canonical" href="https://ecofin26.ru/calc/srok-iskovoy-davnosti.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Срок исковой давности 2026: когда истекает право на иск">
+<meta property="og:description" content="Три года с того дня, когда узнали о нарушении, предельные десять лет и приостановка на досудебный порядок — с расчётом конкретной даты.">
+<meta property="og:url" content="https://ecofin26.ru/calc/srok-iskovoy-davnosti.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Калькулятор срока исковой давности","url":"https://ecofin26.ru/calc/srok-iskovoy-davnosti.html","description":"Три года с того дня, когда узнали о нарушении, предельные десять лет и приостановка на досудебный порядок — с расчётом конкретной даты.","applicationCategory":"FinanceApplication","operatingSystem":"Любая","inLanguage":"ru-RU","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"},"publisher":{"@type":"Organization","name":"ЭкоФин","url":"https://ecofin26.ru/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://ecofin26.ru/"},{"@type":"ListItem","position":2,"name":"Калькуляторы","item":"https://ecofin26.ru/calc.html"},{"@type":"ListItem","position":3,"name":"Калькулятор срока исковой давности","item":"https://ecofin26.ru/calc/srok-iskovoy-davnosti.html"}]}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=212">
+<link rel="stylesheet" href="../css/style.css?v=212">
+<link rel="stylesheet" href="../css/calc.css?v=212">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>Долги и суды</span>
+    </nav>
+    <div class="section-title">
+      <h1>Калькулятор срока исковой давности</h1>
+      <div class="line"></div>
+      <p class="subtitle">Введите дату, когда узнали о нарушении, — калькулятор покажет, когда истекает срок и сколько дней осталось.</p>
+    </div>
+
+    <div class="tab-panel active game-stage" id="calcLimit">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="lmKnown">Когда узнали о нарушении</label>
+            <input type="date" id="lmKnown" oninput="calcLimit()">
+            <p class="hint">Например, день, когда деньги должны были прийти и не пришли.</p></div>
+          <div class="form-group"><label for="lmBroken">Когда нарушение произошло (если знаете)</label>
+            <input type="date" id="lmBroken" oninput="calcLimit()">
+            <p class="hint">Нужно для предельного срока: через десять лет
+              после самого нарушения защиты нет, даже если узнали позже.</p></div>
+          <div class="form-group"><label for="lmClaim">Сколько дней ждали ответа на претензию</label>
+            <input type="number" id="lmClaim" value="0" min="0" max="365" oninput="calcLimit()">
+            <p class="hint">На это время течение срока приостанавливается,
+              но не больше чем на полгода.</p></div>
+        </div>
+        <div class="calc-result" id="lmOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Срок исковой давности')">Скачать / печать</button>
+      </div>
+    </div>
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      <p>Общий срок — 3 года, но считается он не от нарушения, а со дня, когда вы узнали или должны были узнать и о нарушении, и о том, кто надлежащий ответчик (ст. 200 ГК РФ). Это разные даты, и путаница в них стоит иска.</p>
+      <p>По обязательствам с определённым сроком исполнения срок течёт со дня, следующего за днём, когда должник должен был заплатить. По повременным платежам — отдельно по каждому: по одним аренда просрочена, по другим ещё нет.</p>
+      <p>Предельный срок — 10 лет со дня самого нарушения, и он не продлевается ничем, кроме приостановки на досудебный порядок.</p>
+      <p>Досудебный порядок приостанавливает течение срока на время процедуры, но не более чем на 180 дней (ст. 202 ГК РФ). Претензия, на которую ответили молчанием, тоже приостанавливает.</p>
+      <p>Признание долга обнуляет срок: он начинает течь заново. Признанием считается частичная оплата, подписанный акт сверки, письмо с просьбой об отсрочке.</p>
+      <p>Суд применяет давность только по заявлению стороны: если ответчик о ней не скажет, иск рассмотрят и через десять лет. Поэтому заявление о пропуске срока делают до решения суда первой инстанции.</p>
+      <p>Истёкший срок не отменяет долг: платёж, сделанный добровольно, назад не вернуть. Он лишь лишает возможности взыскать через суд.</p>
+      <h2>Пример</h2>
+      <p>О нарушении узнали 1 марта 2024 года:</p>
+      <table class="calc-table calc-example">
+        <tr><td>Срок истекает</td><td>01.03.2027</td></tr>
+        <tr><td>С приостановкой на 30 дней претензии</td><td>31.03.2027</td></tr>
+        <tr><td>Предельный срок от самого нарушения</td><td>10 лет</td></tr>
+      </table>
+      <p>Если должник за это время подпишет акт сверки или заплатит часть, три года начнут течь заново с этого дня.</p>
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul><li>Считать срок от даты договора, а не от дня, когда узнали о нарушении</li><li>Считать один срок на все платежи по длящемуся договору: по каждому он свой</li><li>Забыть заявить о пропуске срока в суде — сам суд его не применит</li><li>Подписать акт сверки по давнему долгу и обнулить уже истёкший срок</li></ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>ст. 196 ГК РФ — общий срок и предельные десять лет · ст. 200 ГК РФ — начало течения срока · ст. 202, 203 ГК РФ — приостановка и перерыв · ст. 199 ГК РФ — применение только по заявлению стороны</p></div>
+      <p class="kb-checked">Ставки сверены 09.09.2026. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      <p style="margin-top:8px">Подробный разбор: <a href="../st/iskovaya-davnost-kak-ona-rabotaet.html">Исковая давность: как она работает</a></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn small secondary" href="procenty-395-gk.html">Калькулятор процентов по ст. 395 ГК РФ</a>
+        <a class="btn small secondary" href="gosposhlina.html">Калькулятор госпошлины в суд</a>
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=212"></script>
+<script src="../js/themes.js?v=212"></script>
+<script src="../js/api.js?v=212"></script>
+<script src="../js/app.js?v=212"></script>
+<script src="../js/progress.js?v=212"></script>
+<script src="../js/palette.js?v=212"></script>
+<script src="../js/ai.js?v=212"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/favorites.js?v=212"></script>
+<script src="../js/calc.js?v=212"></script>
+</body>
+</html>

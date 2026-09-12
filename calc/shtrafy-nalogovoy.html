@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Штрафы налоговой 2026: за декларацию и за неуплату налога — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="Два самых частых штрафа: 5% за каждый месяц просрочки декларации и 20% за неуплату налога. Со смягчающими обстоятельствами и пределами.">
+<link rel="canonical" href="https://ecofin26.ru/calc/shtrafy-nalogovoy.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Штрафы налоговой 2026: за декларацию и за неуплату налога">
+<meta property="og:description" content="Два самых частых штрафа: 5% за каждый месяц просрочки декларации и 20% за неуплату налога. Со смягчающими обстоятельствами и пределами.">
+<meta property="og:url" content="https://ecofin26.ru/calc/shtrafy-nalogovoy.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Калькулятор штрафов налоговой","url":"https://ecofin26.ru/calc/shtrafy-nalogovoy.html","description":"Два самых частых штрафа: 5% за каждый месяц просрочки декларации и 20% за неуплату налога. Со смягчающими обстоятельствами и пределами.","applicationCategory":"FinanceApplication","operatingSystem":"Любая","inLanguage":"ru-RU","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"},"publisher":{"@type":"Organization","name":"ЭкоФин","url":"https://ecofin26.ru/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://ecofin26.ru/"},{"@type":"ListItem","position":2,"name":"Калькуляторы","item":"https://ecofin26.ru/calc.html"},{"@type":"ListItem","position":3,"name":"Калькулятор штрафов налоговой","item":"https://ecofin26.ru/calc/shtrafy-nalogovoy.html"}]}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=212">
+<link rel="stylesheet" href="../css/style.css?v=212">
+<link rel="stylesheet" href="../css/calc.css?v=212">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>Налоги</span>
+    </nav>
+    <div class="section-title">
+      <h1>Калькулятор штрафов налоговой</h1>
+      <div class="line"></div>
+      <p class="subtitle">Введите сумму налога и месяцы просрочки — калькулятор посчитает оба штрафа и покажет, насколько их можно снизить.</p>
+    </div>
+
+    <div class="tab-panel active game-stage" id="calcFines">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="fnSum">Неуплаченный налог, ₽</label>
+            <input type="number" id="fnSum" value="100000" min="0" oninput="calcFines()">
+            <p class="hint">Сумма из декларации, которую не заплатили в срок.</p></div>
+          <div class="form-group"><label for="fnMonths">Месяцев просрочки декларации</label>
+            <input type="number" id="fnMonths" value="3" min="0" max="60" oninput="calcFines()">
+            <p class="hint">Считаются и полные, и неполные: один день в новом
+              месяце добавляет целые 5%.</p></div>
+          <div class="form-group"><label for="fnIntent">Как оценивают неуплату</label>
+            <select id="fnIntent" onchange="calcFines()">
+              <option value="no">По неосторожности — 20%</option>
+              <option value="yes">Умышленно — 40%</option>
+            </select></div>
+          <div class="form-group"><label for="fnMit">Смягчающих обстоятельств</label>
+            <select id="fnMit" onchange="calcFines()">
+              <option value="0">Нет</option>
+              <option value="1">Одно</option>
+              <option value="2">Два</option>
+              <option value="3">Три и больше</option>
+            </select>
+            <p class="hint">Каждое снижает штраф не менее чем вдвое —
+              но решает инспекция или суд, и просить надо письменно.</p></div>
+        </div>
+        <div class="calc-result" id="fnOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Штрафы налоговой')">Скачать / печать</button>
+      </div>
+    </div>
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      <p>За несданную декларацию — 5% от неуплаченного налога за каждый полный и неполный месяц просрочки, но не более 30% и не менее 1 000 ₽ (ст. 119 НК РФ). Минимум взыщут даже с нулевой декларации.</p>
+      <p>За неуплату налога — 20% от неуплаченной суммы, а если инспекция докажет умысел — 40% (ст. 122 НК РФ).</p>
+      <p>Штрафы складываются: декларацию не сдали и налог не заплатили — получите оба. Пени идут сверх штрафов и считаются отдельно.</p>
+      <p>Смягчающие обстоятельства снижают штраф не менее чем в 2 раза (ст. 112 и 114 НК РФ), и это не предел: суды снижают в пять и десять раз. К ним относят первое нарушение, тяжёлое материальное положение, болезнь, незначительность просрочки, самостоятельное погашение долга.</p>
+      <p>Ходатайство о снижении подаётся вместе с возражениями на акт проверки — в течение месяца со дня его получения. Молчание считается согласием с актом.</p>
+      <p>Штрафа за неуплату не будет вовсе, если до подачи уточнённой декларации заплатить налог и пени: это условие освобождения по ст. 81 НК РФ.</p>
+      <p>Срок давности по налоговым нарушениям — три года со дня, следующего за окончанием налогового периода.</p>
+      <h2>Пример</h2>
+      <p>Налог 200 000 ₽ не уплачен, декларация сдана на 5 месяцев позже:</p>
+      <table class="calc-table calc-example">
+        <tr><td>Штраф за декларацию</td><td>50 000 ₽</td></tr>
+        <tr><td>Штраф за неуплату</td><td>40 000 ₽</td></tr>
+        <tr><td>Вместе</td><td>90 000 ₽</td></tr>
+        <tr><td>С двумя смягчающими обстоятельствами</td><td>22 500 ₽</td></tr>
+        <tr><td>Если докажут умысел</td><td>130 000 ₽</td></tr>
+      </table>
+      <p>Просить о снижении стоит всегда: отказ ничего не стоит, а снижение вдвое — это минимум, на который инспекция обязана пойти при хотя бы одном смягчающем обстоятельстве.</p>
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul><li>Не сдавать нулевую декларацию: за неё тоже штрафуют, минимум тысяча рублей</li><li>Путать штраф с пенями: это разные суммы, и начисляются они параллельно</li><li>Не заявить смягчающие обстоятельства — сама инспекция их искать не будет</li><li>Подать уточнённую декларацию, не заплатив налог и пени: тогда освобождение от штрафа не работает</li></ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>ст. 119 НК РФ — непредставление декларации · ст. 122 НК РФ — неуплата налога · ст. 112, 114 НК РФ — смягчающие обстоятельства · ст. 81 НК РФ — освобождение при уточнённой декларации</p></div>
+      <p class="kb-checked">Ставки сверены 09.09.2026. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      <p style="margin-top:8px">Подробный разбор: <a href="../st/nalogovaya-proverka-kameralnaya-i-vyezdnaya.html">Налоговая проверка: камеральная и выездная</a></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn small secondary" href="peni-po-nalogam.html">Калькулятор пеней по налогам</a>
+        <a class="btn small secondary" href="nalogovye-rezhimy.html">Калькулятор выбора налогового режима</a>
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=212"></script>
+<script src="../js/themes.js?v=212"></script>
+<script src="../js/api.js?v=212"></script>
+<script src="../js/app.js?v=212"></script>
+<script src="../js/progress.js?v=212"></script>
+<script src="../js/palette.js?v=212"></script>
+<script src="../js/ai.js?v=212"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/favorites.js?v=212"></script>
+<script src="../js/calc.js?v=212"></script>
+</body>
+</html>
