@@ -460,6 +460,7 @@ async function buildSitemap(articles, today, calcPages = []) {
     ["faq.html", "0.7", "monthly"],
     ["expenses.html", "0.6", "monthly"],
     ["search.html", "0.5", "monthly"],
+    ["recovery.html", "0.4", "yearly"],
     ["legal.html", "0.3", "yearly"],
   ];
 

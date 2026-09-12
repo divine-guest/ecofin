@@ -1405,7 +1405,7 @@ const SETTINGS = {
         <label>Электронная почта</label>
         <input type="text" value="${escapeHtml(u.email)}" disabled>
         <p class="hint">Почта — это логин, она не меняется. Нужен другой адрес —
-          <a href="${PF.href("about.html#contact")}" target="_blank" rel="noopener">напишите в поддержку</a>.</p>
+          <a href="${PF.href("recovery.html#email")}" target="_blank" rel="noopener">смена почты аккаунта</a>.</p>
       </div>
 
       <button class="btn wide" onclick="SETTINGS.save()">Сохранить изменения</button>`;

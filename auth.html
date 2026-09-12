@@ -23,8 +23,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=196">
-<link rel="stylesheet" href="css/style.css?v=196">
+<link rel="stylesheet" href="css/fonts.css?v=197">
+<link rel="stylesheet" href="css/style.css?v=197">
 </head>
 <body>
 <main class="section">
@@ -37,6 +37,14 @@
         Аккаунт хранится на сервере: войдите теми же почтой и паролем с телефона,
         планшета или другого компьютера — подписка, документы и прогресс будут на месте.
         Регистрироваться заново не нужно.
+      </div>
+      <!-- Плашка про способы входа. Вопрос «а где кнопка Google?» приходит
+           регулярно: люди привыкли к соцсетям и, не увидев их, решают, что
+           форма сломана. Отвечаем сразу и называем причину. -->
+      <div class="auth-note">
+        Вход — только по почте и паролю. Входа через Google, Apple ID и соцсети
+        у нас нет: он означает передачу ваших данных третьей стороне.
+        Не получается войти — <a href="recovery.html">восстановление доступа</a>.
       </div>
       <div class="tabs">
         <button class="tab active" id="tabLogin" onclick="switchAuth('login')">Вход</button>
@@ -61,7 +69,7 @@
         </div>
         <button class="btn" style="width:100%">Войти</button>
         <p class="hint" style="text-align:center;margin-top:10px">
-          Забыли пароль? <a href="about.html#contact">Напишите в поддержку</a> — восстановим доступ.
+          Забыли пароль или не пускает? <a href="recovery.html">Восстановление доступа</a> — что проверить и куда писать.
         </p>
         <p class="hint" style="text-align:center;margin-top:4px">
           Ещё нет аккаунта? <a href="#" onclick="switchAuth('reg');return false">Зарегистрироваться за 30 секунд</a>
@@ -103,12 +111,12 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=196"></script>
-<script src="js/api.js?v=196"></script>
-<script src="js/app.js?v=196"></script>
-<script src="js/progress.js?v=196"></script>
-<script src="js/palette.js?v=196"></script>
-<script src="js/ai.js?v=196"></script>
+<script src="js/themes.js?v=197"></script>
+<script src="js/api.js?v=197"></script>
+<script src="js/app.js?v=197"></script>
+<script src="js/progress.js?v=197"></script>
+<script src="js/palette.js?v=197"></script>
+<script src="js/ai.js?v=197"></script>
 <script>
 initPage("auth.html");
 
