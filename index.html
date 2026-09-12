@@ -36,8 +36,8 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"Подписка ЭкоФин","description":"Доступ к ИИ-консультанту, разбору договоров, напоминаниям о налоговых сроках и курсам.","brand":{"@id":"https://ecofin26.ru/#org"},"image":"https://ecofin26.ru/og-cover.png","offers":[{"@type":"Offer","name":"Старт","price":"0","priceCurrency":"RUB","availability":"https://schema.org/InStock","url":"https://ecofin26.ru/"},{"@type":"Offer","name":"Базовый, месяц","price":"290","priceCurrency":"RUB","availability":"https://schema.org/InStock","url":"https://ecofin26.ru/"},{"@type":"Offer","name":"Базовый, год","price":"2490","priceCurrency":"RUB","availability":"https://schema.org/InStock","url":"https://ecofin26.ru/"},{"@type":"Offer","name":"Про, месяц","price":"690","priceCurrency":"RUB","availability":"https://schema.org/InStock","url":"https://ecofin26.ru/"},{"@type":"Offer","name":"Про, год","price":"5490","priceCurrency":"RUB","availability":"https://schema.org/InStock","url":"https://ecofin26.ru/"}]}</script>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=198">
-<link rel="stylesheet" href="css/style.css?v=198">
+<link rel="stylesheet" href="css/fonts.css?v=199">
+<link rel="stylesheet" href="css/style.css?v=199">
 </head>
 <body>
 <main>
@@ -149,6 +149,13 @@
       <div class="hero-actions">
         <a href="auth.html?from=hero" class="btn auth-cta">Начать бесплатно</a>
         <a href="calc.html" class="btn ghost">Калькуляторы без регистрации</a>
+      </div>
+      <!-- Вход по роли. Человеку, пришедшему за своим вычетом, не нужна
+           половина сайта про взносы ИП — и наоборот. Пусть выберет сам,
+           а не ищет своё среди чужого. -->
+      <div class="hero-actions">
+        <a href="dlya-biznesa.html" class="btn ghost">Я ИП или компания</a>
+        <a href="dlya-fizlic.html" class="btn ghost">Я частное лицо</a>
       </div>
       <!-- Числа здесь сверяются автоматически: tests/content.mjs считает
            калькуляторы, шаблоны и статьи в самом коде и валит проверку,
@@ -276,12 +283,12 @@
   </section>
 </main>
 
-<script src="js/themes.js?v=198"></script>
-<script src="js/api.js?v=198"></script>
-<script src="js/app.js?v=198"></script>
-<script src="js/progress.js?v=198"></script>
-<script src="js/palette.js?v=198"></script>
-<script src="js/ai.js?v=198"></script>
+<script src="js/themes.js?v=199"></script>
+<script src="js/api.js?v=199"></script>
+<script src="js/app.js?v=199"></script>
+<script src="js/progress.js?v=199"></script>
+<script src="js/palette.js?v=199"></script>
+<script src="js/ai.js?v=199"></script>
 <script>
 initPage("index.html");
 

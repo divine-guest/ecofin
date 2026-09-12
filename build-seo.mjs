@@ -23,6 +23,7 @@ import { readFile, writeFile, mkdir, readdir, unlink } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { CALC_PAGES, CALC_GROUPS } from "./calc-pages.mjs";
+import { AUDIENCES, ARTICLE_AUDIENCE, CALC_AUDIENCE, forAudience } from "./audience.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 /* Собственный домен. До покупки здесь стоял адрес GitHub Pages, и это
@@ -405,6 +406,147 @@ initPage("calc.html");
 `;
 }
 
+/* ---------- Витрины по аудитории ---------- */
+
+/* Вкладки калькуляторов в том порядке, в каком они стоят на странице:
+   старые ссылки вида calc.html#tab=6 считают именно по порядку. */
+function calcTabs(hub) {
+  const out = [];
+  const re = /<button class="tab[^"]*" data-panel="(\w+)"[^>]*>([^<]+)<\/button>/g;
+  let m;
+  while ((m = re.exec(hub))) out.push({ id: m[1], label: m[2].trim(), index: out.length });
+  if (!out.length) throw new Error("не нашёл вкладки калькуляторов в calc.html");
+  return out;
+}
+
+/* Куда вести с витрины: у части калькуляторов есть своя страница, у
+   остальных — вкладка на общей. */
+function calcHref(tab) {
+  const page = CALC_PAGES.find(p => p.panel === tab.id);
+  return page ? `calc/${page.slug}.html` : `calc.html#tab=${tab.index}`;
+}
+
+function audiencePage(who, { articles, hub, templates, version }) {
+  const a = AUDIENCES[who];
+  const url = `${SITE}/${a.slug}.html`;
+  const other = AUDIENCES[a.other];
+
+  const tabs = calcTabs(hub).filter(t => {
+    const mark = CALC_AUDIENCE[t.id];
+    if (!mark) throw new Error(`калькулятор ${t.id} не размечен в audience.mjs`);
+    return forAudience(mark, who);
+  });
+
+  const mine = articles.filter(x => {
+    const mark = ARTICLE_AUDIENCE[x.title];
+    if (!mark) throw new Error(`статья «${x.title}» не размечена в audience.mjs`);
+    return forAudience(mark, who);
+  });
+
+  /* Внутри витрины статьи сгруппированы по разделу: сплошной список из
+     трёх десятков заголовков не читается вовсе. */
+  const areas = [...new Set(mine.map(x => x.area))];
+
+  const crumbs = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE}/` },
+      { "@type": "ListItem", position: 2, name: a.h1, item: url },
+    ],
+  };
+
+  return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>${esc(a.title)} — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs из разметки audience.mjs.
+     Править здесь бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="${esc(a.description)}">
+<link rel="canonical" href="${url}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="${esc(a.title)} — ЭкоФин">
+<meta property="og:description" content="${esc(a.description)}">
+<meta property="og:url" content="${url}">
+<meta property="og:image" content="${SITE}/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">${JSON.stringify(crumbs)}</script>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="css/fonts.css?v=${version}">
+<link rel="stylesheet" href="css/style.css?v=${version}">
+</head>
+<body>
+<main class="section tint-navy">
+  <div class="container" style="max-width:900px">
+    <div class="section-title">
+      <h1>${esc(a.h1)}</h1>
+      <div class="line"></div>
+      <p class="subtitle">${esc(a.lead)}</p>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Посчитать</h2>
+      <p style="color:var(--muted)">${tabs.length} калькуляторов по вашим задачам. Считают по ставкам 2026 года, регистрация не нужна.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        ${tabs.map(t => `<a class="btn small secondary" href="${calcHref(t)}">${esc(t.label)}</a>`).join("\n        ")}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Разобраться</h2>
+      <p style="color:var(--muted)">${mine.length} разборов: что говорит закон, что делать по шагам и на чём обычно теряют деньги.</p>
+      ${areas.map(area => `
+      <h3 style="margin-top:16px">${esc(area)}</h3>
+      <ul>
+        ${mine.filter(x => x.area === area)
+              .map(x => `<li><a href="st/${slug(x.title)}.html">${esc(x.title)}</a></li>`)
+              .join("\n        ")}
+      </ul>`).join("")}
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Оформить</h2>
+      <p>${templates} готовых документов с подсказками: договоры, претензии, заявления,
+        приказы и письма в налоговую. Заполняются в браузере, скачиваются файлом.</p>
+      <p style="margin-top:12px">
+        <a class="btn small secondary" href="docs.html">Документы</a>
+        <a class="btn small secondary" href="situations.html">Что делать в моей ситуации</a>
+      </p>
+    </div>
+
+    <div class="card kb-cta">
+      <h2 style="font-size:var(--t-lg)">Спросить про свой случай</h2>
+      <p style="color:var(--muted)">Калькулятор считает общий случай, а у вас свои цифры и свой договор.
+        Консультант отвечает со ссылками на статьи закона — три вопроса в день бесплатно.</p>
+      <p style="margin-top:14px">
+        <a class="btn gold" href="auth.html?from=${a.slug}">Спросить бесплатно</a>
+      </p>
+      <p class="hint" style="margin-top:14px">${esc(other.otherLabel)}
+        <a href="${other.slug}.html">${esc(other.h1)}</a></p>
+    </div>
+  </div>
+</main>
+
+<script src="js/themes.js?v=${version}"></script>
+<script src="js/api.js?v=${version}"></script>
+<script src="js/app.js?v=${version}"></script>
+<script src="js/progress.js?v=${version}"></script>
+<script src="js/palette.js?v=${version}"></script>
+<script src="js/ai.js?v=${version}"></script>
+<script>initPage("${a.slug}.html");</script>
+</body>
+</html>
+`;
+}
+
 /* ---------- Разметка вопросов и ответов ---------- */
 
 /* Собираем FAQPage из живого текста страницы, а не из отдельного списка:
@@ -446,6 +588,8 @@ async function buildFaq() {
 async function buildSitemap(articles, today, calcPages = []) {
   const pages = [
     ["", "1.0", "weekly"],
+    ["dlya-biznesa.html", "0.95", "weekly"],
+    ["dlya-fizlic.html", "0.95", "weekly"],
     ["situations.html", "0.95", "weekly"],
     ["book.html", "0.9", "weekly"],
     ["docs.html", "0.9", "weekly"],
@@ -524,11 +668,24 @@ const main = async () => {
       calcPage(p, { R, hub, pages: CALC_PAGES, articles, version }), "utf8");
   }
 
+  /* Витрины по аудитории. Число шаблонов берём из самого файла
+     шаблонов: написанное руками разойдётся с содержанием. */
+  const tplSrc = (await readFile(join(HERE, "js", "templates.js"), "utf8"))
+    .replace(/^const /gm, "globalThis.");
+  (0, eval)(tplSrc);
+  const templates = Object.keys(globalThis.TEMPLATES).length;
+
+  for (const who of Object.keys(AUDIENCES)) {
+    await writeFile(join(HERE, `${AUDIENCES[who].slug}.html`),
+      audiencePage(who, { articles, hub, templates, version }), "utf8");
+  }
+
   const faq = await buildFaq();
   const urls = await buildSitemap(articles, new Date().toISOString().slice(0, 10), CALC_PAGES);
 
   console.log(`страниц статей: ${articles.length}`);
   console.log(`страниц калькуляторов: ${CALC_PAGES.length}`);
+  console.log(`витрин по аудитории: ${Object.keys(AUDIENCES).length}`);
   console.log(`вопросов в разметке FAQ: ${faq}`);
   console.log(`адресов в карте сайта: ${urls}`);
 };

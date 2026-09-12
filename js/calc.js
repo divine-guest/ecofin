@@ -1647,4 +1647,15 @@ async function saveCalc(kind) {
        "calcTaxPen", "calcGk", "calcWage", "calcFire", "calcUsnVat", "calcLoan", "calcWords"]
     : Object.values(CALC_FIELDS).filter(c => here(c.out)).map(c => c.run);
   first.forEach(run);
+
+  /* Ссылки вида calc.html#tab=6 приходят из раздела «Что делать», из
+     статей и из писем. Обработчика у них не было вовсе: страница молча
+     открывала первый калькулятор, и человек оказывался не там, куда его
+     послали. Поддерживаем оба вида: номер вкладки и имя расчёта. */
+  if (onHub && location.hash.length > 1) {
+    const byIndex = location.hash.match(/^#tab=(\d+)$/);
+    const tabs = [...document.querySelectorAll(".tabs .tab[data-panel]")];
+    if (byIndex && tabs[Number(byIndex[1])]) tabs[Number(byIndex[1])].click();
+    else openCalcKind(decodeURIComponent(location.hash.slice(1)));
+  }
 }

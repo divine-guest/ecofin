@@ -1337,6 +1337,44 @@ console.log("\n— Отдельные страницы калькуляторо�
   ok(!/function calcTax\s*\(/.test(hub), "код калькуляторов не встроен в calc.html");
 }
 
+console.log("\n— Витрины по аудитории —");
+{
+  /* Сайт рос разделами по виду инструмента, а человек приходит со своей
+     ролью. Витрины собираются из разметки audience.mjs, и главное здесь —
+     чтобы разметку нельзя было забыть: материал без метки не попадёт ни
+     на одну витрину и потеряется молча. */
+  const { AUDIENCES, ARTICLE_AUDIENCE, CALC_AUDIENCE } = await import("../audience.mjs");
+  const hub = read("../calc.html");
+  const sitemap = read("../sitemap.xml");
+  const panels = [...hub.matchAll(/data-panel="(\w+)"/g)].map(m => m[1]);
+
+  const noMark = ARTICLES.filter(a => !ARTICLE_AUDIENCE[a.title]).map(a => a.title);
+  ok(noMark.length === 0, "у каждой статьи указана аудитория", noMark.slice(0, 3).join("; "));
+  const extra = Object.keys(ARTICLE_AUDIENCE).filter(t => !ARTICLES.some(a => a.title === t));
+  ok(extra.length === 0, "в разметке нет статей, которых больше нет", extra.join("; "));
+
+  const noCalc = panels.filter(p => !CALC_AUDIENCE[p]);
+  ok(noCalc.length === 0, "у каждого калькулятора указана аудитория", noCalc.join("; "));
+
+  const values = [...Object.values(ARTICLE_AUDIENCE), ...Object.values(CALC_AUDIENCE)];
+  ok(values.every(v => ["biz", "person", "both"].includes(v)), "метки только из трёх допустимых");
+
+  for (const who of Object.keys(AUDIENCES)) {
+    const a = AUDIENCES[who];
+    const page = read(`../${a.slug}.html`);
+    ok(page.includes(`<link rel="canonical" href="https://ecofin26.ru/${a.slug}.html">`),
+       `${a.slug}: свой канонический адрес`);
+    ok((page.match(/<a /g) || []).length > 20, `${a.slug}: витрина не пустая`);
+    ok(!/undefined|NaN/.test(page), `${a.slug}: в тексте нет undefined`);
+    ok(sitemap.includes(`https://ecofin26.ru/${a.slug}.html`), `${a.slug}: есть в карте сайта`);
+    ok(read("../index.html").includes(`${a.slug}.html`), `${a.slug}: на главной есть вход по роли`);
+  }
+
+  /* Ссылки calc.html#tab=6 из раздела «Что делать» годами вели в никуда:
+     обработчика якоря не было. */
+  ok(/#tab=/.test(read("../js/calc.js")), "страница калькуляторов открывает вкладку из адреса");
+}
+
 console.log("\n— Восстановление доступа —");
 {
   /* Страница выросла из вопроса владельца: на других сервисах висит

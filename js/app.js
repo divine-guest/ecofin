@@ -765,6 +765,7 @@ function renderFooter() {
   f.innerHTML = `<div class="container">
     <p><b>ЭкоФин</b> — экосистема финансовой и юридической грамотности © 2026</p>
     <p class="footer-nav">
+      ${L("dlya-biznesa.html", "Для бизнеса")} · ${L("dlya-fizlic.html", "Для себя")} ·
       ${L("situations.html", "Что делать")} · ${L("book.html", "Моё дело")} ·
       ${L("docs.html", "Документы")} ·
       ${L("tools.html", "Инструменты")} · ${L("calc.html", "Калькуляторы")} ·

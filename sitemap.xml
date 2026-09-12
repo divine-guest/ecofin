@@ -8,6 +8,18 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://ecofin26.ru/dlya-biznesa.html</loc>
+    <lastmod>2026-09-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://ecofin26.ru/dlya-fizlic.html</loc>
+    <lastmod>2026-09-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
     <loc>https://ecofin26.ru/situations.html</loc>
     <lastmod>2026-09-12</lastmod>
     <changefreq>weekly</changefreq>
