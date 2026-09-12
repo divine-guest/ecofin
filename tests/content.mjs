@@ -1315,8 +1315,9 @@ console.log("\n— Отдельные страницы калькуляторо�
     ok(built, `calc/${p.slug}.html собрана`);
     if (!built) continue;
     const html = fs.readFileSync(file, "utf8");
-    ok(Boolean(outs[p.kind]) && html.includes(`id="${p.panel}"`) && html.includes(`id="${outs[p.kind]}"`),
-       `${p.slug}: на странице панель ${p.panel} и поле результата ${outs[p.kind]}`);
+    const out = p.out || outs[p.kind];
+    ok(Boolean(out) && html.includes(`id="${p.panel}"`) && html.includes(`id="${out}"`),
+       `${p.slug}: на странице панель ${p.panel} и поле результата ${out}`);
     ok(html.includes(`<link rel="canonical" href="https://ecofin26.ru/calc/${p.slug}.html">`),
        `${p.slug}: свой канонический адрес`);
     ok(/src="\.\.\/js\/rates\.js\?v=\d+"/.test(html) && /src="\.\.\/js\/calc\.js\?v=\d+"/.test(html),

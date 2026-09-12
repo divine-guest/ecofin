@@ -22,9 +22,9 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=212">
-<link rel="stylesheet" href="css/style.css?v=212">
-<link rel="stylesheet" href="css/calc.css?v=212">
+<link rel="stylesheet" href="css/fonts.css?v=213">
+<link rel="stylesheet" href="css/style.css?v=213">
+<link rel="stylesheet" href="css/calc.css?v=213">
 </head>
 <body>
 <main class="section tint-navy">
@@ -270,6 +270,7 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Дивиденды')">Скачать / печать</button>
         <button class="btn small secondary no-print" onclick="saveCalc('dividends')">Сохранить в кабинет</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/dividendy.html">Дивиденды: налог, порядок выплаты и когда распределять нельзя →</a></p>
     </div>
     <div class="tab-panel game-stage" id="calc5">
       <div class="calc-row">
@@ -558,6 +559,7 @@
         <div class="calc-result" id="lnOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Кредит: платёж и переплата')">Скачать / печать</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/kredit-i-pereplata.html">Кредитный калькулятор: платёж, переплата и досрочное погашение →</a></p>
     </div>
 
     <!-- ===== Сумма прописью =====
@@ -577,6 +579,7 @@
         </div>
         <div class="calc-result" id="wdOut"></div>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/summa-propisyu.html">Сумма прописью: как писать в договоре, счёте и расписке →</a></p>
     </div>
 
     <!-- ===== Взносы за работников =====
@@ -996,16 +999,16 @@
   <div class="container"><div id="partnersTax"></div></div>
 </main>
 
-<script src="js/qr.js?v=212"></script>
-<script src="js/partners.js?v=212"></script>
-<script src="js/rates.js?v=212"></script>
-<script src="js/themes.js?v=212"></script>
-<script src="js/api.js?v=212"></script>
-<script src="js/app.js?v=212"></script>
-<script src="js/progress.js?v=212"></script>
-<script src="js/favorites.js?v=212"></script>
-<script src="js/palette.js?v=212"></script>
-<script src="js/ai.js?v=212"></script>
+<script src="js/qr.js?v=213"></script>
+<script src="js/partners.js?v=213"></script>
+<script src="js/rates.js?v=213"></script>
+<script src="js/themes.js?v=213"></script>
+<script src="js/api.js?v=213"></script>
+<script src="js/app.js?v=213"></script>
+<script src="js/progress.js?v=213"></script>
+<script src="js/favorites.js?v=213"></script>
+<script src="js/palette.js?v=213"></script>
+<script src="js/ai.js?v=213"></script>
 <script>
 initPage("calc.html");
 
@@ -1015,6 +1018,6 @@ document.addEventListener("pf:ready", () => PARTNERS.render("partnersTax", "tax"
 </script>
 <!-- Код всех калькуляторов — в js/calc.js: тот же файл подключают
      отдельные страницы калькуляторов в папке calc/. -->
-<script src="js/calc.js?v=212"></script>
+<script src="js/calc.js?v=213"></script>
 </body>
 </html>

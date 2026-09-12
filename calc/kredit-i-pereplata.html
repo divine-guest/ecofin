@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Кредитный калькулятор 2026: аннуитетный платёж и досрочное погашение — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="Ежемесячный платёж по кредиту, полная переплата и что даёт досрочное погашение: сколько месяцев и денег экономит лишняя сумма каждый месяц.">
+<link rel="canonical" href="https://ecofin26.ru/calc/kredit-i-pereplata.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Кредитный калькулятор 2026: аннуитетный платёж и досрочное погашение">
+<meta property="og:description" content="Ежемесячный платёж по кредиту, полная переплата и что даёт досрочное погашение: сколько месяцев и денег экономит лишняя сумма каждый месяц.">
+<meta property="og:url" content="https://ecofin26.ru/calc/kredit-i-pereplata.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Кредитный калькулятор: платёж и переплата","url":"https://ecofin26.ru/calc/kredit-i-pereplata.html","description":"Ежемесячный платёж по кредиту, полная переплата и что даёт досрочное погашение: сколько месяцев и денег экономит лишняя сумма каждый месяц.","applicationCategory":"FinanceApplication","operatingSystem":"Любая","inLanguage":"ru-RU","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"},"publisher":{"@type":"Organization","name":"ЭкоФин","url":"https://ecofin26.ru/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://ecofin26.ru/"},{"@type":"ListItem","position":2,"name":"Калькуляторы","item":"https://ecofin26.ru/calc.html"},{"@type":"ListItem","position":3,"name":"Кредитный калькулятор: платёж и переплата","item":"https://ecofin26.ru/calc/kredit-i-pereplata.html"}]}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=213">
+<link rel="stylesheet" href="../css/style.css?v=213">
+<link rel="stylesheet" href="../css/calc.css?v=213">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>Счета и кредиты</span>
+    </nav>
+    <div class="section-title">
+      <h1>Кредитный калькулятор: платёж и переплата</h1>
+      <div class="line"></div>
+      <p class="subtitle">Введите сумму, ставку и срок — калькулятор покажет платёж, переплату и эффект от досрочного погашения.</p>
+    </div>
+
+    <div class="tab-panel active game-stage" id="calcLoan">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="lnSum">Сумма кредита, ₽</label>
+            <input type="number" id="lnSum" value="1000000" oninput="calcLoan()"></div>
+          <div class="form-group"><label for="lnRate">Ставка, % годовых</label>
+            <input type="number" step="0.1" id="lnRate" value="22" oninput="calcLoan()"></div>
+          <div class="form-group"><label for="lnMonths">Срок, месяцев</label>
+            <input type="number" id="lnMonths" value="36" oninput="calcLoan()"></div>
+          <div class="form-group"><label for="lnExtra">Досрочно вносить в месяц, ₽</label>
+            <input type="number" id="lnExtra" value="0" oninput="calcLoan()">
+            <p class="hint">Сокращает срок: видно, сколько сэкономит каждая
+              лишняя тысяча.</p></div>
+        </div>
+        <div class="calc-result" id="lnOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Кредит: платёж и переплата')">Скачать / печать</button>
+      </div>
+    </div>
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      <p>Платёж считается по аннуитетной формуле: каждый месяц одна и та же сумма, но внутри неё меняется соотношение. В начале почти всё уходит на проценты, тело долга гасится медленно — поэтому первые годы остаток почти не уменьшается.</p>
+      <p>Переплата — это разница между всеми платежами и суммой кредита. Она растёт не пропорционально сроку, а быстрее: удвоение срока увеличивает переплату больше чем вдвое.</p>
+      <p>Досрочное погашение работает только при уменьшении СРОКА, а не платежа. При уменьшении платежа срок остаётся, и проценты продолжают капать те же годы. Банк по умолчанию часто предлагает второй вариант — выбирать нужно осознанно.</p>
+      <p>Любой кредит можно погасить досрочно, уведомив банк за 30 дней (ст. 11 Федерального закона № 353-ФЗ). Договором срок может быть сокращён, но не увеличен, а запрет на досрочное погашение ничтожен.</p>
+      <p>Полная стоимость кредита (ПСК) указывается в рамке в правом верхнем углу договора и включает не только проценты, но и обязательные платежи — страховку, если без неё ставка выше.</p>
+      <p>От навязанной страховки можно отказаться в течение 14 календарных дней и вернуть деньги. Но если ставка была снижена именно за страховку, банк вправе поднять её обратно — считать нужно оба варианта.</p>
+      <p>Проценты по ипотеке дают право на вычет: до 3 000 000 ₽ уплаченных процентов, возврат до 390 000 ₽.</p>
+      <h2>Пример</h2>
+      <p>Кредит 3 000 000 ₽ под 24% годовых:</p>
+      <table class="calc-table calc-example">
+        <tr><td>Платёж на 5 лет</td><td>86 304 ₽</td></tr>
+        <tr><td>Переплата за 5 лет</td><td>2 178 234 ₽</td></tr>
+        <tr><td>Платёж на 3 года</td><td>117 699 ₽</td></tr>
+        <tr><td>Переплата за 3 года</td><td>1 237 148 ₽</td></tr>
+        <tr><td>Экономия при коротком сроке</td><td>941 086 ₽</td></tr>
+      </table>
+      <p>Разница в платеже — 31 395 ₽ в месяц, а разница в переплате — 941 086 ₽. Это и есть цена растянутого срока.</p>
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul><li>Гасить досрочно с уменьшением платежа: экономит гораздо меньше, чем сокращение срока</li><li>Смотреть на ставку, а не на полную стоимость кредита в рамке договора</li><li>Считать переплату «на глаз» по ставке: аннуитет даёт другую сумму</li><li>Отказываться от страховки, не проверив, вырастет ли ставка</li></ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>ст. 809, 810 ГК РФ — проценты и досрочный возврат · ст. 6 Федерального закона № 353-ФЗ — полная стоимость кредита · ст. 11 Федерального закона № 353-ФЗ — досрочное погашение</p></div>
+      <p class="kb-checked">Ставки сверены 09.09.2026. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      <p style="margin-top:8px">Подробный разбор: <a href="../st/lichnye-finansy-s-chego-nachat-poryadok.html">Личные финансы: с чего начать порядок</a></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn small secondary" href="nalog-s-vklada.html">Калькулятор налога с процентов по вкладам</a>
+        <a class="btn small secondary" href="nalogovye-vychety.html">Калькулятор налоговых вычетов</a>
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=213"></script>
+<script src="../js/themes.js?v=213"></script>
+<script src="../js/api.js?v=213"></script>
+<script src="../js/app.js?v=213"></script>
+<script src="../js/progress.js?v=213"></script>
+<script src="../js/palette.js?v=213"></script>
+<script src="../js/ai.js?v=213"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/favorites.js?v=213"></script>
+<script src="../js/calc.js?v=213"></script>
+</body>
+</html>
