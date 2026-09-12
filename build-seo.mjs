@@ -681,12 +681,30 @@ const main = async () => {
       audiencePage(who, { articles, hub, templates, version }), "utf8");
   }
 
+  /* Копия разметки аудитории для браузера. Сам audience.mjs наружу не
+     отдаётся: nginx запрещает .mjs, да и незачем — странице нужен
+     только справочник «заголовок → кому». Собирается здесь, чтобы
+     копия не разошлась с оригиналом. */
+  const audienceJs = `/* СОБРАНО АВТОМАТИЧЕСКИ из audience.mjs — руками не править.
+   Пересобрать: node build-seo.mjs
+
+   Нужен страницам, которые фильтруют содержание по аудитории:
+   база знаний, а дальше документы и инструменты. */
+
+const AUDIENCE = ${JSON.stringify({ articles: ARTICLE_AUDIENCE, calcs: CALC_AUDIENCE }, null, 2)};
+
+/* Материал показывается, если помечен этой аудиторией или «обоими». */
+const forAudience = (mark, who) => !who || mark === "both" || mark === who;
+`;
+  await writeFile(join(HERE, "js", "audience.js"), audienceJs, "utf8");
+
   const faq = await buildFaq();
   const urls = await buildSitemap(articles, new Date().toISOString().slice(0, 10), CALC_PAGES);
 
   console.log(`страниц статей: ${articles.length}`);
   console.log(`страниц калькуляторов: ${CALC_PAGES.length}`);
   console.log(`витрин по аудитории: ${Object.keys(AUDIENCES).length}`);
+  console.log(`разметка для браузера: js/audience.js`);
   console.log(`вопросов в разметке FAQ: ${faq}`);
   console.log(`адресов в карте сайта: ${urls}`);
 };

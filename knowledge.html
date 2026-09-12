@@ -22,8 +22,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=201">
-<link rel="stylesheet" href="css/style.css?v=201">
+<link rel="stylesheet" href="css/fonts.css?v=202">
+<link rel="stylesheet" href="css/style.css?v=202">
 </head>
 <body>
 <main class="section tint-navy">
@@ -44,6 +44,11 @@
       <input type="search" id="kbSearch" aria-label="Поиск по базе знаний" placeholder="Найти: патент, увольнение, блокировка счёта…"
              oninput="renderArticles(this.value)" style="margin-bottom:12px">
       <!-- Фильтр по областям: полсотни статей одним списком читаются плохо. -->
+      <!-- Кому: разметка приходит из js/audience.js, собранного из
+           audience.mjs. По умолчанию встаёт по статусу из профиля —
+           человек, указавший при регистрации «ИП», не должен листать
+           статьи про алименты, чтобы найти свои взносы. -->
+      <div class="qa-topics" id="kbWho" style="margin-bottom:10px"></div>
       <div class="qa-topics" id="kbAreas" style="margin-bottom:18px"></div>
       <div id="articleList"></div>
       <div class="article-full card" id="articleFull" style="margin-top:16px"></div>
@@ -57,15 +62,16 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=201"></script>
-<script src="js/rates.js?v=201"></script>
-<script src="js/api.js?v=201"></script>
-<script src="js/app.js?v=201"></script>
-<script src="js/progress.js?v=201"></script>
-<script src="js/palette.js?v=201"></script>
-<script src="js/ai.js?v=201"></script>
-<script src="js/competencies.js?v=201"></script>
-<script src="js/knowledge.js?v=201"></script>
+<script src="js/themes.js?v=202"></script>
+<script src="js/rates.js?v=202"></script>
+<script src="js/api.js?v=202"></script>
+<script src="js/app.js?v=202"></script>
+<script src="js/progress.js?v=202"></script>
+<script src="js/palette.js?v=202"></script>
+<script src="js/ai.js?v=202"></script>
+<script src="js/competencies.js?v=202"></script>
+<script src="js/audience.js?v=202"></script>
+<script src="js/knowledge.js?v=202"></script>
 <script>
 initPage("knowledge.html");
 
@@ -77,6 +83,36 @@ function switchKb(i, btn) {
 
 /* --- Статьи --- */
 let kbArea = "";
+
+/* Кому показывать: "" — всё, "person" — для себя, "biz" — для бизнеса.
+
+   Начальное значение берём из профиля: статус человек уже называл при
+   регистрации, спрашивать второй раз незачем. Выбор руками запоминаем
+   в браузере — он важнее профиля, потому что сделан позже и осознанно. */
+const KB_WHO_KEY = "pf_kb_who";
+const WHO_BY_STATUS = { ip: "biz", ooo: "biz", self: "biz", buh: "biz", start: "biz", person: "person" };
+
+let kbWho = (() => {
+  const saved = localStorage.getItem(KB_WHO_KEY);
+  if (saved !== null) return saved;
+  const prefs = (typeof PF !== "undefined" && PF.prefs) ? PF.prefs() : {};
+  return WHO_BY_STATUS[prefs.status] || "";
+})();
+
+function renderWho() {
+  const box = document.getElementById("kbWho");
+  if (!box || typeof AUDIENCE === "undefined") return;
+  box.innerHTML = [["", "Всё"], ["person", "Для себя"], ["biz", "Для бизнеса"]]
+    .map(([v, label]) => `<button class="qa-chip${kbWho === v ? " on" : ""}" data-who="${v}"
+      onclick="pickWho('${v}')">${label}</button>`).join("");
+}
+
+function pickWho(v) {
+  kbWho = v;
+  localStorage.setItem(KB_WHO_KEY, v);
+  renderWho();
+  renderArticles(document.getElementById("kbSearch")?.value || "");
+}
 
 /* Фильтр по областям: полсотни статей одним списком читаются плохо. */
 function renderAreas() {
@@ -98,9 +134,14 @@ function pickArea(a) {
 
 function renderArticles(filter = "") {
   renderAreas();
+  renderWho();
   const f = filter.toLowerCase();
   const list = ARTICLES.map((a, i) => ({ ...a, i }))
     .filter(a => !kbArea || a.area === kbArea)
+    /* Разметка может ещё не приехать (файл собирается сборкой) — тогда
+       не фильтруем вовсе: лучше показать всё, чем пустой список. */
+    .filter(a => typeof AUDIENCE === "undefined"
+      || forAudience(AUDIENCE.articles[a.title] || "both", kbWho))
     /* Ищем и по шагам с ошибками: человек часто помнит формулировку ошибки,
        а не заголовок статьи. */
     .filter(a => !f || (a.title + a.code + (a.summary || "") + a.body +
@@ -118,7 +159,8 @@ function renderArticles(filter = "") {
         <b>${escapeHtml(a.title)}</b> <span class="badge">${escapeHtml(a.code)}</span>
         <div class="meta">${escapeHtml(a.summary || a.body.slice(0, 120) + "…")}</div>
       </a>`).join("")
-    : `<p style="color:var(--muted)">Ничего не найдено. Попробуйте другое слово или снимите фильтр по теме.</p>`;
+    : `<p style="color:var(--muted)">Ничего не найдено. Попробуйте другое слово, снимите фильтр
+        по теме или переключите «${kbWho === "biz" ? "Для бизнеса" : "Для себя"}» на «Всё».</p>`;
 }
 
 /* Блоки статьи, которых раньше не было: что сделать, на чём попадаются,

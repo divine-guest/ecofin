@@ -1397,6 +1397,16 @@ console.log("\n— Витрины по аудитории —");
     ok(read("../index.html").includes(`${a.slug}.html`), `${a.slug}: на главной есть вход по роли`);
   }
 
+  /* Копия разметки для браузера обязана совпадать с оригиналом: иначе
+     на витрине статья есть, а в фильтре базы знаний её нет. */
+  const browserCopy = read("../js/audience.js");
+  const inCopy = (browserCopy.match(/":\s*"(biz|person|both)"/g) || []).length;
+  ok(inCopy === Object.keys(ARTICLE_AUDIENCE).length + Object.keys(CALC_AUDIENCE).length,
+     `разметка для браузера совпадает с audience.mjs: ${inCopy}`);
+  ok(read("../knowledge.html").includes("audience.js"),
+     "база знаний подключает разметку аудитории");
+  ok(/pickWho/.test(read("../knowledge.html")), "в базе знаний есть переключатель «для себя / для бизнеса»");
+
   /* Ссылки calc.html#tab=6 из раздела «Что делать» годами вели в никуда:
      обработчика якоря не было. */
   ok(/#tab=/.test(read("../js/calc.js")), "страница калькуляторов открывает вкладку из адреса");
