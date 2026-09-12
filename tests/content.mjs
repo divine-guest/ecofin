@@ -1337,6 +1337,33 @@ console.log("\n— Отдельные страницы калькуляторо�
   ok(!/function calcTax\s*\(/.test(hub), "код калькуляторов не встроен в calc.html");
 }
 
+console.log("\n— Почта при регистрации и избранное —");
+{
+  /* Письма сервиса не должны уходить за границу: адрес человека — его
+     персональные данные, а трансграничная передача заявлена только по
+     одному направлению и только для языковой модели. */
+  const { ruEmail } = await import("../worker/src/lib.js");
+  for (const e of ["ivan@mail.ru", "ivan@yandex.ru", "ivan@bk.ru", "buh@firma.ru",
+                   "ivan@vk.com", "ivan@rambler.ru", "ivan@firma.su"])
+    ok(ruEmail(e), `годится для регистрации: ${e}`);
+  for (const e of ["ivan@gmail.com", "ivan@outlook.com", "ivan@proton.me",
+                   "ivan@icloud.com", "ivan@yahoo.com", "ivan"])
+    ok(!ruEmail(e), `не годится: ${e}`);
+
+  /* Избранное хранится вместе с прогрессом, иначе отмеченное на
+     телефоне не появится на компьютере. */
+  const fav = read("../js/favorites.js");
+  ok(/favorites: \d+/.test(read("../worker/src/progress.js")),
+     "сервер принимает избранное как вид прогресса");
+  ok(/favorites: u =>/.test(read("../js/progress.js")),
+     "у избранного есть местная копия в браузере");
+  ok(/adopt\(\)/.test(fav), "гостевое избранное переносится в аккаунт при входе");
+  for (const page of ["calc.html", "tools.html", "dashboard.html"])
+    ok(read("../" + page).includes("favorites.js"), `избранное подключено: ${page}`);
+  ok(read("../dashboard.html").includes('data-tab="favorites"'),
+     "в кабинете есть раздел избранного");
+}
+
 console.log("\n— Витрины по аудитории —");
 {
   /* Сайт рос разделами по виду инструмента, а человек приходит со своей

@@ -29,6 +29,7 @@ const PROGRESS = {
     read:     u => "pf_read_" + u,
     expenses: u => "pf_exp_" + u,
     prefs:    u => "pf_prefs_" + u,
+    favorites: u => "pf_fav_" + u,
   },
 
   pulled: false,

@@ -23,8 +23,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=199">
-<link rel="stylesheet" href="css/style.css?v=199">
+<link rel="stylesheet" href="css/fonts.css?v=201">
+<link rel="stylesheet" href="css/style.css?v=201">
 </head>
 <body>
 <main class="section">
@@ -36,17 +36,18 @@
   </div>
 </main>
 
-<script src="js/rates.js?v=199"></script>
-<script src="js/book.js?v=199"></script>
-<script src="js/themes.js?v=199"></script>
-<script src="js/api.js?v=199"></script>
-<script src="js/app.js?v=199"></script>
-<script src="js/progress.js?v=199"></script>
-<script src="js/palette.js?v=199"></script>
-<script src="js/ai.js?v=199"></script>
-<script src="js/knowledge.js?v=199"></script>
-<script src="js/competencies.js?v=199"></script>
-<script src="js/courses.js?v=199"></script>
+<script src="js/rates.js?v=201"></script>
+<script src="js/book.js?v=201"></script>
+<script src="js/themes.js?v=201"></script>
+<script src="js/api.js?v=201"></script>
+<script src="js/app.js?v=201"></script>
+<script src="js/progress.js?v=201"></script>
+<script src="js/favorites.js?v=201"></script>
+<script src="js/palette.js?v=201"></script>
+<script src="js/ai.js?v=201"></script>
+<script src="js/knowledge.js?v=201"></script>
+<script src="js/competencies.js?v=201"></script>
+<script src="js/courses.js?v=201"></script>
 <script>
 initPage("dashboard.html");
 
@@ -333,6 +334,16 @@ function renderCabinet() {
       <div id="todayBody" class="today-body"><span class="hint">Смотрим…</span></div>
     </div>
 
+    <!-- Избранное: то, что человек отметил звездой на калькуляторах и
+         инструментах. Здесь оно собрано целиком — на самих страницах
+         видна только первая строка ряда. -->
+    <div class="card" data-tab="favorites" style="margin-bottom:28px">
+      <h3>Избранное</h3>
+      <div id="favList"><p class="hint">Загружаем…</p></div>
+      <p class="hint" style="margin-top:12px">Звезда стоит на каждом калькуляторе и
+        инструменте. Отмеченное встаёт первым в ряду вкладок и попадает сюда.</p>
+    </div>
+
     <div class="grid cols-4" data-tab="overview" style="margin-bottom:28px">
       <div class="card"><div class="stat-value">${hist.length}</div><div class="stat-label">действий всего</div></div>
       <div class="card"><div class="stat-value">${COMP.index()}%</div><div class="stat-label">индекс грамотности</div></div>
@@ -601,6 +612,7 @@ const CABINET = {
   tabs: [
     ["overview", "Обзор"],
     ["tasks", "Дела"],
+    ["favorites", "Избранное"],
     ["learn", "Обучение"],
     ["assistant", "Помощник"],
     ["account", "Аккаунт"],
@@ -1437,6 +1449,14 @@ function refillCabinet() {
   HISTORY.load();
   NOTES.load();
   SUMMARY.load();
+
+  /* Избранное рисуем после кабинета: его разметка появляется там. И
+     перерисовываем, когда прогресс приехал с сервера (на другом
+     устройстве отметили) или когда звезду нажали в этой же вкладке. */
+  const drawFav = () => FAV.renderList(document.getElementById("favList"));
+  drawFav();
+  document.addEventListener("pf:progress", drawFav);
+  document.addEventListener("pf:favorites", drawFav);
 }
 
 /* Приехала «Копилка» и уроки с другого устройства — показываем их сразу,

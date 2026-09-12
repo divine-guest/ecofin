@@ -400,6 +400,7 @@ function calcPage(p, { R, hub, pages, articles, version }) {
 /* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
 initPage("calc.html");
 </script>
+<script src="../js/favorites.js?v=${version}"></script>
 <script src="../js/calc.js?v=${version}"></script>
 </body>
 </html>

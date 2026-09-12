@@ -1,7 +1,7 @@
 /* ЭкоФин — регистрация, вход, сессии, профиль. */
 import {
   CFG, json, fail, hashPassword, verifyPassword, newSessionToken, sha256,
-  bearer, now, normEmail, validEmail, publicUser, normalizeAvatar,
+  bearer, now, normEmail, validEmail, ruEmail, publicUser, normalizeAvatar,
 } from "./lib.js";
 import { attachReferral } from "./referral.js";
 import { penalize, forgive } from "./ratelimit.js";
@@ -71,6 +71,11 @@ export async function register(request, env, origin) {
 
   if (name.length < 2) return fail(env, origin, "Укажите имя (минимум 2 символа)");
   if (!validEmail(email)) return fail(env, origin, "Некорректный email");
+  /* Только российская почта: письма сервиса не должны уходить за
+     границу. Подробности — у ruEmail в lib.js. */
+  if (!ruEmail(email))
+    return fail(env, origin, "Нужна российская почта: mail.ru, Яндекс, Рамблер, VK или ваш домен в зоне .ru. " +
+      "Письма сервиса не должны уходить за границу. Если у вас корпоративная почта на другом домене — напишите нам, заведём аккаунт вручную");
   if (password.length < 8) return fail(env, origin, "Пароль минимум 8 символов");
 
   /* Согласие на обработку данных проверяем здесь, а не только в форме.

@@ -1655,7 +1655,14 @@ async function saveCalc(kind) {
   if (onHub && location.hash.length > 1) {
     const byIndex = location.hash.match(/^#tab=(\d+)$/);
     const tabs = [...document.querySelectorAll(".tabs .tab[data-panel]")];
+    const name = decodeURIComponent(location.hash.slice(1));
+    const byPanel = document.querySelector(`.tabs .tab[data-panel="${name}"]`);
     if (byIndex && tabs[Number(byIndex[1])]) tabs[Number(byIndex[1])].click();
-    else openCalcKind(decodeURIComponent(location.hash.slice(1)));
+    else if (byPanel) byPanel.click();
+    else openCalcKind(name);
   }
+
+  /* Звёзды на панелях и порядок вкладок: отмеченное идёт первым.
+     Ставим после первого расчёта — до него панели ещё пустые. */
+  if (typeof FAV !== "undefined") FAV.mount();
 }
