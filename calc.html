@@ -22,9 +22,9 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=210">
-<link rel="stylesheet" href="css/style.css?v=210">
-<link rel="stylesheet" href="css/calc.css?v=210">
+<link rel="stylesheet" href="css/fonts.css?v=211">
+<link rel="stylesheet" href="css/style.css?v=211">
+<link rel="stylesheet" href="css/calc.css?v=211">
 </head>
 <body>
 <main class="section tint-navy">
@@ -205,6 +205,7 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Пеня и неустойка')">Скачать / печать</button>
         <button class="btn small secondary no-print" onclick="saveCalc('penalty')">Сохранить в кабинет</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/penya-po-dogovoru.html">Как считается неустойка по договору и когда её снижает суд →</a></p>
     </div>
     <div class="tab-panel game-stage" id="calcFee">
       <div class="calc-row">
@@ -464,6 +465,7 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Проценты по ст. 395 ГК РФ')">Скачать / печать</button>
         <button class="btn small secondary no-print" onclick="saveCalc('gk395')">Сохранить в кабинет</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/procenty-395-gk.html">Проценты по ст. 395 ГК: когда положены и как считаются →</a></p>
     </div>
 
     <!-- ===== Компенсация за задержку зарплаты, ст. 236 ТК РФ =====
@@ -533,6 +535,7 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'НДС на УСН')">Скачать / печать</button>
         <button class="btn small secondary no-print" onclick="saveCalc('usnvat')">Сохранить в кабинет</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/nds-na-usn.html">НДС на упрощёнке: с какого дохода, какие ставки и что выгоднее →</a></p>
     </div>
 
     <!-- ===== Кредит: платёж и переплата =====
@@ -840,6 +843,7 @@
         <div class="calc-result" id="ptOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налог на квартиру')">Скачать / печать</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/nalog-na-kvartiru.html">Как считается налог на квартиру: вычет по метрам, ставки и льготы →</a></p>
     </div>
 
     <!-- 30. Транспортный налог -->
@@ -861,6 +865,7 @@
         <div class="calc-result" id="trOut"></div>
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Транспортный налог')">Скачать / печать</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/transportnyy-nalog.html">Транспортный налог: ставки по мощности, региональная вилка и повышающий коэффициент →</a></p>
     </div>
 
     <!-- ===== 31. Маркетплейс: юнит-экономика =====
@@ -986,16 +991,16 @@
   <div class="container"><div id="partnersTax"></div></div>
 </main>
 
-<script src="js/qr.js?v=210"></script>
-<script src="js/partners.js?v=210"></script>
-<script src="js/rates.js?v=210"></script>
-<script src="js/themes.js?v=210"></script>
-<script src="js/api.js?v=210"></script>
-<script src="js/app.js?v=210"></script>
-<script src="js/progress.js?v=210"></script>
-<script src="js/favorites.js?v=210"></script>
-<script src="js/palette.js?v=210"></script>
-<script src="js/ai.js?v=210"></script>
+<script src="js/qr.js?v=211"></script>
+<script src="js/partners.js?v=211"></script>
+<script src="js/rates.js?v=211"></script>
+<script src="js/themes.js?v=211"></script>
+<script src="js/api.js?v=211"></script>
+<script src="js/app.js?v=211"></script>
+<script src="js/progress.js?v=211"></script>
+<script src="js/favorites.js?v=211"></script>
+<script src="js/palette.js?v=211"></script>
+<script src="js/ai.js?v=211"></script>
 <script>
 initPage("calc.html");
 
@@ -1005,6 +1010,6 @@ document.addEventListener("pf:ready", () => PARTNERS.render("partnersTax", "tax"
 </script>
 <!-- Код всех калькуляторов — в js/calc.js: тот же файл подключают
      отдельные страницы калькуляторов в папке calc/. -->
-<script src="js/calc.js?v=210"></script>
+<script src="js/calc.js?v=211"></script>
 </body>
 </html>

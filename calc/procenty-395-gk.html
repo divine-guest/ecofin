@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Проценты по ст. 395 ГК РФ 2026: расчёт по ключевой ставке — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="Проценты за пользование чужими денежными средствами: ключевая ставка за каждый день просрочки, когда их можно требовать и чем они отличаются от неустойки.">
+<link rel="canonical" href="https://ecofin26.ru/calc/procenty-395-gk.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Проценты по ст. 395 ГК РФ 2026: расчёт по ключевой ставке">
+<meta property="og:description" content="Проценты за пользование чужими денежными средствами: ключевая ставка за каждый день просрочки, когда их можно требовать и чем они отличаются от неустойки.">
+<meta property="og:url" content="https://ecofin26.ru/calc/procenty-395-gk.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Калькулятор процентов по ст. 395 ГК РФ","url":"https://ecofin26.ru/calc/procenty-395-gk.html","description":"Проценты за пользование чужими денежными средствами: ключевая ставка за каждый день просрочки, когда их можно требовать и чем они отличаются от неустойки.","applicationCategory":"FinanceApplication","operatingSystem":"Любая","inLanguage":"ru-RU","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"},"publisher":{"@type":"Organization","name":"ЭкоФин","url":"https://ecofin26.ru/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://ecofin26.ru/"},{"@type":"ListItem","position":2,"name":"Калькуляторы","item":"https://ecofin26.ru/calc.html"},{"@type":"ListItem","position":3,"name":"Калькулятор процентов по ст. 395 ГК РФ","item":"https://ecofin26.ru/calc/procenty-395-gk.html"}]}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=211">
+<link rel="stylesheet" href="../css/style.css?v=211">
+<link rel="stylesheet" href="../css/calc.css?v=211">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>Долги и суды</span>
+    </nav>
+    <div class="section-title">
+      <h1>Калькулятор процентов по ст. 395 ГК РФ</h1>
+      <div class="line"></div>
+      <p class="subtitle">Введите сумму долга и число дней просрочки — калькулятор посчитает проценты по ключевой ставке.</p>
+    </div>
+
+    <div class="tab-panel active game-stage" id="calcGk">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="gkSum">Сумма долга, ₽</label>
+            <input type="number" id="gkSum" value="200000" oninput="calcGk()"></div>
+          <div class="form-group"><label for="gkDays">Дней просрочки</label>
+            <input type="number" id="gkDays" value="90" oninput="calcGk()"></div>
+          <div class="form-group"><label for="gkRate">Ключевая ставка ЦБ, % годовых</label>
+            <input type="number" step="0.25" id="gkRate" oninput="calcGk()">
+            <p class="hint rate-hint">Если ставка за период менялась, считайте по частям —
+              <a href="https://cbr.ru/hd_base/KeyRate/" target="_blank" rel="noopener">история ставок на cbr.ru</a>.</p></div>
+        </div>
+        <div class="calc-result" id="gkOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Проценты по ст. 395 ГК РФ')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('gk395')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      <p>Проценты считаются по ключевой ставке Банка России (сейчас 14%) за каждый день просрочки: сумма × ставка × дни ÷ 365.</p>
+      <p>Их можно требовать всегда, когда должник пользуется вашими деньгами: не заплатил по договору, не вернул аванс, не исполнил решение суда, получил неосновательное обогащение. Отдельного условия в договоре для этого не нужно.</p>
+      <p>Если в договоре есть неустойка за то же нарушение, проценты по ст. 395 не начисляются: взыскивается что-то одно. Исключение — прямая оговорка в договоре о том, что взыскивается и то, и другое.</p>
+      <p>Ставка берётся та, что действовала в соответствующие периоды просрочки. Если ключевая ставка менялась, расчёт делится на части — по каждому периоду своя ставка.</p>
+      <p>Проценты начисляются со дня, следующего за последним днём срока оплаты, и по день фактического возврата включительно. В иске так и просят: «по день фактического исполнения» — тогда сумма считается судебным приставом, а не замирает на дате решения.</p>
+      <p>Уменьшить проценты по ст. 333 ГК почти невозможно: суд снижает их только ниже ключевой ставки в исключительных случаях. Договорную неустойку снижают куда чаще.</p>
+      <h2>Пример</h2>
+      <p>Долг 300 000 ₽, ключевая ставка 14%:</p>
+      <table class="calc-table calc-example">
+        <tr><td>За 30 дней</td><td>3 452 ₽</td></tr>
+        <tr><td>За полгода</td><td>20 712 ₽</td></tr>
+        <tr><td>За год</td><td>42 000 ₽</td></tr>
+        <tr><td>Всего к взысканию через год</td><td>342 000 ₽</td></tr>
+      </table>
+      <p>Проценты входят в цену иска, а значит увеличивают госпошлину. Зато они же компенсируют время, которое долг провисел без движения.</p>
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul><li>Требовать одновременно и договорную неустойку, и проценты по ст. 395 за одно нарушение</li><li>Считать по одной ставке за весь период, когда ключевая ставка менялась</li><li>Останавливать расчёт на дате подачи иска вместо «по день фактического исполнения»</li><li>Начинать отсчёт с даты выставления счёта, а не со следующего дня после срока оплаты</li></ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>ст. 395 ГК РФ — проценты за пользование чужими денежными средствами · ст. 317.1 ГК РФ — законные проценты по денежному обязательству · постановление Пленума ВС РФ от 24.03.2016 № 7 — применение ст. 395</p></div>
+      <p class="kb-checked">Ставки сверены 09.09.2026. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      <p style="margin-top:8px">Подробный разбор: <a href="../st/neustoyka-penya-shtraf-v-chem-raznica.html">Неустойка, пеня, штраф: в чём разница</a></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn small secondary" href="penya-po-dogovoru.html">Калькулятор неустойки и пени по договору</a>
+        <a class="btn small secondary" href="gosposhlina.html">Калькулятор госпошлины в суд</a>
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=211"></script>
+<script src="../js/themes.js?v=211"></script>
+<script src="../js/api.js?v=211"></script>
+<script src="../js/app.js?v=211"></script>
+<script src="../js/progress.js?v=211"></script>
+<script src="../js/palette.js?v=211"></script>
+<script src="../js/ai.js?v=211"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/favorites.js?v=211"></script>
+<script src="../js/calc.js?v=211"></script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Налог на квартиру 2026: кадастровая стоимость и вычет по метрам — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="Налог на имущество физлиц: вычет 20 м² для квартиры, 10 для комнаты и 50 для дома, доля в праве, месяцы владения и льгота многодетным.">
+<link rel="canonical" href="https://ecofin26.ru/calc/nalog-na-kvartiru.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Налог на квартиру 2026: кадастровая стоимость и вычет по метрам">
+<meta property="og:description" content="Налог на имущество физлиц: вычет 20 м² для квартиры, 10 для комнаты и 50 для дома, доля в праве, месяцы владения и льгота многодетным.">
+<meta property="og:url" content="https://ecofin26.ru/calc/nalog-na-kvartiru.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Калькулятор налога на квартиру","url":"https://ecofin26.ru/calc/nalog-na-kvartiru.html","description":"Налог на имущество физлиц: вычет 20 м² для квартиры, 10 для комнаты и 50 для дома, доля в праве, месяцы владения и льгота многодетным.","applicationCategory":"FinanceApplication","operatingSystem":"Любая","inLanguage":"ru-RU","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"},"publisher":{"@type":"Organization","name":"ЭкоФин","url":"https://ecofin26.ru/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://ecofin26.ru/"},{"@type":"ListItem","position":2,"name":"Калькуляторы","item":"https://ecofin26.ru/calc.html"},{"@type":"ListItem","position":3,"name":"Калькулятор налога на квартиру","item":"https://ecofin26.ru/calc/nalog-na-kvartiru.html"}]}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=211">
+<link rel="stylesheet" href="../css/style.css?v=211">
+<link rel="stylesheet" href="../css/calc.css?v=211">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>Налоги</span>
+    </nav>
+    <div class="section-title">
+      <h1>Калькулятор налога на квартиру</h1>
+      <div class="line"></div>
+      <p class="subtitle">Введите кадастровую стоимость и площадь — калькулятор вычтет необлагаемые метры и посчитает налог.</p>
+    </div>
+
+    <div class="tab-panel active game-stage" id="calcPropTax">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="ptKind">Что за объект</label>
+            <select id="ptKind" onchange="calcPropTax()">
+              <option value="flat">Квартира или часть дома</option>
+              <option value="room">Комната или часть квартиры</option>
+              <option value="house">Жилой дом</option>
+            </select></div>
+          <div class="form-group"><label for="ptCad">Кадастровая стоимость, ₽</label>
+            <input type="number" id="ptCad" value="6000000" min="0" oninput="calcPropTax()">
+            <p class="hint">Не рыночная и не та, за которую купили. Смотрят
+              в личном кабинете ФНС или на публичной кадастровой карте.</p></div>
+          <div class="form-group"><label for="ptArea">Площадь, м²</label>
+            <input type="number" id="ptArea" value="60" min="0" step="0.1" oninput="calcPropTax()"></div>
+          <div class="form-group"><label for="ptShare">Ваша доля</label>
+            <select id="ptShare" onchange="calcPropTax()">
+              <option value="1">Целиком моё</option>
+              <option value="0.5">Половина</option>
+              <option value="0.3333">Треть</option>
+              <option value="0.25">Четверть</option>
+            </select></div>
+          <div class="form-group"><label for="ptKids">Детей (для многодетных)</label>
+            <input type="number" id="ptKids" value="0" min="0" max="10" oninput="calcPropTax()">
+            <p class="hint">С третьего ребёнка положен дополнительный вычет
+              за каждого — ст. 403 п. 6.1 НК.</p></div>
+        </div>
+        <div class="calc-result" id="ptOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налог на квартиру')">Скачать / печать</button>
+      </div>
+    </div>
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      <p>Налог считается от кадастровой стоимости, но не со всей площади: часть метров не облагается. Вычет — 20 м² для квартиры, 10 м² для комнаты и 50 м² для жилого дома (ст. 403 НК РФ).</p>
+      <p>Вычет даётся на каждый объект, а не на человека: две квартиры — два вычета. Заявлять его не нужно, налоговая применяет сама.</p>
+      <p>Многодетным положены дополнительные метры за каждого ребёнка: 5 м² для квартиры и комнаты, 7 м² для дома.</p>
+      <p>Ставка — обычно 0,1%; её устанавливает муниципалитет и может поднять до 0,3%. Для объектов дороже 300 млн ₽ и для нежилых помещений из регионального перечня действует 2%.</p>
+      <p>Если владели не весь год, налог считается по месяцам. Месяц засчитывается полностью, если право возникло до 15-го числа или прекратилось после 15-го.</p>
+      <p>Пенсионеры, инвалиды I и II групп, участники СВО и другие льготники освобождены от налога — но только по одному объекту каждого вида: одна квартира, один дом, один гараж.</p>
+      <p>Уведомление приходит осенью, срок уплаты — 1 декабря. Если объект новый и уведомления нет, о нём нужно сообщить в налоговую самому.</p>
+      <h2>Пример</h2>
+      <p>Квартира 54 м² с кадастровой стоимостью 6 млн ₽:</p>
+      <table class="calc-table calc-example">
+        <tr><td>Стоимость одного метра</td><td>111 111 ₽</td></tr>
+        <tr><td>Необлагаемые метры</td><td>20 м²</td></tr>
+        <tr><td>Облагается</td><td>34 м² = 3 777 778 ₽</td></tr>
+        <tr><td>Налог по ставке 0,1%</td><td>3 778 ₽</td></tr>
+        <tr><td>То же при доле ½</td><td>1 889 ₽</td></tr>
+        <tr><td>То же у семьи с тремя детьми</td><td>2 111 ₽</td></tr>
+      </table>
+      <p>Вычет по метрам иногда обнуляет налог целиком: у квартиры 20 м² и меньше облагаемой площади не остаётся.</p>
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul><li>Считать налог со всей кадастровой стоимости, забыв вычет по метрам</li><li>Думать, что вычет даётся один на все объекты: он на каждый</li><li>Не подать заявление на льготу пенсионера — её применяют по заявлению или автоматически, но лучше проверить</li><li>Не сообщить о новом объекте, если уведомление не пришло: за это есть штраф</li></ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>гл. 32 НК РФ — налог на имущество физических лиц · ст. 403 НК РФ — вычеты по площади · ст. 407 НК РФ — льготы</p></div>
+      <p class="kb-checked">Ставки сверены 09.09.2026. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      <p style="margin-top:8px">Подробный разбор: <a href="../st/nalog-s-prodazhi-kvartiry-i-mashiny.html">Налог с продажи квартиры и машины</a></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn small secondary" href="nalog-s-prodazhi-kvartiry.html">Калькулятор налога с продажи квартиры и автомобиля</a>
+        <a class="btn small secondary" href="transportnyy-nalog.html">Калькулятор транспортного налога</a>
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=211"></script>
+<script src="../js/themes.js?v=211"></script>
+<script src="../js/api.js?v=211"></script>
+<script src="../js/app.js?v=211"></script>
+<script src="../js/progress.js?v=211"></script>
+<script src="../js/palette.js?v=211"></script>
+<script src="../js/ai.js?v=211"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/favorites.js?v=211"></script>
+<script src="../js/calc.js?v=211"></script>
+</body>
+</html>
