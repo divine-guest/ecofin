@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Калькулятор налоговых вычетов 2026: сколько вернут за лечение, учёбу и квартиру — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="Сколько НДФЛ вернут по всем вычетам сразу: лечение, обучение, спорт, взносы, покупка жилья и проценты по ипотеке. С общим потолком социальных вычетов и ограничением по уплаченному налогу.">
+<link rel="canonical" href="https://ecofin26.ru/calc/nalogovye-vychety.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Калькулятор налоговых вычетов 2026: сколько вернут за лечение, учёбу и квартиру">
+<meta property="og:description" content="Сколько НДФЛ вернут по всем вычетам сразу: лечение, обучение, спорт, взносы, покупка жилья и проценты по ипотеке. С общим потолком социальных вычетов и ограничением по уплаченному налогу.">
+<meta property="og:url" content="https://ecofin26.ru/calc/nalogovye-vychety.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Калькулятор налоговых вычетов","url":"https://ecofin26.ru/calc/nalogovye-vychety.html","description":"Сколько НДФЛ вернут по всем вычетам сразу: лечение, обучение, спорт, взносы, покупка жилья и проценты по ипотеке. С общим потолком социальных вычетов и ограничением по уплаченному налогу.","applicationCategory":"FinanceApplication","operatingSystem":"Любая","inLanguage":"ru-RU","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"},"publisher":{"@type":"Organization","name":"ЭкоФин","url":"https://ecofin26.ru/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://ecofin26.ru/"},{"@type":"ListItem","position":2,"name":"Калькуляторы","item":"https://ecofin26.ru/calc.html"},{"@type":"ListItem","position":3,"name":"Калькулятор налоговых вычетов","item":"https://ecofin26.ru/calc/nalogovye-vychety.html"}]}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=210">
+<link rel="stylesheet" href="../css/style.css?v=210">
+<link rel="stylesheet" href="../css/calc.css?v=210">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>Налоги</span>
+    </nav>
+    <div class="section-title">
+      <h1>Калькулятор налоговых вычетов</h1>
+      <div class="line"></div>
+      <p class="subtitle">Введите расходы за год и уплаченный НДФЛ — калькулятор сложит все вычеты и покажет, сколько вернут на самом деле.</p>
+    </div>
+
+    <div class="tab-panel active game-stage" id="calc5">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <p class="hint" style="margin-bottom:12px">
+            Отметьте, на что тратились за год. Считаем всё вместе:
+            лимиты у вычетов разные, и складываются они не как попало.
+          </p>
+
+          <div class="form-group"><label for="vdTreat">Лечение и лекарства, ₽</label>
+            <input type="number" id="vdTreat" value="60000" min="0" oninput="calcDeduction()"></div>
+
+          <div class="form-group"><label for="vdTreatBig">Дорогостоящее лечение, ₽</label>
+            <input type="number" id="vdTreatBig" value="0" min="0" oninput="calcDeduction()">
+            <p class="hint">Это то, что в справке из клиники помечено кодом 02.
+              У него лимита нет вовсе — возвращают 13% со всей суммы.</p></div>
+
+          <div class="form-group"><label for="vdStudy">Своё обучение, ₽</label>
+            <input type="number" id="vdStudy" value="0" min="0" oninput="calcDeduction()"></div>
+
+          <div class="form-group"><label for="vdStudyKid">Обучение детей, ₽ за год</label>
+            <input type="number" id="vdStudyKid" value="0" min="0" oninput="calcDeduction()"></div>
+
+          <div class="form-group"><label for="vdKids">Сколько детей учится платно</label>
+            <input type="number" id="vdKids" value="0" min="0" max="10" oninput="calcDeduction()">
+            <p class="hint">Лимит считается на каждого ребёнка отдельно,
+              а не на всех вместе.</p></div>
+
+          <div class="form-group"><label for="vdSport">Спорт и фитнес, ₽</label>
+            <input type="number" id="vdSport" value="0" min="0" oninput="calcDeduction()">
+            <p class="hint">Только если клуб есть в реестре Минспорта.</p></div>
+
+          <div class="form-group"><label for="vdBuy">Покупка жилья, ₽</label>
+            <input type="number" id="vdBuy" value="0" min="0" oninput="calcDeduction()"></div>
+
+          <div class="form-group"><label for="vdMortgage">Уплаченные проценты по ипотеке, ₽</label>
+            <input type="number" id="vdMortgage" value="0" min="0" oninput="calcDeduction()">
+            <p class="hint">Именно проценты, а не платежи по кредиту целиком —
+              сумму даёт банк справкой.</p></div>
+
+          <div class="form-group"><label for="vdIis">Внесено на ИИС, ₽</label>
+            <input type="number" id="vdIis" value="0" min="0" oninput="calcDeduction()"></div>
+
+          <div class="form-group"><label for="vdTax">Удержанный НДФЛ за год, ₽</label>
+            <input type="number" id="vdTax" value="80000" min="0" oninput="calcDeduction()">
+            <p class="hint">Строка «удержано» в справке о доходах.
+              Больше этой суммы вернуть нельзя — отсюда почти все
+              разочарования с вычетами.</p></div>
+        </div>
+        <div class="calc-result" id="vdOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налоговые вычеты')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('deduction')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      <p>Социальные вычеты — лечение, обучение, спорт, добровольные взносы — складываются и упираются в ОДИН общий потолок 150 000 ₽ за год. Это самое частое разочарование: три вида расходов по сто тысяч дадут вычет не с трёхсот, а со ста пятидесяти тысяч.</p>
+      <p>Обучение детей считается отдельно от этого потолка — 110 000 ₽ на каждого ребёнка. Дорогостоящее лечение из перечня Правительства не ограничено вообще: вычет даётся на всю сумму.</p>
+      <p>Имущественные: 2 000 000 ₽ на покупку жилья (возврат до 260 000 ₽) и 3 000 000 ₽ на проценты по ипотеке (до 390 000 ₽). Оба даются один раз в жизни, но остаток вычета на покупку переносится на следующие объекты.</p>
+      <p>Вычет на взносы по ИИС — до 400 000 ₽ в год.</p>
+      <p>Главное ограничение: вернуть можно не больше, чем удержано НДФЛ за тот же год. Отсюда и разрыв между «обещали 260 тысяч» и «вернули сорок» — вернули столько, сколько заплатили.</p>
+      <p>Срок — три года: в 2026 году подают декларации за 2025, 2024, 2023. Социальные вычеты за текущий год можно получить через работодателя, не дожидаясь конца года.</p>
+      <h2>Пример</h2>
+      <p>Зарплата 66 700 ₽ в месяц (НДФЛ за год 104 000 ₽), лечение 90 000 ₽, своё обучение 60 000 ₽, куплена квартира:</p>
+      <table class="calc-table calc-example">
+        <tr><td>Социальные: 90 000 + 60 000, но не больше 150 000 ₽</td><td>150 000 ₽</td></tr>
+        <tr><td>Имущественный на покупку</td><td>2 000 000 ₽</td></tr>
+        <tr><td>Итого к возврату по расчёту</td><td>279 500 ₽</td></tr>
+        <tr><td>Вернут в этом году — не больше удержанного НДФЛ</td><td>104 000 ₽</td></tr>
+        <tr><td>Остаток</td><td>175 500 ₽</td></tr>
+      </table>
+      <p>Остаток здесь не пропадает целиком: имущественный вычет переносится на следующие годы, пока не выберете всю сумму. А вот социальная часть, не покрытая налогом, сгорает — на другой год она не переходит.</p>
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul><li>Считать, что у каждого социального вычета свой потолок: он общий на все</li><li>Ждать возврата больше, чем удержано НДФЛ за год</li><li>Не разделять обычное и дорогостоящее лечение: у второго ограничений нет</li><li>Подавать декларацию за год, в котором не было облагаемого дохода</li><li>Тянуть дольше трёх лет — за более ранние годы вычет уже не вернуть</li></ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>ст. 218–220 НК РФ — стандартные, социальные и имущественные вычеты · ст. 219.1 НК РФ — вычеты по ИИС · п. 7 ст. 78 НК РФ — три года на возврат</p></div>
+      <p class="kb-checked">Ставки сверены 09.09.2026. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      <p style="margin-top:8px">Подробный разбор: <a href="../st/nalogovye-vychety-dlya-fizlic.html">Налоговые вычеты для физлиц</a></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn small secondary" href="zarplata-na-ruki.html">Калькулятор зарплаты на руки</a>
+        <a class="btn small secondary" href="nalog-s-prodazhi-kvartiry.html">Калькулятор налога с продажи квартиры и автомобиля</a>
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=210"></script>
+<script src="../js/themes.js?v=210"></script>
+<script src="../js/api.js?v=210"></script>
+<script src="../js/app.js?v=210"></script>
+<script src="../js/progress.js?v=210"></script>
+<script src="../js/palette.js?v=210"></script>
+<script src="../js/ai.js?v=210"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/favorites.js?v=210"></script>
+<script src="../js/calc.js?v=210"></script>
+</body>
+</html>

@@ -22,9 +22,9 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=209">
-<link rel="stylesheet" href="css/style.css?v=209">
-<link rel="stylesheet" href="css/calc.css?v=209">
+<link rel="stylesheet" href="css/fonts.css?v=210">
+<link rel="stylesheet" href="css/style.css?v=210">
+<link rel="stylesheet" href="css/calc.css?v=210">
 </head>
 <body>
 <main class="section tint-navy">
@@ -322,6 +322,7 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налоговые вычеты')">Скачать / печать</button>
         <button class="btn small secondary no-print" onclick="saveCalc('deduction')">Сохранить в кабинет</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/nalogovye-vychety.html">Как считаются вычеты: потолки, очерёдность и почему возвращают меньше →</a></p>
     </div>
     <div class="tab-panel game-stage" id="calc6">
       <div class="grid cols-2 no-print">
@@ -441,6 +442,7 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Пени по налогам')">Скачать / печать</button>
         <button class="btn small secondary no-print" onclick="saveCalc('taxpen')">Сохранить в кабинет</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/peni-po-nalogam.html">Как считаются пени по налогам и чем они отличаются от штрафа →</a></p>
     </div>
 
     <!-- ===== Проценты по ст. 395 ГК РФ =====
@@ -483,6 +485,7 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Компенсация за задержку зарплаты')">Скачать / печать</button>
         <button class="btn small secondary no-print" onclick="saveCalc('wagedelay')">Сохранить в кабинет</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/zaderzhka-zarplaty.html">Компенсация за задержку зарплаты: ставка, дни и что ещё можно требовать →</a></p>
     </div>
 
     <!-- ===== Расчёт при увольнении =====
@@ -607,6 +610,7 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Взносы за работников')">Скачать / печать</button>
         <button class="btn small secondary no-print" onclick="saveCalc('staff')">Сохранить в кабинет</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/vznosy-za-rabotnikov.html">Взносы за работника: единый тариф, льгота для малого бизнеса, травматизм →</a></p>
     </div>
 
     <!-- ===== НДФЛ с продажи имущества =====
@@ -641,6 +645,7 @@
         <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Налог с продажи имущества')">Скачать / печать</button>
         <button class="btn small secondary no-print" onclick="saveCalc('property')">Сохранить в кабинет</button>
       </div>
+      <p class="calc-page-link no-print"><a href="calc/nalog-s-prodazhi-kvartiry.html">Налог с продажи имущества: сроки владения, вычет и расходы →</a></p>
     </div>
 
     <!-- ===== Декретные и пособия ===== -->
@@ -981,16 +986,16 @@
   <div class="container"><div id="partnersTax"></div></div>
 </main>
 
-<script src="js/qr.js?v=209"></script>
-<script src="js/partners.js?v=209"></script>
-<script src="js/rates.js?v=209"></script>
-<script src="js/themes.js?v=209"></script>
-<script src="js/api.js?v=209"></script>
-<script src="js/app.js?v=209"></script>
-<script src="js/progress.js?v=209"></script>
-<script src="js/favorites.js?v=209"></script>
-<script src="js/palette.js?v=209"></script>
-<script src="js/ai.js?v=209"></script>
+<script src="js/qr.js?v=210"></script>
+<script src="js/partners.js?v=210"></script>
+<script src="js/rates.js?v=210"></script>
+<script src="js/themes.js?v=210"></script>
+<script src="js/api.js?v=210"></script>
+<script src="js/app.js?v=210"></script>
+<script src="js/progress.js?v=210"></script>
+<script src="js/favorites.js?v=210"></script>
+<script src="js/palette.js?v=210"></script>
+<script src="js/ai.js?v=210"></script>
 <script>
 initPage("calc.html");
 
@@ -1000,6 +1005,6 @@ document.addEventListener("pf:ready", () => PARTNERS.render("partnersTax", "tax"
 </script>
 <!-- Код всех калькуляторов — в js/calc.js: тот же файл подключают
      отдельные страницы калькуляторов в папке calc/. -->
-<script src="js/calc.js?v=209"></script>
+<script src="js/calc.js?v=210"></script>
 </body>
 </html>

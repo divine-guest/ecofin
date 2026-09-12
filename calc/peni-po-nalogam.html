@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Калькулятор пеней по налогам 2026: ст. 75 НК РФ — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs. Калькулятор взят из calc.html,
+     текст — из calc-pages.mjs, числа — из js/rates.js. Править здесь
+     бесполезно: при следующей сборке файл перезапишется. -->
+<meta name="description" content="Пени за просрочку налога: 1/300 ключевой ставки, для организаций с 31-го дня — 1/150. С расчётом по дням и разницей между пеней и штрафом.">
+<link rel="canonical" href="https://ecofin26.ru/calc/peni-po-nalogam.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="Калькулятор пеней по налогам 2026: ст. 75 НК РФ">
+<meta property="og:description" content="Пени за просрочку налога: 1/300 ключевой ставки, для организаций с 31-го дня — 1/150. С расчётом по дням и разницей между пеней и штрафом.">
+<meta property="og:url" content="https://ecofin26.ru/calc/peni-po-nalogam.html">
+<meta property="og:image" content="https://ecofin26.ru/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Калькулятор пеней по налогам","url":"https://ecofin26.ru/calc/peni-po-nalogam.html","description":"Пени за просрочку налога: 1/300 ключевой ставки, для организаций с 31-го дня — 1/150. С расчётом по дням и разницей между пеней и штрафом.","applicationCategory":"FinanceApplication","operatingSystem":"Любая","inLanguage":"ru-RU","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"},"publisher":{"@type":"Organization","name":"ЭкоФин","url":"https://ecofin26.ru/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://ecofin26.ru/"},{"@type":"ListItem","position":2,"name":"Калькуляторы","item":"https://ecofin26.ru/calc.html"},{"@type":"ListItem","position":3,"name":"Калькулятор пеней по налогам","item":"https://ecofin26.ru/calc/peni-po-nalogam.html"}]}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=210">
+<link rel="stylesheet" href="../css/style.css?v=210">
+<link rel="stylesheet" href="../css/calc.css?v=210">
+</head>
+<body>
+<main class="section tint-navy calc-page">
+  <div class="container">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../calc.html">Калькуляторы</a> ·
+      <span>Налоги</span>
+    </nav>
+    <div class="section-title">
+      <h1>Калькулятор пеней по налогам</h1>
+      <div class="line"></div>
+      <p class="subtitle">Введите сумму долга и число дней просрочки — калькулятор посчитает пени по ставке ЦБ и покажет, сколько всего придётся доплатить.</p>
+    </div>
+
+    <div class="tab-panel active game-stage" id="calcTaxPen">
+      <div class="calc-row">
+        <div style="flex:1;min-width:250px">
+          <div class="form-group"><label for="tpSum">Неуплаченный налог, ₽</label>
+            <input type="number" id="tpSum" value="50000" oninput="calcTaxPen()"></div>
+          <div class="form-group"><label for="tpDays">Дней просрочки</label>
+            <input type="number" id="tpDays" value="45" oninput="calcTaxPen()"></div>
+          <div class="form-group"><label for="tpWho">Кто должник</label>
+            <select id="tpWho" onchange="calcTaxPen()">
+              <option value="ip">ИП или физлицо — всегда 1/300 ставки</option>
+              <option value="org">Организация — после 30 дней 1/150</option>
+            </select></div>
+          <div class="form-group"><label for="tpRate">Ключевая ставка ЦБ, % годовых</label>
+            <input type="number" step="0.25" id="tpRate" oninput="calcTaxPen()">
+            <p class="hint rate-hint">Ставка меняется несколько раз в год —
+              <a href="https://cbr.ru/hd_base/KeyRate/" target="_blank" rel="noopener">проверьте на cbr.ru</a>
+              и поправьте, если она уже другая.</p></div>
+        </div>
+        <div class="calc-result" id="tpOut"></div>
+        <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Пени по налогам')">Скачать / печать</button>
+        <button class="btn small secondary no-print" onclick="saveCalc('taxpen')">Сохранить в кабинет</button>
+      </div>
+    </div>
+
+    <article class="card kb-article calc-guide">
+      <h2>Как считается</h2>
+      <p>Пени начисляются за каждый календарный день просрочки — со дня, следующего за сроком уплаты, по день погашения включительно. Ставка для физлиц и ИП — 1/300 ключевой ставки Банка России (сейчас 14%).</p>
+      <p>Для организаций правило жёстче: первые 30 дней — 1/300 ставки, а с 31-го дня — 1/150, то есть вдвое дороже.</p>
+      <p>Пени считаются от отрицательного сальдо единого налогового счёта. Если на счёте есть переплата, она автоматически перекрывает недоимку, и пени не растут.</p>
+      <p>Пени — не наказание, а плата за пользование деньгами бюджета. Штраф по ст. 122 НК РФ — отдельные 20% от неуплаченной суммы, а при умысле 40%. Их начисляют по итогам проверки, а не автоматически.</p>
+      <p>Штраф можно снизить: смягчающие обстоятельства уменьшают его минимум вдвое, и суды часто снижают сильнее (ст. 112 и 114 НК РФ). Пени не снижаются никогда.</p>
+      <p>Если недоимка возникла из-за письменных разъяснений налоговой или Минфина, пени не начисляются вовсе (п. 8 ст. 75 НК РФ).</p>
+      <h2>Пример</h2>
+      <p>Долг 100 000 ₽, просрочка 90 дней, ключевая ставка 14%:</p>
+      <table class="calc-table calc-example">
+        <tr><td>ИП или физлицо</td><td>4 200 ₽</td></tr>
+        <tr><td>Организация</td><td>7 000 ₽</td></tr>
+        <tr><td>Разница из-за двойной ставки с 31-го дня</td><td>2 800 ₽</td></tr>
+        <tr><td>Штраф по ст. 122, если будет проверка</td><td>20 000 ₽</td></tr>
+      </table>
+      <p>Пени начисляются молча и ежедневно, штраф — только по решению по проверке. Поэтому долг гасят как можно раньше, даже если спорят с суммой.</p>
+      <div class="kb-part kb-mistakes"><h3>Частые ошибки</h3><ul><li>Считать пени по ставке, действовавшей на дату уплаты: при изменении ключевой ставки период делится на части</li><li>Забыть, что у организаций с 31-го дня ставка удваивается</li><li>Путать пени со штрафом: 20% по ст. 122 — это отдельная сумма</li><li>Гасить недоимку и не гасить пени: они продолжают висеть на едином счёте и съедают следующие платежи</li></ul></div>
+      <div class="kb-part kb-law"><h3>Нормы</h3><p>ст. 75 НК РФ — пени · ст. 122 НК РФ — штраф за неуплату · ст. 112, 114 НК РФ — смягчающие обстоятельства</p></div>
+      <p class="kb-checked">Ставки сверены 09.09.2026. Нормы меняются — перед решением
+        сверьтесь с действующей редакцией. Расчёт справочный и не заменяет консультацию.</p>
+    </article>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Считать и читать дальше</h2>
+      <p style="margin-top:8px">Подробный разбор: <a href="../st/edinyy-nalogovyy-schet-pochemu-dengi-ushli-ne-tuda.html">Единый налоговый счёт: почему деньги «ушли не туда»</a></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <a class="btn small secondary" href="nalogovye-rezhimy.html">Калькулятор выбора налогового режима</a>
+        <a class="btn small secondary" href="strahovye-vznosy-ip.html">Калькулятор страховых взносов ИП за себя</a>
+        <a class="btn small secondary" href="../calc.html">Все калькуляторы</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/rates.js?v=210"></script>
+<script src="../js/themes.js?v=210"></script>
+<script src="../js/api.js?v=210"></script>
+<script src="../js/app.js?v=210"></script>
+<script src="../js/progress.js?v=210"></script>
+<script src="../js/palette.js?v=210"></script>
+<script src="../js/ai.js?v=210"></script>
+<script>
+/* Шапка и подвал знают про подпапку сами: PF.base подставляет «../». */
+initPage("calc.html");
+</script>
+<script src="../js/favorites.js?v=210"></script>
+<script src="../js/calc.js?v=210"></script>
+</body>
+</html>
