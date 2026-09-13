@@ -36,6 +36,10 @@ const CALC_OUT = join(HERE, "calc");
 
 /* ---------- Вспомогательное ---------- */
 
+/* Тарифы берём из того же модуля, что и сервер: цена на витрине обязана
+   совпадать с суммой платежа, а не повторять её руками. */
+const { PLANS, PROMISES, ENTERPRISE, freeMonths } = await import("./worker/src/plans.js");
+
 const plural = (n, one, few, many) => {
   const t = Math.abs(n) % 100, d = t % 10;
   if (t > 10 && t < 20) return many;
@@ -600,6 +604,58 @@ async function buildFaq() {
 
 /* ---------- Карта сайта ---------- */
 
+/* Карточки тарифов и обещания — статичной разметкой в index.html. */
+function homePlans() {
+  const money = n => n.toLocaleString("ru-RU").replace(/\u00a0/g, " ");
+  const cards = Object.values(PLANS).map(p => {
+    const free = p.price.month === 0;
+    const best = p.id === "basic";
+    const gift = freeMonths(p.id);
+    return `        <div class="card tier-home${best ? " best" : ""}">
+${best ? '          <span class="tier-flag">Чаще всего выбирают</span>\n' : ""}          <h3>${esc(p.title)}</h3>
+          <p class="stat-value">${free ? "0 ₽" : money(p.price.month) + " ₽"}${free ? "" : '<span class="stat-label">/мес</span>'}</p>
+${free ? "" : `          <p class="tier-year">или ${money(p.price.year)} ₽ за год —
+            <b>${gift} ${plural(gift, "месяц", "месяца", "месяцев")} в подарок</b></p>\n`}          <ul class="tier-perks">${p.perks.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+${p.worth ? `          <p class="tier-worth">${esc(p.worth)}</p>\n` : ""}          <a href="auth.html?from=plan" class="btn ${best ? "gold" : "secondary"}">${free ? "Начать бесплатно" : "Выбрать"}</a>
+        </div>`;
+  }).join("\n");
+
+  const ent = ENTERPRISE ? `
+        <div class="card tier-home">
+          <h3>${esc(ENTERPRISE.title)}</h3>
+          <p class="stat-value" style="font-size:1.5rem">${esc(ENTERPRISE.price)}</p>
+          <ul class="tier-perks">${ENTERPRISE.perks.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+          <a href="about.html#contact" class="btn secondary">Обсудить</a>
+        </div>` : "";
+
+  const promises = PROMISES.map(x =>
+    `        <div class="promise"><b>${esc(x.title)}</b><span>${esc(x.text)}</span></div>`).join("\n");
+
+  return {
+    plans: `      <div id="homePlans" class="grid cols-3">\n${cards}${ent}\n      </div>`,
+    promises: `      <div class="promises" id="homePromises">\n${promises}\n      </div>`,
+  };
+}
+
+/* Подстановка карточек в главную. Между маркерами — чтобы следующая
+   сборка заменила старую цену, а не приписала новую рядом. */
+async function buildHomePlans() {
+  const p = join(HERE, "index.html");
+  let html = await readFile(p, "utf8");
+  const { plans, promises } = homePlans();
+  const eol = html.includes("\r\n") ? "\r\n" : "\n";
+  const put = (name, body) => {
+    const re = new RegExp(`<!-- ${name}:start -->[\\s\\S]*?<!-- ${name}:end -->`);
+    if (!re.test(html)) throw new Error(`index.html: нет маркеров ${name}`);
+    html = html.replace(re,
+      `<!-- ${name}:start -->${eol}${body.replaceAll("\n", eol)}${eol}      <!-- ${name}:end -->`);
+  };
+  put("plans", plans);
+  put("promises", promises);
+  await writeFile(p, html, "utf8");
+  return Object.keys(PLANS).length;
+}
+
 async function buildSitemap(articles, today, calcPages = []) {
   const pages = [
     ["", "1.0", "weekly"],
@@ -715,6 +771,7 @@ const forAudience = (mark, who) => !who || mark === "both" || mark === who;
   await writeFile(join(HERE, "js", "audience.js"), audienceJs, "utf8");
 
   const faq = await buildFaq();
+  const tiers = await buildHomePlans();
   const urls = await buildSitemap(articles, new Date().toISOString().slice(0, 10), CALC_PAGES);
 
   console.log(`страниц статей: ${articles.length}`);
@@ -722,6 +779,7 @@ const forAudience = (mark, who) => !who || mark === "both" || mark === who;
   console.log(`витрин по аудитории: ${Object.keys(AUDIENCES).length}`);
   console.log(`разметка для браузера: js/audience.js`);
   console.log(`вопросов в разметке FAQ: ${faq}`);
+  console.log(`тарифов на главной: ${tiers}`);
   console.log(`адресов в карте сайта: ${urls}`);
 };
 

@@ -36,8 +36,8 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"Подписка ЭкоФин","description":"Доступ к ИИ-консультанту, разбору договоров, напоминаниям о налоговых сроках и курсам.","brand":{"@id":"https://ecofin26.ru/#org"},"image":"https://ecofin26.ru/og-cover.png","offers":[{"@type":"Offer","name":"Старт","price":"0","priceCurrency":"RUB","availability":"https://schema.org/InStock","url":"https://ecofin26.ru/"},{"@type":"Offer","name":"Базовый, месяц","price":"490","priceCurrency":"RUB","availability":"https://schema.org/InStock","url":"https://ecofin26.ru/"},{"@type":"Offer","name":"Базовый, год","price":"3990","priceCurrency":"RUB","availability":"https://schema.org/InStock","url":"https://ecofin26.ru/"},{"@type":"Offer","name":"Про, месяц","price":"890","priceCurrency":"RUB","availability":"https://schema.org/InStock","url":"https://ecofin26.ru/"},{"@type":"Offer","name":"Про, год","price":"6990","priceCurrency":"RUB","availability":"https://schema.org/InStock","url":"https://ecofin26.ru/"}]}</script>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=216">
-<link rel="stylesheet" href="css/style.css?v=216">
+<link rel="stylesheet" href="css/fonts.css?v=217">
+<link rel="stylesheet" href="css/style.css?v=217">
 </head>
 <body>
 <main>
@@ -261,13 +261,70 @@
         <div class="line"></div>
         <p class="subtitle">Калькуляторы и база знаний бесплатны всегда. Платите только за ИИ и разбор документов.</p>
       </div>
-      <!-- Цены не зашиты в разметку: приходят с сервера, поэтому не могут
-           разойтись с тем, что реально спишется при оплате. -->
+      <!-- Карточки тарифов собирает build-seo.mjs из worker/src/plans.js —
+           из того же файла, по которому сервер считает сумму платежа.
+           Поэтому цена на витрине и цена в кассе не могут разойтись, а
+           увидеть её можно без единого скрипта: и робот, и модератор
+           платёжного сервиса читают готовую разметку. Скрипт ниже
+           перерисует этот блок из ответа сервера, если он доступен. -->
+      <!-- plans:start -->
       <div id="homePlans" class="grid cols-3">
-        <div class="card"><p class="hint">Загружаем тарифы…</p></div>
+        <div class="card tier-home">
+          <h3>Старт</h3>
+          <p class="stat-value">0 ₽</p>
+          <ul class="tier-perks"><li>32 калькулятора — сколько угодно раз</li><li>Налоговый календарь и 3 напоминания о сроках</li><li>3 вопроса консультанту каждый день</li><li>База знаний, шаблоны документов, практикум</li></ul>
+          <a href="auth.html?from=plan" class="btn secondary">Начать бесплатно</a>
+        </div>
+        <div class="card tier-home best">
+          <span class="tier-flag">Чаще всего выбирают</span>
+          <h3>Базовый</h3>
+          <p class="stat-value">490 ₽<span class="stat-label">/мес</span></p>
+          <p class="tier-year">или 3 990 ₽ за год —
+            <b>4 месяца в подарок</b></p>
+          <ul class="tier-perks"><li>Консультант отвечает весь день, а не три раза</li><li>20 разборов договоров и требований в месяц</li><li>Напоминания о сроках без ограничений</li><li>Напоминания приходят в Telegram — их видно сразу</li></ul>
+          <p class="tier-worth">Один пропущенный срок по налогам — штраф от 1 000 ₽ плюс пени. Подписка на год стоит меньше, чем один час консультации.</p>
+          <a href="auth.html?from=plan" class="btn gold">Выбрать</a>
+        </div>
+        <div class="card tier-home">
+          <h3>Про</h3>
+          <p class="stat-value">890 ₽<span class="stat-label">/мес</span></p>
+          <p class="tier-year">или 6 990 ₽ за год —
+            <b>4 месяца в подарок</b></p>
+          <ul class="tier-perks"><li>Всё из «Базового», и без счётчиков</li><li>Разбор договоров и фотографий сколько нужно</li><li>Все курсы с сертификатами: бухучёт и юриспруденция</li><li>Оформление сервиса под себя — 10 палитр</li><li>Приоритетная очередь: отвечает быстрее</li><li>Несколько дел в одном кабинете — для бухгалтеров и тех, у кого ИП и ООО</li></ul>
+          <p class="tier-worth">Проверка одного договора у юриста — от 3 000 ₽. Здесь это входит в подписку и делается за минуту, в любое время суток.</p>
+          <a href="auth.html?from=plan" class="btn secondary">Выбрать</a>
+        </div>
+        <div class="card tier-home">
+          <h3>Бухгалтер</h3>
+          <p class="stat-value" style="font-size:1.5rem">от 2 490 ₽/мес</p>
+          <ul class="tier-perks"><li>Больше 50 клиентов в одном кабинете</li><li>Общий календарь сроков по всем</li><li>Выгрузки и отчёты</li></ul>
+          <a href="about.html#contact" class="btn secondary">Обсудить</a>
+        </div>
       </div>
+      <!-- plans:end -->
 
-      <div class="promises" id="homePromises"></div>
+      <!-- promises:start -->
+      <div class="promises" id="homePromises">
+        <div class="promise"><b>14 дней на возврат</b><span>Не подошло — вернём деньги полностью и без вопросов. Достаточно написать в поддержку.</span></div>
+        <div class="promise"><b>Цена не изменится</b><span>Пока подписка активна, вы платите столько же, сколько при оформлении, даже если тарифы вырастут.</span></div>
+        <div class="promise"><b>Отмена в один клик</b><span>Отписаться можно в кабинете в любой момент. Ни звонков, ни писем «останьтесь».</span></div>
+        <div class="promise"><b>Три дня бесплатно</b><span>Полный доступ без карты. По окончании тариф вернётся на «Старт» — ничего не спишется.</span></div>
+      </div>
+      <!-- promises:end -->
+
+      <div class="card" id="howToGet" style="margin-top:18px">
+        <h3 style="font-size:var(--t-lg)">Что происходит после оплаты</h3>
+        <p>Услуга цифровая: доставлять нечего. Доступ к оплаченному тарифу
+          открывается в личном кабинете сразу после того, как платёж
+          подтверждён — обычно в течение минуты.</p>
+        <p style="margin-top:8px">Подписка действует выбранный срок: месяц
+          или год со дня оплаты. Кассовый чек приходит на адрес электронной
+          почты, указанный при оплате.</p>
+        <p style="margin-top:8px">Не подошло — напишите в поддержку в течение
+          14 дней, вернём деньги полностью. Отменить продление можно самому,
+          в кабинете, в карточке «Подписка и ИИ». Условия целиком —
+          в <a href="legal.html">оферте</a>.</p>
+      </div>
     </div>
   </section>
 
@@ -283,12 +340,12 @@
   </section>
 </main>
 
-<script src="js/themes.js?v=216"></script>
-<script src="js/api.js?v=216"></script>
-<script src="js/app.js?v=216"></script>
-<script src="js/progress.js?v=216"></script>
-<script src="js/palette.js?v=216"></script>
-<script src="js/ai.js?v=216"></script>
+<script src="js/themes.js?v=217"></script>
+<script src="js/api.js?v=217"></script>
+<script src="js/app.js?v=217"></script>
+<script src="js/progress.js?v=217"></script>
+<script src="js/palette.js?v=217"></script>
+<script src="js/ai.js?v=217"></script>
 <script>
 initPage("index.html");
 
@@ -330,8 +387,9 @@ initPage("index.html");
       `).join("");
     }
   } catch {
-    box.innerHTML = `<div class="card"><p class="hint">Тарифы временно недоступны.
-      <a href="auth.html?from=plan">Зарегистрируйтесь</a> — начать можно бесплатно.</p></div>`;
+    /* Сервер не ответил — оставляем собранную разметку как есть.
+       Раньше здесь стиралось всё и писалось «Тарифы временно
+       недоступны»: человек видел пустое место вместо цен. */
   }
 })();
 
