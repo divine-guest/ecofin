@@ -656,7 +656,173 @@ async function buildHomePlans() {
   return Object.keys(PLANS).length;
 }
 
-async function buildSitemap(articles, today, calcPages = []) {
+/* ---------- Страницы документов ----------
+
+   Форму заполнения не копируем: она живёт в docs.html и требует общего
+   кода. Здесь — образец текста с прочерками (именно его ищут в поиске),
+   перечень полей, пояснение из самого шаблона и кнопка, которая
+   открывает готовую форму. */
+
+const DOC_OUT = join(HERE, "doc");
+
+/* Хвост после разделителя в теле шаблона — это пояснение для человека,
+   а не часть документа. На странице оно идёт отдельным блоком. */
+function splitTemplate(body) {
+  const i = body.indexOf("\n———\n");
+  if (i === -1) return { text: body.trim(), note: "" };
+  return { text: body.slice(0, i).trim(), note: body.slice(i + 5).trim() };
+}
+
+/* Заполнять нечего — показываем прочерки: так выглядит бланк, который
+   распечатывают и дописывают от руки. */
+const blanks = text => text.replace(/\{\{\w+\}\}/g, "____________________");
+
+function docPage(name, tpl, { why, group, siblings, version }) {
+  const file = `${slug(name)}.html`;
+  const url = `${SITE}/doc/${file}`;
+  const { text, note } = splitTemplate(tpl.body);
+  const title = `${name}: образец и бланк ${new Date().getFullYear()}`;
+  const desc = `${why ? why + ". " : ""}Готовый образец документа «${name}»: текст, перечень данных для заполнения и бланк, который собирается в браузере и скачивается файлом.`;
+  const fill = `../docs.html#${encodeURIComponent(name)}`;
+
+  const crumbs = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE}/` },
+      { "@type": "ListItem", position: 2, name: "Документы", item: `${SITE}/docs.html` },
+      { "@type": "ListItem", position: 3, name, item: url },
+    ],
+  };
+  const app = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name,
+    url,
+    description: desc,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Любая",
+    inLanguage: "ru-RU",
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "RUB" },
+    publisher: { "@type": "Organization", name: "ЭкоФин", url: `${SITE}/` },
+  };
+
+  return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>${esc(title)} — ЭкоФин</title>
+<!-- Страница собрана скриптом build-seo.mjs из js/templates.js и подписей
+     в docs.html. Править здесь бесполезно: перезапишется при сборке. -->
+<meta name="description" content="${esc(desc.slice(0, 300))}">
+<link rel="canonical" href="${url}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ЭкоФин">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(desc.slice(0, 300))}">
+<meta property="og:url" content="${url}">
+<meta property="og:image" content="${SITE}/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e8f86">
+<script type="application/ld+json">${JSON.stringify(app)}</script>
+<script type="application/ld+json">${JSON.stringify(crumbs)}</script>
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css?v=${version}">
+<link rel="stylesheet" href="../css/style.css?v=${version}">
+</head>
+<body>
+<main class="section tint-navy">
+  <div class="container" style="max-width:900px">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="../index.html">Главная</a> · <a href="../docs.html">Документы</a> ·
+      <span>${esc(group)}</span>
+    </nav>
+    <div class="section-title">
+      <h1>${esc(name)}</h1>
+      <div class="line"></div>
+      ${why ? `<p class="subtitle">${esc(why)}</p>` : ""}
+    </div>
+
+    <div class="card">
+      <p>Документ собирается в браузере: вы вводите данные, текст
+        подставляется сам, готовый файл скачивается. Бесплатно, без
+        регистрации и без ограничений по количеству.</p>
+      <p style="margin-top:14px">
+        <a class="btn gold" href="${fill}">Заполнить и скачать</a>
+        <a class="btn secondary" href="../docs.html">Все документы</a>
+      </p>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Что понадобится</h2>
+      <ul>
+        ${tpl.fields.map(([, label]) => `<li>${esc(label)}</li>`).join("\n        ")}
+      </ul>
+      <p style="color:var(--muted);font-size:var(--t-sm);margin-top:8px">
+        Незаполненные места останутся прочерками — их можно вписать от руки.</p>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:var(--t-lg)">Образец</h2>
+      <pre class="doc-sample">${esc(blanks(text))}</pre>
+    </div>
+
+    ${note ? `<div class="card">
+      <h2 style="font-size:var(--t-lg)">На что обратить внимание</h2>
+      <p>${esc(note).replaceAll("\n\n", "</p><p style=\"margin-top:10px\">").replaceAll("\n", " ")}</p>
+    </div>` : ""}
+
+    ${siblings.length ? `<div class="card">
+      <h2 style="font-size:var(--t-lg)">Рядом в разделе «${esc(group)}»</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        ${siblings.map(s => `<a class="btn small secondary" href="${slug(s)}.html">${esc(s)}</a>`).join("\n        ")}
+      </div>
+    </div>` : ""}
+
+    <div class="card kb-cta">
+      <h2 style="font-size:var(--t-lg)">Сомневаетесь в формулировке?</h2>
+      <p style="color:var(--muted)">Шаблон — рабочая заготовка под обычный случай.
+        Если условия нестандартные, спросите консультанта: он ответит со ссылками
+        на статьи закона — три вопроса в день бесплатно.</p>
+      <p style="margin-top:14px">
+        <a class="btn gold" href="../auth.html?from=doc">Спросить бесплатно</a>
+        <a class="btn secondary" href="${fill}">Заполнить документ</a>
+      </p>
+    </div>
+  </div>
+</main>
+
+<script src="../js/themes.js?v=${version}"></script>
+<script src="../js/api.js?v=${version}"></script>
+<script src="../js/app.js?v=${version}"></script>
+<script src="../js/palette.js?v=${version}"></script>
+<script>initPage("doc.html");</script>
+</body>
+</html>
+`;
+}
+
+/* Список ссылок на страницы документов — внизу docs.html. */
+async function buildDocLinks(names) {
+  const p = join(HERE, "docs.html");
+  let html = await readFile(p, "utf8");
+  const eol = html.includes("\r\n") ? "\r\n" : "\n";
+  const body = `      <div class="doc-links">${names.map(n =>
+    `<a href="doc/${slug(n)}.html">${esc(n)}</a>`).join("")}</div>`;
+  const re = /<!-- doclinks:start -->[\s\S]*?<!-- doclinks:end -->/;
+  if (!re.test(html)) throw new Error("docs.html: нет маркеров doclinks");
+  html = html.replace(re,
+    `<!-- doclinks:start -->${eol}${body}${eol}      <!-- doclinks:end -->`);
+  await writeFile(p, html, "utf8");
+}
+
+async function buildSitemap(articles, today, calcPages = [], docPages = []) {
   const pages = [
     ["", "1.0", "weekly"],
     ["dlya-biznesa.html", "0.95", "weekly"],
@@ -691,10 +857,11 @@ async function buildSitemap(articles, today, calcPages = []) {
 ${pages.map(([l, p, f]) => url(l, p, f)).join("\n")}
 ${articles.map(a => url(`st/${slug(a.title)}.html`, "0.8", "monthly")).join("\n")}
 ${calcPages.map(p => url(`calc/${p.slug}.html`, "0.85", "monthly")).join("\n")}
+${docPages.map(n => url(`doc/${slug(n)}.html`, "0.75", "monthly")).join("\n")}
 </urlset>
 `;
   await writeFile(join(HERE, "sitemap.xml"), xml, "utf8");
-  return pages.length + articles.length + calcPages.length;
+  return pages.length + articles.length + calcPages.length + docPages.length;
 }
 
 /* ---------- Запуск ---------- */
@@ -748,6 +915,38 @@ const main = async () => {
   (0, eval)(tplSrc);
   const templates = Object.keys(globalThis.TEMPLATES).length;
 
+  /* Подписи «зачем он нужен» лежат рядом с самой страницей документов —
+     там их и правят. Забираем оттуда, чтобы не держать второй список. */
+  const docsHtml = await readFile(join(HERE, "docs.html"), "utf8");
+  const whySrc = docsHtml.match(/const DOC_WHY = \{[\s\S]*?\n\};/);
+  if (!whySrc) throw new Error("docs.html: не найден DOC_WHY");
+  (0, eval)(whySrc[0].replace(/^const /, "globalThis."));
+  const WHY = globalThis.DOC_WHY;
+
+  /* Группа документа нужна и в хлебных крошках, и для соседей. */
+  const groupOf = new Map();
+  for (const [gname, , titles] of globalThis.TEMPLATE_GROUPS)
+    for (const t of titles) groupOf.set(t, { group: gname, titles });
+
+  await mkdir(DOC_OUT, { recursive: true });
+  const docNames = Object.keys(globalThis.TEMPLATES);
+
+  /* Убираем страницы документов, которых больше нет: иначе поиск будет
+     годами держать в выдаче удалённое. */
+  const wantDocs = new Set(docNames.map(n => `${slug(n)}.html`));
+  for (const f of await readdir(DOC_OUT)) {
+    if (f.endsWith(".html") && !wantDocs.has(f)) await unlink(join(DOC_OUT, f));
+  }
+
+  for (const name of docNames) {
+    const g = groupOf.get(name);
+    if (!g) throw new Error(`документ «${name}» не разложен по группам в templates.js`);
+    const siblings = g.titles.filter(t => t !== name).slice(0, 5);
+    await writeFile(join(DOC_OUT, `${slug(name)}.html`),
+      docPage(name, globalThis.TEMPLATES[name],
+              { why: WHY[name] || "", group: g.group, siblings, version }), "utf8");
+  }
+
   for (const who of Object.keys(AUDIENCES)) {
     await writeFile(join(HERE, `${AUDIENCES[who].slug}.html`),
       audiencePage(who, { articles, hub, templates, version }), "utf8");
@@ -772,7 +971,7 @@ const forAudience = (mark, who) => !who || mark === "both" || mark === who;
 
   const faq = await buildFaq();
   const tiers = await buildHomePlans();
-  const urls = await buildSitemap(articles, new Date().toISOString().slice(0, 10), CALC_PAGES);
+  const urls = await buildSitemap(articles, new Date().toISOString().slice(0, 10), CALC_PAGES, docNames);
 
   console.log(`страниц статей: ${articles.length}`);
   console.log(`страниц калькуляторов: ${CALC_PAGES.length}`);
@@ -780,6 +979,8 @@ const forAudience = (mark, who) => !who || mark === "both" || mark === who;
   console.log(`разметка для браузера: js/audience.js`);
   console.log(`вопросов в разметке FAQ: ${faq}`);
   console.log(`тарифов на главной: ${tiers}`);
+  await buildDocLinks(docNames);
+  console.log(`страниц документов: ${docNames.length}`);
   console.log(`адресов в карте сайта: ${urls}`);
 };
 

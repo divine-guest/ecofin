@@ -993,6 +993,45 @@ console.log("\n— Страница не ходит на чужие адреса
      "генератор статей не возвращает шрифты Google");
 }
 
+console.log("\n— Страницы документов —");
+{
+  /* У каждого шаблона свой адрес: 65 документов на одной странице для
+     поиска были одним адресом с общим заголовком. Проверяем не «файл
+     есть», а что на странице лежит то, ради чего на неё приходят:
+     образец текста, перечень полей и путь к заполнению. */
+  const { TEMPLATES } = load("../js/templates.js", ["TEMPLATES"]);
+  const names = Object.keys(TEMPLATES);
+  const sitemap = read("../sitemap.xml");
+  const hub = read("../docs.html");
+
+  const kbSlug = t => t.toLowerCase()
+    .replace(/[«»"'(),.:;—–]/g, "").replace(/ё/g, "e");
+
+  let missing = 0, noSample = 0, noFill = 0, notInMap = 0, noLink = 0;
+  for (const name of names) {
+    const file = fs.readdirSync(new URL("../doc/", import.meta.url))
+      .find(f => f.endsWith(".html") && read(`../doc/${f}`).includes(`<h1>${name.replace(/&/g, "&amp;")}</h1>`));
+    if (!file) { missing++; continue; }
+    const html = read(`../doc/${file}`);
+    if (!/<pre class="doc-sample">[\s\S]{200,}<\/pre>/.test(html)) noSample++;
+    if (!html.includes(`docs.html#${encodeURIComponent(name)}`)) noFill++;
+    if (!sitemap.includes(`/doc/${file}`)) notInMap++;
+    if (!hub.includes(`href="doc/${file}"`)) noLink++;
+  }
+
+  ok(missing === 0, `у каждого из ${names.length} документов своя страница`, missing);
+  ok(noSample === 0, "на каждой странице есть образец текста", noSample);
+  ok(noFill === 0, "с каждой страницы можно перейти к заполнению", noFill);
+  ok(notInMap === 0, "все страницы документов есть в карте сайта", notInMap);
+  ok(noLink === 0, "со страницы «Документы» ведут обычные ссылки", noLink);
+
+  /* В образце не должно остаться подстановок вида {{name}}: человек
+     читает бланк, а не исходник шаблона. */
+  const sample = read(`../doc/${fs.readdirSync(new URL("../doc/", import.meta.url))[0]}`);
+  ok(!/\{\{\w+\}\}/.test(sample), "в образце подстановки заменены прочерками");
+  ok(/canonical" href="https:\/\/ecofin26\.ru\/doc\//.test(sample), "у страницы документа свой канонический адрес");
+}
+
 console.log("\n— Цены на витрине —");
 {
   /* Цену человек видит до оплаты, а списывается та, что в plans.js.

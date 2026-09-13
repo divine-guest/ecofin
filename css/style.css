@@ -2571,3 +2571,41 @@ h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
 .scan-status.err { color: var(--danger); }
 /* Подсветка поля, когда на него тянут файл. */
 textarea.scan-over, input.scan-over { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(14, 143, 134, .18); }
+
+/* Образец документа на его собственной странице.
+
+   Моноширинный шрифт здесь не украшение: в актах и договорах значение
+   имеют отступы и колонки подписей, пропорциональный шрифт их
+   разваливает. Высоту не ограничиваем — текст образца и есть то, ради
+   чего человек пришёл из поиска, прятать его под «показать ещё»
+   означало бы спрятать содержание страницы. */
+.doc-sample {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-x: auto;
+  font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
+  font-size: .84rem;
+  line-height: 1.6;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  /* На телефоне важнее уместить строку, чем сохранить кегль. */
+  .doc-sample { font-size: .78rem; padding: 14px; }
+}
+
+/* Список ссылок на страницы документов. Плотный «облаком»: он нужен
+   и человеку, который ищет глазами, и поисковику, которому нужны
+   обычные ссылки, а не кнопки со скриптом. */
+.doc-links { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.doc-links a {
+  font-size: var(--t-sm);
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.doc-links a:hover { color: var(--text); border-bottom-color: var(--border); }
