@@ -61,7 +61,7 @@ console.log("\n— Цены —");
 const pl=await call("/api/billing/plans");
 const basic=pl.data.plans.find(x=>x.id==="basic"), pro=pl.data.plans.find(x=>x.id==="pro");
 ok(basic.price.month===490 && pro.price.month===890, `цены: ${basic.price.month} и ${pro.price.month} ₽`);
-ok(basic.yearDiscount===28 && pro.yearDiscount===34, `годовая скидка: ${basic.yearDiscount}% и ${pro.yearDiscount}%`);
-ok(pl.data.enterprise.contact===true, "тариф «Бухгалтер» — по запросу, не продаётся кнопкой");
+ok(basic.yearDiscount===32 && pro.yearDiscount===35, `годовая скидка: ${basic.yearDiscount}% и ${pro.yearDiscount}%`);
+ok(pl.data.enterprise === null, "тариф «Бухгалтер» скрыт: сервер его не отдаёт");
 
 console.log(`\nИТОГО: ${p} пройдено, ${f} провалено\n`);

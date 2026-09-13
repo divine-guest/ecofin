@@ -620,7 +620,7 @@ ${p.worth ? `          <p class="tier-worth">${esc(p.worth)}</p>\n` : ""}       
         </div>`;
   }).join("\n");
 
-  const ent = ENTERPRISE ? `
+  const ent = ENTERPRISE && !ENTERPRISE.hidden ? `
         <div class="card tier-home">
           <h3>${esc(ENTERPRISE.title)}</h3>
           <p class="stat-value" style="font-size:1.5rem">${esc(ENTERPRISE.price)}</p>

@@ -113,7 +113,11 @@ export function freeMonths(id) {
    они входят в «Про». Отдельный тариф остаётся «по запросу», потому что
    в нём должно быть больше: выгрузки по всем клиентам разом, общий
    календарь сроков и счёт на одну организацию. Пока этого нет,
-   продавать отдельную цену не за что. */
+   продавать отдельную цену не за что.
+
+   Поэтому тариф СКРЫТ (hidden): на витрине его не видно, в ответе
+   сервера его нет. Описание оставлено здесь намеренно — вернуть тариф
+   нужно будет одним флагом, а не собирать заново по памяти. */
 export const ENTERPRISE = {
   title: "Бухгалтер",
   price: "от 2 490 ₽/мес",
@@ -124,6 +128,7 @@ export const ENTERPRISE = {
     "Выгрузки и отчёты",
   ],
   contact: true,
+  hidden: true,
 };
 
 export const PERIOD_DAYS = { month: 30, year: 365 };
@@ -177,6 +182,6 @@ export function publicPlans() {
       features: p.features,
     })),
     promises: PROMISES,
-    enterprise: ENTERPRISE,
+    enterprise: ENTERPRISE.hidden ? null : ENTERPRISE,
   };
 }
