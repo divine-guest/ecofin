@@ -22,8 +22,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=220">
-<link rel="stylesheet" href="css/style.css?v=220">
+<link rel="stylesheet" href="css/fonts.css?v=222">
+<link rel="stylesheet" href="css/style.css?v=222">
 </head>
 <body>
 <main class="section">
@@ -55,7 +55,7 @@
           ✓ 32 калькулятора: все семь налоговых режимов, выплаты, штрафы, пени, суд<br>
           ✓ Конструктор счетов с QR-кодом СБП<br>
           ✓ Аккаунт на сервере: один вход с телефона и компьютера<br>
-          ✓ Напоминания о налоговых сроках — на сайте и в Telegram<br>
+          ✓ Напоминания о налоговых сроках — на сайте и на телефоне<br>
           ✓ 50 статей базы знаний, 8 тестов и практикум на реальных делах<br>
           ✓ Курсы с сертификатами и профиль компетенций<br>
           ✓ Три тарифа, баллы и приглашения, три дня «Про» бесплатно<br>
@@ -72,7 +72,7 @@
           → Собственный домен и российский сервер<br>
           → Новые курсы: НДС на практике, договорная работа<br>
           → Тариф «Бухгалтер»: несколько клиентов в одном кабинете<br>
-          → Письма о сроках для тех, кому Telegram неудобен<br>
+          → Письма о сроках на электронную почту<br>
           ✓ 65 готовых документов: налоговые пояснения, бухгалтерская первичка, договоры, акты, иски, приказы, заявления<br>
           → Подбор проверенных бухгалтеров и юристов под задачу
         </p>
@@ -101,13 +101,13 @@
   </section>
 </main>
 
-<script src="js/themes.js?v=220"></script>
-<script src="js/contacts.js?v=220"></script>
-<script src="js/api.js?v=220"></script>
-<script src="js/app.js?v=220"></script>
-<script src="js/progress.js?v=220"></script>
-<script src="js/palette.js?v=220"></script>
-<script src="js/ai.js?v=220"></script>
+<script src="js/themes.js?v=222"></script>
+<script src="js/contacts.js?v=222"></script>
+<script src="js/api.js?v=222"></script>
+<script src="js/app.js?v=222"></script>
+<script src="js/progress.js?v=222"></script>
+<script src="js/palette.js?v=222"></script>
+<script src="js/ai.js?v=222"></script>
 <script>initPage("about.html");
 /* Раздел контактов. Показываем только заполненные каналы: неработающий
    адрес хуже, чем его отсутствие. */
@@ -115,18 +115,13 @@
   const box = document.getElementById("contactCard");
   if (box) {
     const rows = [];
-    if (CONTACTS.telegram) rows.push(`
-      <div class="contact-row">
-        <span class="contact-what">Telegram</span>
-        <span>
-          <a href="https://t.me/${CONTACTS.telegram}" target="_blank" rel="noopener">@${CONTACTS.telegram}</a>
-          <span class="hint"> — быстрее всего, отвечаем ${CONTACTS.answerTime}</span>
-        </span>
-      </div>`);
     if (CONTACTS.email) rows.push(`
       <div class="contact-row">
         <span class="contact-what">Почта</span>
-        <span><a href="mailto:${CONTACTS.email}">${CONTACTS.email}</a></span>
+        <span>
+          <a href="mailto:${CONTACTS.email}">${CONTACTS.email}</a>
+          <span class="hint"> — отвечаем ${CONTACTS.answerTime}</span>
+        </span>
       </div>`);
     if (CONTACTS.phone) rows.push(`
       <div class="contact-row">
@@ -140,13 +135,13 @@
       <p class="hint">
         ${escapeHtml(CONTACTS.legalName)}${CONTACTS.ogrnip ? "<br>ОГРНИП " + escapeHtml(CONTACTS.ogrnip) : ""}${CONTACTS.inn ? ", ИНН " + escapeHtml(CONTACTS.inn) : ""}
         ${CONTACTS.regBy ? "<br>Зарегистрирован: " + escapeHtml(CONTACTS.regBy) : ""}
-        ${CONTACTS.address ? "<br>" + escapeHtml(CONTACTS.address) : ""}
+        ${CONTACTS.address ? "<br>Почтовый адрес: " + escapeHtml(CONTACTS.address) : ""}
       </p>` : "";
 
     box.innerHTML = rows.join("") + `
       <p class="hint" style="margin-top:14px">
         С чем помогаем: <a href="recovery.html">восстановить доступ к аккаунту</a>, разобраться с подпиской
-        и оплатой, подключить несколько клиентов на тарифе «Бухгалтер».
+        и оплатой, вести несколько дел в одном кабинете.
         Мы не даём юридических консультаций в переписке — для этого есть
         ИИ-консультант в сервисе.
       </p>` + legal;
