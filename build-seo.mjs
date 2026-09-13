@@ -510,7 +510,7 @@ function audiencePage(who, { articles, hub, templates, version }) {
 
     <div class="card">
       <h2 style="font-size:var(--t-lg)">Разобраться</h2>
-      <p style="color:var(--muted)">${mine.length} разборов: что говорит закон, что делать по шагам и на чём обычно теряют деньги.</p>
+      <p style="color:var(--muted)">${mine.length} ${plural(mine.length, "разбор", "разбора", "разборов")}: что говорит закон, что делать по шагам и на чём обычно теряют деньги.</p>
       ${areas.map(area => `
       <h3 style="margin-top:16px">${esc(area)}</h3>
       <ul>
