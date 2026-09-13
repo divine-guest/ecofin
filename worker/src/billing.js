@@ -149,9 +149,15 @@ async function applySucceeded(env, paymentId, savedMethod) {
   /* Запоминаем, чем и что продлевать. Только при живом способе оплаты:
      иначе в базе останется план без возможности списать. */
   if (savedMethod) {
+    /* Вместе со способом оплаты фиксируем цену. На витрине обещано,
+       что при активной подписке она не вырастет, — без этой строки
+       обещание держалось бы только до первого повышения тарифов.
+       Сохраняем ПОЛНУЮ цену тарифа, а не списанную сумму: баллы
+       разовые, а фиксируется цена. */
+    const locked = PLANS[tier]?.price?.[period] || 0;
     await env.DB.prepare(
-      "UPDATE users SET auto_method = ?, auto_plan = ? WHERE email = ?"
-    ).bind(savedMethod, String(row.plan), row.email).run().catch(() => {});
+      "UPDATE users SET auto_method = ?, auto_plan = ?, auto_price = ? WHERE email = ?"
+    ).bind(savedMethod, String(row.plan), locked, row.email).run().catch(() => {});
   }
   await logAction(env, row.email, `Оплачена подписка «${PLANS[tier]?.title || tier}» (${row.plan}), ${row.amount} ₽`);
   /* Основная часть реферальной награды — именно здесь: пригласивший
@@ -354,7 +360,20 @@ export async function subscription(request, env, origin, user) {
     billingEnabled: configured(env),
     active: paid,
     nextPlan: user.auto_plan || "",
+    /* Сумма следующего списания: не «цена тарифа», а то, что реально
+       спишется с учётом зафиксированной цены. */
+    nextPrice: nextPriceOf(user),
   });
+}
+
+/* Сколько спишется при следующем продлении. Ноль — если продлевать
+   нечем или нечего. */
+function nextPriceOf(user) {
+  const [planId, period] = String(user.auto_plan || "").split(":");
+  const plan = PLANS[planId];
+  if (!plan || !plan.price?.[period]) return 0;
+  const locked = Number(user.auto_price) || 0;
+  return locked > 0 ? Math.min(locked, plan.price[period]) : plan.price[period];
 }
 
 /* Кому пора продлить. Берём тех, у кого срок истекает в ближайшие сутки:
@@ -396,7 +415,10 @@ async function chargeSaved(env, user) {
   const plan = PLANS[planId];
   if (!plan || !plan.price[period]) return false;
 
-  const priceRub = plan.price[period];
+  /* Зафиксированная цена защищает от подорожания, но не мешает
+     подешеветь: берём меньшую из двух. */
+  const locked = Number(user.auto_price) || 0;
+  const priceRub = locked > 0 ? Math.min(locked, plan.price[period]) : plan.price[period];
   /* Баллы работают и здесь: человек копил их не для того, чтобы они
      сгорели именно при автопродлении. */
   const balance = await balanceOf(env, user.email);

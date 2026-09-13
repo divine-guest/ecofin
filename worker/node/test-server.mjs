@@ -63,14 +63,14 @@ console.log("\n— Регистрация, вход, сессия —");
 const email = `srv${Date.now()}@test.ru`;
 const password = "parol12345";
 
-const reg = await call("/api/auth/register", { method: "POST", body: { name: "Проверка Сервера", email, password } });
+const reg = await call("/api/auth/register", { method: "POST", body: { name: "Проверка Сервера", email, password, consent: true } });
 /* Сервер отвечает 201 Created — это правильно, принимаем оба кода. */
 ok((reg.status === 200 || reg.status === 201) && reg.data.token, "регистрация выдаёт токен",
    `статус ${reg.status}, ответ ${JSON.stringify(reg.data).slice(0, 120)}`);
 ok(reg.data.user && reg.data.user.tier === "free", "новый аккаунт на тарифе «Старт»");
 ok(reg.data.user.name === "Проверка Сервера", "кириллица в имени не портится", JSON.stringify(reg.data.user?.name));
 
-const dup = await call("/api/auth/register", { method: "POST", body: { name: "Ещё раз", email, password } });
+const dup = await call("/api/auth/register", { method: "POST", body: { name: "Ещё раз", email, password, consent: true } });
 ok(dup.status !== 200, "повторная регистрация на ту же почту отклоняется", `статус ${dup.status}`);
 
 const bad = await call("/api/auth/login", { method: "POST", body: { email, password: "неверный", consent: true } });
@@ -144,7 +144,7 @@ console.log("\n— Ограничение частоты —");
 const second = `srv2${Date.now()}@test.ru`;
 const reg2 = await call("/api/auth/register", {
   method: "POST",
-  body: { name: "Второй", email: second, password },
+  body: { name: "Второй", email: second, password, consent: true },
   headers: { "X-Real-IP": "198.51.100.200" },
 });
 ok((reg2.status === 200 || reg2.status === 201), "второй аккаунт заведён", `статус ${reg2.status}`);
