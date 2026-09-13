@@ -18,3 +18,8 @@ worker/node/oneliner.txt
 pravofin/worker/node/oneliner.txt
 worker/node/chunks.txt
 pravofin/worker/node/chunks.txt
+
+# Локальная база разработки. Рабочая живёт на сервере, в /opt/pravofin/data,
+# и из репозитория не берётся: здесь она появляется только когда сервер
+# запускают на своей машине для проверки.
+worker/data/
