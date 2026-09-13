@@ -45,7 +45,7 @@ ok(health.data.service === "pravofin-api", `имя сервиса: ${health.data
 
 const plans = await call("/api/billing/plans");
 ok(plans.status === 200 && Array.isArray(plans.data.plans), `тарифы отдаются: ${(plans.data.plans || []).length}`);
-ok(plans.data.plans.some(p => p.id === "basic" && p.price.month === 290), "цена «Базового» 290 ₽ приходит с сервера");
+ok(plans.data.plans.some(p => p.id === "basic" && p.price.month === 490), "цена «Базового» 490 ₽ приходит с сервера");
 
 const missing = await call("/api/такого-нет");
 ok(missing.status === 404, "неизвестный путь даёт 404");
