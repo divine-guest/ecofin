@@ -118,12 +118,20 @@ img { max-width: 100%; }
 :root { --gutter: 22px; }
 .container { max-width: 1180px; margin: 0 auto; padding: 0 var(--gutter); }
 /* ============ Шапка ============ */
+/* Шапке ширины текста мало. Тексту 1180 пикселей в самый раз — строка
+   длиннее читается хуже, — а меню при этой ширине не помещалось, и
+   последние пункты уезжали в выпадающий список «Ещё». Спрятанный
+   раздел человек не ищет: он решает, что раздела нет. Поэтому у шапки
+   свой предел, шире страницы. */
+.site-header .container { max-width: 1500px; }
 .site-header {
   position: sticky; top: 0; z-index: 60;
   background: var(--header-bg);
   border-bottom: 1px solid var(--border);
 }
-.nav { display: flex; align-items: center; gap: 14px; height: 68px; }
+/* Перенос — страховка: если пунктов и кнопок станет больше, ряд
+   разделов уйдёт на вторую строку, а не вылезет за край шапки. */
+.nav { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; height: 68px; }
 .logo { font-size: 1.35rem; color: var(--text);
   display: flex; align-items: center; gap: 9px;
 }
@@ -161,7 +169,7 @@ img { max-width: 100%; }
 }
 .nav-links::-webkit-scrollbar { display: none; }
 .nav-links a {
-  position: relative; padding: 9px 11px;
+  position: relative; padding: 9px 10px;
   border-radius: 10px; font-weight: 600; font-size: .88rem;
   white-space: nowrap; transition: color .2s;
 }
@@ -457,32 +465,6 @@ textarea { min-height: 120px; resize: vertical; }
    ответа сервера, поэтому отступ задаём только когда в ней что-то есть:
    иначе над заголовком «Налоги» висит необъяснимая дыра. */
 .quota-row:not(:empty) { margin-bottom: 18px; }
-/* ============ «Ещё» в шапке ============
-   Кнопка выглядит как обычный пункт меню: она и есть пункт меню,
-   просто раскрывающийся. Отличать её оформлением — значит намекать,
-   что за ней что-то другое. */
-.nav-more { position: relative; flex: 0 0 auto; }
-.nav-more[hidden] { display: none; }
-.nav-more-btn {
-  color: var(--muted); padding: 9px 11px; border-radius: 10px;
-  font-weight: 600; font-size: .88rem; font-family: inherit;
-  background: none; border: none; cursor: pointer; white-space: nowrap;
-}
-.nav-more-btn::after { content: " ▾"; font-size: .7em; opacity: .7; }
-.nav-more-btn:hover { color: var(--text); }
-.nav-more-list {
-  display: none; position: absolute; right: 0; top: calc(100% + 8px);
-  min-width: 190px; padding: 6px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; box-shadow: var(--shadow-lg); z-index: 60;
-}
-.nav-more.open .nav-more-list { display: block; }
-.nav-more-list a {
-  display: block; padding: 9px 12px; border-radius: 9px;
-  color: var(--text); font-size: var(--t-sm); white-space: nowrap;
-}
-.nav-more-list a:hover { background: var(--surface-2); text-decoration: none; }
-.nav-more-list a.active { color: var(--link, var(--primary)); }
 /* ============ Свои организации ============
    Отмеченная строка выделяется рамкой, а не цветом фона: цвет фона
    в тёмной теме читается как «недоступно», и человек решал бы, что
@@ -792,10 +774,12 @@ canvas { display: block; margin: 0 auto; background: var(--surface-2); border-ra
 /* Бургер/Меню: скрыто на десктопе */
 .nav-burger { display: none; }
 .mobile-menu { display: none; }
-/* Бургер включается раньше: шесть пунктов меню перестают помещаться
-   уже около 960 пикселей, и между 860 и 1024 последние из них
-   уходили за край в горизонтальную прокрутку. */
-@media (max-width: 1010px) {
+/* Бургер включается раньше: пункты меню перестают помещаться в одну
+   строку около 1180 пикселей. Ниже этой границы шапка становится
+   двухрядной — название и кнопки сверху, разделы под ними. Так не
+   прячется ни один раздел: раньше их складывали в «Ещё», и человек
+   просто не находил нужное. */
+@media (max-width: 1280px) {
   /* двухслойная шапка: название+кнопки сверху, пункты — ниже в два ряда */
   .nav { height: auto; flex-wrap: wrap; padding: 10px 0; row-gap: 4px; }
 .logo { order: 0; font-size: 1.02rem; gap: 6px; }
@@ -2193,11 +2177,16 @@ a.habit-btn { text-decoration: none; display: inline-flex; align-items: center; 
   /* -------- Шапка: одна строка вместо двух рядов плиток -------- */
   .nav { height: auto; flex-wrap: nowrap; padding: 8px 0; gap: 8px; }
 .logo { font-size: 1.05rem; }
+/* Отступ держит название: всё остальное — поиск и вход — уезжает к
+   правому краю. Раньше отступ стоял на самой кнопке входа, но его
+   тут же обнулял соседний селектор, и «Войти» оказывалась вплотную
+   к названию, будто часть логотипа, а правый угол пустовал. */
+.logo { margin-right: auto; }
 .nav-links, .nav-burger, .mobile-menu, .site-header .theme-toggle { display: none !important; }
 .header-pill { padding: 9px; margin: 0; }
 .header-pill .pill-text { display: none; }
-.nav > .btn { margin-left: auto; padding: 9px 14px; font-size: .82rem; }
-.header-pill + .btn, .notif-btn + .header-pill { margin-left: 0; }
+.nav > .btn { margin-left: 0; padding: 9px 14px; font-size: .82rem; }
+.notif-btn + .header-pill { margin-left: 0; }
 /* -------- Нижняя панель -------- */
   .tabbar {
     display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 120;

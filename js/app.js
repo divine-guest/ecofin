@@ -561,101 +561,17 @@ document.addEventListener("click", e => {
   if (e.target.closest(".tabs .tab")) setTimeout(scrollActiveTabIntoView, 0);
 });
 
-/* ============ Меню шапки: лишнее уходит в «Ещё» ============
+/* ============ Меню шапки ============
 
-   Меню объявлено горизонтальной прокруткой. На телефоне это верно: ряд
-   листают пальцем, обрезанный край последней плитки сам приглашает это
-   сделать. На компьютере — нет: мышью такой ряд не листают, признака
-   прокрутки не видно, и пункты просто пропадают.
+   Пункты больше не складываются в «Ещё». Выпадающий список решал не ту
+   задачу: он прятал разделы, а спрятанный раздел человек не ищет — он
+   решает, что раздела нет. Вдобавок список сам съедал место, из-за
+   чего под него уходил ещё один пункт.
 
-   Так и было: у вошедшего человека меню требовало 818 пикселей при
-   доступных 711, и «База знаний» с «Кабинетом» уезжали под кнопку
-   аккаунта. Глазами это не поймать — выглядит, будто разделов нет.
-
-   Складываем непоместившееся в «Ещё». Ни один раздел не пропадает,
-   шапка перестаёт обрезаться, и на любой ширине видно ровно столько,
-   сколько влезло.                                                     */
-function fitNav() {
-  const nav = document.querySelector(".site-header .nav-links");
-  if (!nav) return;
-
-  /* На телефоне меню переносится по строкам и прокрутки не требует —
-     складывать там нечего. */
-  if (innerWidth <= 860) {
-    nav.querySelectorAll("a[hidden]").forEach(a => (a.hidden = false));
-    const old = nav.querySelector(".nav-more");
-    if (old) old.remove();
-    return;
-  }
-
-  let more = nav.querySelector(".nav-more");
-  if (!more) {
-    more = document.createElement("div");
-    more.className = "nav-more";
-    more.innerHTML = `
-      <button type="button" class="nav-more-btn" aria-haspopup="true" aria-expanded="false">Ещё</button>
-      <div class="nav-more-list"></div>`;
-    nav.appendChild(more);
-    more.querySelector(".nav-more-btn").addEventListener("click", e => {
-      e.stopPropagation();
-      const open = more.classList.toggle("open");
-      more.querySelector(".nav-more-btn").setAttribute("aria-expanded", String(open));
-    });
-    /* Клик мимо и Esc закрывают: раскрытый список, который не закрыть,
-       перекрывает страницу и раздражает сильнее, чем помогает. */
-    document.addEventListener("click", () => more.classList.remove("open"));
-    document.addEventListener("keydown", e => {
-      if (e.key === "Escape") more.classList.remove("open");
-    });
-  }
-
-  const links = [...nav.querySelectorAll(":scope > a")];
-  const list = more.querySelector(".nav-more-list");
-
-  /* Считаем от нуля: сначала показываем всё, потом прячем лишнее.
-     Иначе после расширения окна спрятанное так и осталось бы в «Ещё». */
-  links.forEach(a => (a.hidden = false));
-  more.hidden = true;
-  list.innerHTML = "";
-
-  const room = nav.clientWidth;
-  const widthOf = el => el.getBoundingClientRect().width;
-  const moreW = 62;   // запас под саму кнопку «Ещё»
-
-  let used = 0;
-  const overflow = [];
-  for (const a of links) {
-    used += widthOf(a);
-    if (used > room - moreW) overflow.push(a);
-  }
-
-  /* Прячем в «Ещё» только если не поместилось больше одного: ради
-     единственного пункта заводить выпадающий список — хуже, чем
-     показать его. */
-  if (overflow.length) {
-    /* Если лишний ровно один, пробуем обойтись без кнопки: без неё
-       освобождается как раз её ширина. */
-    if (overflow.length === 1 && used <= room) {
-      more.hidden = true;
-      return;
-    }
-    for (const a of overflow) {
-      a.hidden = true;
-      const copy = a.cloneNode(true);
-      copy.hidden = false;
-      list.appendChild(copy);
-    }
-    more.hidden = false;
-  }
-}
-
-let navFitTimer = 0;
-addEventListener("resize", () => {
-  clearTimeout(navFitTimer);
-  navFitTimer = setTimeout(fitNav, 120);
-});
-addEventListener("load", fitNav);
-document.addEventListener("pf:ready", fitNav);
+   Теперь места хватает: у шапки свой предел ширины, шире страницы,
+   а на экране уже 1180 пикселей она честно переходит в два ряда —
+   название с кнопками сверху, разделы под ними. Ничего не пропадает
+   ни на одной ширине, и следить за этим в коде не нужно.             */
 
 /* ============ Общее модальное окно ============
 
@@ -714,13 +630,19 @@ function renderHeader(active) {
     ["knowledge.html", "База знаний"],
   ];
 
-  const pages = [["index.html", "Главная"], ...main, ["dashboard.html", "Кабинет"]];
+  /* «Кабинет» в ряду разделов не нужен: справа стоит кнопка аккаунта,
+     которая ведёт ровно туда же, а у гостя на её месте «Войти». Дубль
+     занимал почти сто пикселей — как раз из-за него последние разделы
+     уезжали в выпадающий список. В меню телефона он остаётся: там
+     кнопки аккаунта в ряду нет. */
+  const pages = [["index.html", "Главная"], ...main];
   /* Пункт «Админка» видят только админы и владелец. Прямой заход по адресу
      всё равно упрётся в проверку прав на сервере. */
   if (u && u.isAdmin) pages.push(["admin.html", "Админка"]);
 
   const shown = new Set(pages.map(([h]) => h));
   const rest = [
+    ["dashboard.html", "Кабинет"],
     ["games.html", "Практикум"], ["answers.html", "Ответы"], ["courses.html", "Курсы"],
     ["expenses.html", "Дневник трат"], ["search.html", "Поиск"], ["faq.html", "Вопросы"],
   ].filter(([h]) => !shown.has(h));
