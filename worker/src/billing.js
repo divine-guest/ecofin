@@ -35,6 +35,15 @@ async function ykFetch(env, path, { method = "GET", body, idempotenceKey } = {})
   return data;
 }
 
+/* Отказ в сохранении способа оплаты: магазину не подключены
+   автоплатежи. ЮKassa отвечает на это 403 forbidden либо ошибкой
+   запроса с указанием на параметр save_payment_method. */
+function recurringForbidden(e) {
+  const d = e && e.data || {};
+  return e && (e.status === 403 || d.code === "forbidden" ||
+               d.parameter === "save_payment_method");
+}
+
 /* GET /api/billing/plans — цены и признак, подключён ли эквайринг. */
 export function plans(env, origin) {
   return json(env, origin, {
@@ -64,36 +73,53 @@ export async function createPayment(request, env, origin, user) {
   const balance = await balanceOf(env, user.email);
   const { used, toPay } = applyToPrice(balance, price.rub);
 
-  try {
-    const payment = await ykFetch(env, "/payments", {
-      method: "POST",
-      idempotenceKey: crypto.randomUUID(),
-      body: {
+  /* Тело платежа — отдельно от отправки: его может понадобиться
+     отправить второй раз, уже без сохранения способа оплаты. */
+  const paymentBody = saveMethod => ({
+    amount: { value: toPay.toFixed(2), currency: "RUB" },
+    capture: true,
+    confirmation: { type: "redirect", return_url: returnUrl },
+    /* Просим сохранить способ оплаты — без этого автопродление
+       невозможно в принципе, а именно оно отделяет разовую продажу
+       от дохода: разовые платежи повторяют около четверти людей,
+       автосписание — три четверти. Человек видит это на витрине
+       и может отключить в кабинете в один клик. */
+    ...(saveMethod ? { save_payment_method: true } : {}),
+    description: `ЭкоФин — ${PLANS[planId].title}, ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`,
+    /* Сумму и план берём ТОЛЬКО отсюда при подтверждении: клиент их не диктует. */
+    metadata: { email: user.email, plan: planId, period, pointsUsed: String(used) },
+    receipt: {
+      customer: { email: user.email },
+      items: [{
+        description: `Подписка ЭкоФин «${PLANS[planId].title}», ${period === "year" ? "12 мес." : "1 мес."}`,
+        quantity: "1.00",
         amount: { value: toPay.toFixed(2), currency: "RUB" },
-        capture: true,
-        confirmation: { type: "redirect", return_url: returnUrl },
-        /* Просим сохранить способ оплаты — без этого автопродление
-           невозможно в принципе, а именно оно отделяет разовую продажу
-           от дохода: разовые платежи повторяют около четверти людей,
-           автосписание — три четверти. Человек видит это на витрине
-           и может отключить в кабинете в один клик. */
-        save_payment_method: true,
-        description: `ЭкоФин — ${PLANS[planId].title}, ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`,
-        /* Сумму и план берём ТОЛЬКО отсюда при подтверждении: клиент их не диктует. */
-        metadata: { email: user.email, plan: planId, period, pointsUsed: String(used) },
-        receipt: {
-          customer: { email: user.email },
-          items: [{
-            description: `Подписка ЭкоФин «${PLANS[planId].title}», ${period === "year" ? "12 мес." : "1 мес."}`,
-            quantity: "1.00",
-            amount: { value: toPay.toFixed(2), currency: "RUB" },
-            vat_code: 1,
-            payment_mode: "full_payment",
-            payment_subject: "service",
-          }],
-        },
-      },
-    });
+        vat_code: 1,
+        payment_mode: "full_payment",
+        payment_subject: "service",
+      }],
+    },
+  });
+
+  try {
+    /* Автоплатежи в ЮKassa подключаются отдельно, по заявке через
+       менеджера. Пока их нет, запрос с сохранением способа оплаты
+       отклоняется целиком — и человек, нажавший «Оплатить», не может
+       заплатить вовсе. Поэтому при таком отказе повторяем тот же
+       платёж без сохранения: деньги принимаются сразу, а продление
+       заработает, когда магазину включат автоплатежи. */
+    let payment;
+    try {
+      payment = await ykFetch(env, "/payments", {
+        method: "POST", idempotenceKey: crypto.randomUUID(), body: paymentBody(true),
+      });
+    } catch (e) {
+      if (!recurringForbidden(e)) throw e;
+      console.error("yookassa: автоплатежи не подключены, платёж без сохранения способа");
+      payment = await ykFetch(env, "/payments", {
+        method: "POST", idempotenceKey: crypto.randomUUID(), body: paymentBody(false),
+      });
+    }
 
     await env.DB.prepare(
       `INSERT INTO payments (id, email, amount, plan, source, status, created_at)
