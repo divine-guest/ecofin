@@ -92,15 +92,71 @@ run() { ssh "${OPTS[@]}" -o BatchMode=yes "root@$IP" "$@"; }
 if run true 2>/dev/null; then
   echo "Вход по ключу уже работает."
 else
+  # Пароль спрашиваем сами и показываем при вводе.
+  #
+  # Обычная строка ssh при вводе не показывает ничего — ни букв, ни
+  # звёздочек. Человек вставляет пароль, видит пустоту и решает, что
+  # окно зависло: первый запуск на этом и остановился. Поэтому читаем
+  # пароль обычной строкой, говорим, сколько символов получили, и сразу
+  # очищаем экран.
+  #
+  # До ssh пароль доходит через переменную этого окна и маленькую
+  # программу-подсказчика (SSH_ASKPASS). На диск он не пишется, в файл
+  # отметок не попадает, после входа переменная стирается.
+  ASK=$(mktemp)
+  printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$ECOFIN_PW"' > "$ASK"
+  chmod 700 "$ASK"
+  ADD="umask 077; mkdir -p ~/.ssh; grep -qxF '$PUB' ~/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> ~/.ssh/authorized_keys"
+
   echo
-  echo "Сейчас сервер спросит пароль пользователя root."
-  echo "Он в письме от рег.ру и в карточке сервера в личном кабинете."
-  echo "При вводе символы не показываются — так и должно быть."
-  echo "Вставьте пароль и нажмите Enter."
+  echo "Нужен пароль пользователя root от сервера."
+  echo "Он в письме от рег.ру или в карточке сервера в личном кабинете."
   echo
-  ssh "${OPTS[@]}" -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=3 "root@$IP" \
-    "umask 077; mkdir -p ~/.ssh; grep -qxF '$PUB' ~/.ssh/authorized_keys 2>/dev/null || echo '$PUB' >> ~/.ssh/authorized_keys" \
-    || fail "войти по паролю не удалось. Проверьте пароль и запустите ещё раз."
+  echo "Вставьте его сюда ПРАВОЙ КНОПКОЙ МЫШИ и нажмите Enter."
+  echo "Пароль будет виден, пока вы его вводите, — так понятно, что он"
+  echo "вставился. Сразу после Enter экран очистится."
+
+  OK=""
+  for _ in 1 2 3; do
+    echo
+    IFS= read -r -p "Пароль root: " ECOFIN_PW || { rm -f "$ASK"; fail "ввод прерван"; }
+    # Письмо и браузер охотно отдают пароль с пробелом или переводом
+    # строки на конце — срезаем, иначе верный пароль не подойдёт.
+    ECOFIN_PW=${ECOFIN_PW//$'\r'/}
+    ECOFIN_PW="${ECOFIN_PW#"${ECOFIN_PW%%[![:space:]]*}"}"
+    ECOFIN_PW="${ECOFIN_PW%"${ECOFIN_PW##*[![:space:]]}"}"
+    printf '\033[2J\033[3J\033[H'
+    if [ -z "$ECOFIN_PW" ]; then
+      echo "Пусто: ничего не вставилось. Попробуйте ещё раз."
+      continue
+    fi
+    echo "Принял, символов: ${#ECOFIN_PW}. Пробую войти…"
+
+    export ECOFIN_PW
+    ERR=$(mktemp)
+    if SSH_ASKPASS="$ASK" SSH_ASKPASS_REQUIRE=force DISPLAY="${DISPLAY:-:0}" \
+         ssh "${OPTS[@]}" -o LogLevel=ERROR -o PubkeyAuthentication=no \
+             -o PreferredAuthentications=password,keyboard-interactive \
+             -o NumberOfPasswordPrompts=1 "root@$IP" "$ADD" < /dev/null 2> "$ERR"; then
+      OK="да"
+    fi
+    export -n ECOFIN_PW
+    ECOFIN_PW=""
+
+    if [ -n "$OK" ]; then rm -f "$ERR"; break; fi
+    if grep -qiE 'change your password|password change required|expired' "$ERR"; then
+      echo "Сервер требует сначала сменить пароль. Это делается один раз в консоли"
+      echo "сервера в личном кабинете рег.ру; после смены запустите этот файл снова."
+    elif grep -qi 'permission denied' "$ERR"; then
+      echo "Сервер пароль не принял. Проверьте, что скопировали его целиком."
+    else
+      echo "Войти не удалось: $(head -c 300 "$ERR" | tr '\n' ' ')"
+    fi
+    rm -f "$ERR"
+  done
+  rm -f "$ASK"
+
+  [ -n "$OK" ] || fail "пароль не подошёл. Сбросьте его в карточке сервера в кабинете рег.ру и запустите ещё раз."
   run true || fail "сервер не принял ключ"
   echo "Пароль больше не понадобится: вход теперь по ключу этого компьютера."
 fi
