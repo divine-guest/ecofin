@@ -26,10 +26,29 @@ ALIASES=("${LINES[@]:1}")
 MY_IP=$(curl -s --max-time 5 https://api.ipify.org || true)
 if [ -z "$MY_IP" ]; then exit 0; fi
 
+# Куда имя показывает прямо сейчас — у самих серверов зоны, мимо кэшей.
+#
+# Обычный запрос идёт через кэш, а запись домена живёт в нём шесть часов.
+# После смены адреса машина ещё шесть часов видела бы старый и не просила
+# бы сертификат — сайт всё это время не открывался бы по https. Серверы
+# зоны отвечают сразу, и Let's Encrypt спрашивает именно их.
+# Та же функция — в enable-tls.sh; менять обе.
+fresh_ips() {
+  command -v dig >/dev/null 2>&1 || return 0
+  local zone ns
+  zone=$(printf '%s' "$1" | awk -F. '{ print $(NF-1) "." $NF }')
+  for ns in $(dig +short +time=3 +tries=1 NS "$zone" 2>/dev/null | head -3); do
+    dig +short +time=3 +tries=1 A "$1" "@$ns" 2>/dev/null \
+      | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' && return 0
+  done
+  return 0
+}
+
 points_here() {
-  local ip
-  ip=$(getent hosts "$1" 2>/dev/null | awk '{print $1}' | head -1)
-  [ -n "$ip" ] && [ "$ip" = "$MY_IP" ]
+  local ips
+  ips=$(fresh_ips "$1")
+  [ -n "$ips" ] || ips=$(getent hosts "$1" 2>/dev/null | awk '{print $1}')
+  printf '%s\n' "$ips" | grep -qxF "$MY_IP"
 }
 
 if ! points_here "$MAIN"; then

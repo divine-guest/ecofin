@@ -27,10 +27,25 @@ MY_IP=$(curl -s --max-time 5 https://api.ipify.org || true)
 # Проверять обязательно: certbot отказывает ЦЕЛИКОМ, если хоть одно имя
 # из списка не подтвердилось. Один неверно настроенный псевдоним оставил
 # бы без https основной домен — то есть весь сайт.
+# Спрашиваем серверы зоны, а не кэш: запись домена живёт в кэше шесть
+# часов, и после смены адреса имя ещё долго «показывало бы» на старый.
+# Та же функция — в check-domain.sh, там же подробности; менять обе.
+fresh_ips() {
+  command -v dig >/dev/null 2>&1 || return 0
+  local zone ns
+  zone=$(printf '%s' "$1" | awk -F. '{ print $(NF-1) "." $NF }')
+  for ns in $(dig +short +time=3 +tries=1 NS "$zone" 2>/dev/null | head -3); do
+    dig +short +time=3 +tries=1 A "$1" "@$ns" 2>/dev/null \
+      | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' && return 0
+  done
+  return 0
+}
+
 points_here() {
-  local ip
-  ip=$(getent hosts "$1" 2>/dev/null | awk '{print $1}' | head -1)
-  [ -n "$ip" ] && [ "$ip" = "$MY_IP" ]
+  local ips
+  ips=$(fresh_ips "$1")
+  [ -n "$ips" ] || ips=$(getent hosts "$1" 2>/dev/null | awk '{print $1}')
+  printf '%s\n' "$ips" | grep -qxF "$MY_IP"
 }
 
 # --- Основной домен ------------------------------------------------------

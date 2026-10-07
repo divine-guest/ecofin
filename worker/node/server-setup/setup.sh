@@ -105,7 +105,7 @@ MISSING=""
 # tesseract — распознавание текста с фотографий прямо здесь.
 # Без него снимок документа пришлось бы отправлять зарубежной
 # модели: паспорта, требования из налоговой, чужие договоры.
-for pair in "git:git" "nginx:nginx" "cc:build-essential" "sqlite3:sqlite3" "ufw:ufw" "certbot:python3-certbot-nginx" "tesseract:tesseract-ocr"; do
+for pair in "git:git" "nginx:nginx" "cc:build-essential" "sqlite3:sqlite3" "ufw:ufw" "certbot:python3-certbot-nginx" "tesseract:tesseract-ocr" "dig:bind9-dnsutils"; do
   cmd=${pair%%:*}; pkg=${pair#*:}
   command -v "$cmd" >/dev/null 2>&1 || MISSING="$MISSING $pkg"
 done
