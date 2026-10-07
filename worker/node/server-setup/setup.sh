@@ -173,6 +173,14 @@ if ! node_ok; then
 fi
 log "node $(node -v), npm $(npm -v)"
 
+# ---------- Переезд на другую машину ----------
+#
+# Стоит до секретов намеренно: новая машина получает вместе с базой и
+# ключи, и следующий же шаг раскладывает их по местам и перезапускает
+# службу. Поставь его в конец — ключи ждали бы следующего захода.
+# Пока в репозитории нет файла TRANSFER, скрипт выходит сразу.
+bash "$HERE/transfer.sh" || log "перенос данных завершился с ошибкой"
+
 # ---------- 6. Секреты ----------
 
 [ -f "$DIR/env" ] || die "нет файла $DIR/env — машину нужно создавать заново"
@@ -625,10 +633,16 @@ DIAG="$REPO/diag-8f3a2c.txt"
   certbot certificates 2>/dev/null | grep -E 'Certificate Name|Domains|Expiry' | sed 's/^/  /' || echo "  certbot не ответил"
   echo
 
-  echo "--- состояние переноса ---"
-  echo "  метка в репозитории: $(cat "$REPO/worker/node/IMPORT-DATA" 2>/dev/null || echo нет)"
-  echo "  метка применённого:  $(cat "$DIR/import.done" 2>/dev/null || echo нет)"
-  echo "  файл выгрузки:       $(wc -c < "$REPO/worker/node/import.sql.enc" 2>/dev/null || echo нет) байт"
+  echo "--- переезд на другую машину ---"
+  if [ -f "$REPO/worker/node/TRANSFER" ]; then
+    echo "  просьба в репозитории: $(grep -vE '^[[:space:]]*(#|$)' "$REPO/worker/node/TRANSFER" | tr '\n' ' ')"
+  else
+    echo "  просьба в репозитории: нет"
+  fi
+  echo "  отдано отсюда:  $(cat "$DIR/transfer-out.done" 2>/dev/null || echo нет)"
+  echo "  принято сюда:   $(cat "$DIR/transfer-in.done" 2>/dev/null || echo нет)"
+  echo "  что говорил перенос:"
+  grep -F '[transfer]' /var/log/pravofin-setup.log 2>/dev/null | tail -6 | sed 's/^/    /'
 } > "$DIAG" 2>&1
 chmod 644 "$DIAG"
 
