@@ -8,7 +8,13 @@ import { logAction } from "./auth.js";
 import { balanceOf, applyToPrice, grant, POINTS, RULES_TEXT } from "./points.js";
 import { rewardOnPayment } from "./referral.js";
 
-const YK = "https://api.yookassa.ru/v3";
+/* Адрес ЮKassa. Переменная YOOKASSA_API_URL нужна только проверкам: они
+   поднимают подставной платёжный сервис и направляют сервер на него.
+   До октября 2026-го оплату нельзя было проверить вовсе — единственная
+   проверка убеждалась, что без ключей приходит отказ, — и весь путь от
+   кнопки «Оплатить» до включённого тарифа впервые встретился бы с
+   настоящими деньгами. На боевом сервере переменная не задана. */
+const ykBase = env => String(env.YOOKASSA_API_URL || "https://api.yookassa.ru/v3").replace(/\/+$/, "");
 
 const configured = env => Boolean(env.YOOKASSA_SHOP_ID && env.YOOKASSA_SECRET_KEY);
 
@@ -19,7 +25,7 @@ function ykAuth(env) {
 async function ykFetch(env, path, { method = "GET", body, idempotenceKey } = {}) {
   const headers = { Authorization: ykAuth(env), "Content-Type": "application/json" };
   if (idempotenceKey) headers["Idempotence-Key"] = idempotenceKey;
-  const r = await fetch(YK + path, {
+  const r = await fetch(ykBase(env) + path, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
@@ -216,6 +222,119 @@ async function cancelPayment(env, paymentId) {
   }
 }
 
+/* ============ Возврат ============
+
+   Оферта (п. 4.2) обещает вернуть деньги полностью в течение 14 дней,
+   без объяснения причин. До октября 2026-го возврат состоял из двух
+   ручных шагов: деньги — в кабинете ЮKassa, тариф — кнопкой в админке.
+   Забыть второй шаг значило оставить человеку доступ и через месяц
+   списать с него продление — уже после того, как он отказался.
+
+   Здесь возврат — одно действие, и оно делает всё сразу. */
+
+/* Единая точка отмены оплаты. Идемпотентна: повторное уведомление или
+   второе нажатие ничего не снимут дважды. */
+async function applyRefund(env, paymentId, by = "") {
+  const row = await env.DB.prepare("SELECT * FROM payments WHERE id = ?").bind(paymentId).first();
+  if (!row) return { ok: false, reason: "unknown-payment" };
+  if (row.status === "refunded") return { ok: true, already: true };
+  if (row.status !== "succeeded") return { ok: false, reason: "not-paid" };
+
+  await env.DB.prepare("UPDATE payments SET status = 'refunded' WHERE id = ?").bind(paymentId).run();
+
+  const user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(row.email).first();
+  if (user) {
+    /* Отнимаем ровно тот срок, который дал этот платёж. Обычно после
+       этого доступа не остаётся, и тариф возвращается к бесплатному. Но
+       человек мог оплатить два периода подряд и вернуть один — тогда
+       второй остаётся за ним. */
+    const [, period] = String(row.plan).split(":");
+    const days = PERIOD_DAYS[period] || 30;
+    const left = (Number(user.pro_until) || 0) - days * 86400000;
+    if (left > now()) {
+      await env.DB.prepare("UPDATE users SET pro_until = ? WHERE email = ?").bind(left, row.email).run();
+    } else {
+      await env.DB.prepare("UPDATE users SET plan = 'free', pro_until = NULL WHERE email = ?").bind(row.email).run();
+    }
+    /* Автопродление выключаем и забываем способ оплаты: человек отказался
+       от услуги, и списать с него что-либо ещё мы не вправе. */
+    await env.DB.prepare(
+      "UPDATE users SET auto_renew = 0, auto_method = '', auto_plan = '', auto_price = 0 WHERE email = ?"
+    ).bind(row.email).run().catch(() => {});
+
+    /* Баллы, потраченные на этот платёж, возвращаем: покупки не было. */
+    const spent = await env.DB.prepare("SELECT delta FROM point_ops WHERE ref = ? AND email = ?")
+      .bind(`pay-${paymentId}`, row.email).first();
+    if (spent && spent.delta < 0) {
+      await grant(env, row.email, -spent.delta, "Возврат баллов: оплата возвращена", `refundpay-${paymentId}`).catch(() => {});
+    }
+
+    await env.DB.prepare(
+      `INSERT INTO notifications (email, title, body, kind, link, created_at)
+       VALUES (?, ?, ?, 'info', 'dashboard.html', ?)`
+    ).bind(row.email, "Оплата возвращена",
+           `Вернули ${row.amount} ₽ на тот же способ оплаты. Банк зачисляет деньги в срок до нескольких дней. ` +
+           `Автопродление отключено.`, now()).run().catch(() => {});
+  }
+
+  await logAction(env, row.email, `Возврат оплаты ${row.amount} ₽ (${row.plan})`);
+  if (by && by !== row.email && by.includes("@")) await logAction(env, by, `Оформил возврат ${row.amount} ₽ для ${row.email}`);
+  return { ok: true };
+}
+
+/* Запрос на возврат в ЮKassa. Возвращает { ok, pending?, already?, error? }.
+
+   Ключ идемпотентности привязан к платежу: два нажатия подряд или
+   повтор после обрыва связи — это один и тот же возврат, а не два. */
+export async function refundPayment(env, paymentId, by = "") {
+  if (!configured(env)) return { ok: false, error: "Приём оплаты не подключён" };
+  const row = await env.DB.prepare("SELECT * FROM payments WHERE id = ?").bind(paymentId).first();
+  if (!row) return { ok: false, error: "Платёж не найден" };
+  if (row.status === "refunded") return { ok: true, already: true };
+  if (row.source !== "yookassa") return { ok: false, error: "Возвращать можно только оплату картой: этот доступ выдан иначе" };
+  if (row.status !== "succeeded") return { ok: false, error: "Платёж не был оплачен — возвращать нечего" };
+
+  const [planId, period] = String(row.plan).split(":");
+  const value = Number(row.amount).toFixed(2);
+  let refund;
+  try {
+    refund = await ykFetch(env, "/refunds", {
+      method: "POST",
+      idempotenceKey: `refund-${paymentId}`,
+      body: {
+        payment_id: paymentId,
+        amount: { value, currency: "RUB" },
+        /* Чек возврата. Позиция — та же, что в чеке оплаты. */
+        receipt: {
+          customer: { email: row.email },
+          items: [{
+            description: `Подписка ЭкоФин «${PLANS[planId]?.title || planId}», ${period === "year" ? "12 мес." : "1 мес."}`,
+            quantity: "1.00",
+            amount: { value, currency: "RUB" },
+            vat_code: 1,
+            payment_mode: "full_payment",
+            payment_subject: "service",
+          }],
+        },
+      },
+    });
+  } catch (e) {
+    const why = e && e.data && e.data.code ? ` (${e.data.code})` : "";
+    return { ok: false, error: `ЮKassa не приняла возврат${why}. Доступ и деньги не тронуты` };
+  }
+
+  if (refund.status === "succeeded") {
+    await applyRefund(env, paymentId, by);
+    return { ok: true };
+  }
+  if (refund.status === "canceled") {
+    return { ok: false, error: "ЮKassa отменила возврат. Доступ и деньги не тронуты" };
+  }
+  /* Возврат принят, но ещё не проведён: доступ снимет уведомление
+     refund.succeeded, когда деньги действительно уйдут. */
+  return { ok: true, pending: true };
+}
+
 /* POST /api/billing/webhook — вызывает ЮKassa. Тело не считаем доверенным:
    берём из него только id и переспрашиваем статус у API. */
 export async function webhook(request, env, origin) {
@@ -224,6 +343,24 @@ export async function webhook(request, env, origin) {
   const body = await request.json().catch(() => ({}));
   const paymentId = body?.object?.id;
   if (!paymentId) return json(env, origin, { ok: true });
+
+  /* Возврат, оформленный в кабинете ЮKassa, а не у нас. Телу по-прежнему
+     не верим: берём номер и переспрашиваем сам возврат. Частичный
+     возврат доступ не снимает — сколько оставить, решает владелец. */
+  if (String(body?.event || "").startsWith("refund.")) {
+    try {
+      const refund = await ykFetch(env, `/refunds/${encodeURIComponent(paymentId)}`);
+      if (refund.status === "succeeded" && refund.payment_id) {
+        const paid = await env.DB.prepare("SELECT amount FROM payments WHERE id = ?").bind(refund.payment_id).first();
+        const full = paid && Number(refund.amount?.value) >= Number(paid.amount);
+        if (full) await applyRefund(env, refund.payment_id, "yookassa");
+        else if (paid) console.error("webhook: частичный возврат, доступ не снят");
+      }
+    } catch (e) {
+      console.error("webhook", e.message);
+    }
+    return json(env, origin, { ok: true });
+  }
 
   try {
     const payment = await ykFetch(env, `/payments/${encodeURIComponent(paymentId)}`);
@@ -468,7 +605,7 @@ async function chargeSaved(env, user) {
         amount: { value: toPay.toFixed(2), currency: "RUB" },
         capture: true,
         payment_method_id: user.auto_method,
-        description: `ЭкоФин — продление «${plan.title}», ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`,
+        description: `ЭкоФин — продление «${plan.title}», ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`.slice(0, 128),
         metadata: { email: user.email, plan: planId, period, renewal: "1", pointsUsed: String(used) },
         receipt: {
           customer: { email: user.email },

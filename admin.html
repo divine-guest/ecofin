@@ -23,8 +23,8 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=229">
-<link rel="stylesheet" href="css/style.css?v=229">
+<link rel="stylesheet" href="css/fonts.css?v=230">
+<link rel="stylesheet" href="css/style.css?v=230">
 </head>
 <body>
 <main class="section tint-navy">
@@ -35,15 +35,15 @@
   </div>
 </main>
 
-<script src="js/themes.js?v=229"></script>
-<script src="js/api.js?v=229"></script>
-<script src="js/app.js?v=229"></script>
-<script src="js/progress.js?v=229"></script>
-<script src="js/palette.js?v=229"></script>
-<script src="js/ai.js?v=229"></script>
+<script src="js/themes.js?v=230"></script>
+<script src="js/api.js?v=230"></script>
+<script src="js/app.js?v=230"></script>
+<script src="js/progress.js?v=230"></script>
+<script src="js/palette.js?v=230"></script>
+<script src="js/ai.js?v=230"></script>
 <!-- Тексты партнёрских предложений: админка соединяет их с настройками
      с сервера, чтобы владелец видел, что именно включает. -->
-<script src="js/partners.js?v=229"></script>
+<script src="js/partners.js?v=230"></script>
 <script>
 initPage("admin.html");
 
@@ -530,6 +530,33 @@ const AD = {
     } catch (e) { box.textContent = "Не удалось: " + e.message; }
   },
 
+  /* Состояние платежа — словами. В базе оно лежит по-английски. */
+  payStatus(s) {
+    return ({ succeeded: "оплачен", pending: "ожидает", canceled: "отменён", refunded: "возвращён" })[s] || s;
+  },
+
+  /* Возврат — только для оплаты картой и только владельцу: сервер всё
+     равно откажет остальным, но показывать кнопку, которая не сработает,
+     незачем. */
+  canRefund(p) {
+    return p.source === "yookassa" && p.status === "succeeded" && Boolean((API.cached() || {}).isOwner);
+  },
+
+  async refund(id, amount, email) {
+    const ask = `Вернуть ${this.money(amount)} пользователю ${email}?\n\n` +
+      "Деньги уйдут на тот же способ оплаты, тариф будет снят, автопродление выключено. Отменить возврат нельзя.";
+    if (!confirm(ask)) return;
+    try {
+      const r = await API.admin.refund(id);
+      toast(r.pending
+        ? "ЮKassa приняла возврат. Тариф снимется, когда деньги уйдут"
+        : r.already ? "Этот платёж уже возвращён" : "Возврат оформлен: тариф снят, автопродление выключено");
+    } catch (e) {
+      toast(e.message, "error");
+    }
+    this.loadPayments();
+  },
+
   async loadPayments() {
     const box = document.getElementById("payLog");
     box.textContent = "Загружаем…";
@@ -544,7 +571,7 @@ const AD = {
         <table class="cmp-table" style="width:100%">
           <tr style="font-size:var(--t-xs);color:var(--muted)">
             <th style="text-align:left">Дата</th><th style="text-align:left">Пользователь</th>
-            <th>Сумма</th><th>План</th><th>Источник</th><th>Статус</th>
+            <th>Сумма</th><th>План</th><th>Источник</th><th>Статус</th><th></th>
           </tr>
           ${d.payments.map(p => `
             <tr>
@@ -553,7 +580,10 @@ const AD = {
               <td style="text-align:center">${p.amount ? this.money(p.amount) : "—"}</td>
               <td style="text-align:center">${escapeHtml(String(p.plan))}</td>
               <td style="text-align:center">${escapeHtml(p.source)}</td>
-              <td style="text-align:center"><span class="badge ${p.status === "succeeded" ? "ok" : ""}">${escapeHtml(p.status)}</span></td>
+              <td style="text-align:center"><span class="badge ${p.status === "succeeded" ? "ok" : ""}">${escapeHtml(this.payStatus(p.status))}</span></td>
+              <td style="text-align:center">${this.canRefund(p)
+                ? `<button class="btn small secondary" onclick="AD.refund('${escapeHtml(p.id)}', ${Number(p.amount) || 0}, '${escapeHtml(p.email)}')">Вернуть</button>`
+                : ""}</td>
             </tr>`).join("")}
         </table>`;
     } catch (e) { box.textContent = "Не удалось загрузить: " + e.message; }

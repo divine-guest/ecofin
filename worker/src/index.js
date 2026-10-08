@@ -185,6 +185,7 @@ const ROUTES = [
   ["POST", "/api/admin/run-reminders", admin.runRemindersNow, "admin"],
   ["POST", "/api/admin/points", points.adminAdjust, "admin"],
   ["POST", "/api/admin/set-role", admin.setRole, "owner"],
+  ["POST", "/api/admin/refund", admin.refund, "owner"],
 ];
 
 /* Раз в сотню запросов подчищаем протухшие сессии — отдельный крон ради этого

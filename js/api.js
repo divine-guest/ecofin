@@ -401,6 +401,8 @@ const API = {
       return API.request("/api/admin/grant", { method: "POST", body: { email, plan, days, tier } });
     },
     revoke(email) { return API.request("/api/admin/revoke", { method: "POST", body: { email } }); },
+    /* Вернуть оплату целиком: деньги, тариф и автопродление — одним действием. */
+    refund(id) { return API.request("/api/admin/refund", { method: "POST", body: { id } }); },
     /* Очередь публичной ленты: что ждёт проверки и решение по вопросу. */
     qaPending() { return API.request("/api/admin/qa"); },
     qaDecide(id, action, question, topic) {

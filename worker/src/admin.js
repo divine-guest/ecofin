@@ -6,6 +6,7 @@ import { adminEmails, ownerEmails, logAction } from "./auth.js";
 import { runReminders } from "./telegram.js";
 
 import { PLANS, PERIOD_DAYS } from "./plans.js";
+import { refundPayment } from "./billing.js";
 const PLAN_DAYS = PERIOD_DAYS;
 
 /* Написания поискового запроса, по которым имеет смысл искать.
@@ -145,6 +146,20 @@ export async function revoke(request, env, origin, admin) {
   await logAction(env, admin.email, `Снял «Про» у ${email}`);
   const row = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
   return json(env, origin, { user: publicUser(row) });
+}
+
+/* POST /api/admin/refund {id} — вернуть оплату целиком. Только владелец:
+   это единственное действие в админке, которое двигает настоящие деньги.
+
+   Деньги уходят через ЮKassa на тот же способ оплаты, тариф снимается,
+   автопродление выключается — всё одним действием (см. refundPayment). */
+export async function refund(request, env, origin, admin) {
+  const b = await request.json().catch(() => ({}));
+  const id = String(b.id || "").trim();
+  if (!id) return fail(env, origin, "Не указан платёж");
+  const r = await refundPayment(env, id, admin.email);
+  if (!r.ok) return fail(env, origin, r.error || "Возврат не удался", 400);
+  return json(env, origin, { ok: true, pending: Boolean(r.pending), already: Boolean(r.already) });
 }
 
 /* POST /api/admin/reset-trial {email} — вернуть пробный запуск инструментов. */
