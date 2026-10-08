@@ -28,8 +28,13 @@ async function ykFetch(env, path, { method = "GET", body, idempotenceKey } = {})
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
     /* Ответ платёжного сервиса содержит реквизиты плательщика.
-       В журнал — только код состояния и код ошибки. */
-    console.error("yookassa", r.status, data && data.code ? data.code : "");
+       В журнал — только код состояния, код ошибки и ИМЯ поля, которое
+       ЮKassa не приняла (parameter). Имя поля — не данные человека, а без
+       него отказ не разобрать: «400 invalid_request» одинаков и для
+       неверного чека, и для слишком длинного описания. Само описание
+       ошибки не пишем — в нём бывает значение поля. */
+    console.error("yookassa", r.status, data && data.code ? data.code : "",
+                  data && data.parameter ? String(data.parameter).slice(0, 60) : "");
     throw Object.assign(new Error("yookassa"), { status: r.status, data });
   }
   return data;
@@ -85,7 +90,10 @@ export async function createPayment(request, env, origin, user) {
        автосписание — три четверти. Человек видит это на витрине
        и может отключить в кабинете в один клик. */
     ...(saveMethod ? { save_payment_method: true } : {}),
-    description: `ЭкоФин — ${PLANS[planId].title}, ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`,
+    /* ЮKassa принимает описание не длиннее 128 знаков и отклоняет
+       платёж целиком, если оно длиннее. С длинной почтой так и вышло бы:
+       человек нажал «Оплатить» и получил «попробуйте позже». */
+    description: `ЭкоФин — ${PLANS[planId].title}, ${period === "year" ? "12 мес." : "1 мес."} (${user.email})`.slice(0, 128),
     /* Сумму и план берём ТОЛЬКО отсюда при подтверждении: клиент их не диктует. */
     metadata: { email: user.email, plan: planId, period, pointsUsed: String(used) },
     receipt: {

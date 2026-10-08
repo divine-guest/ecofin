@@ -636,6 +636,14 @@ DIAG="$REPO/diag-8f3a2c.txt"
   certbot certificates 2>/dev/null | grep -E 'Certificate Name|Domains|Expiry' | sed 's/^/  /' || echo "  certbot не ответил"
   echo
 
+  echo "--- оплата: что служба говорила про ЮKassa за двое суток ---"
+  # Только строки, которые пишет сам код оплаты: код ответа, код ошибки и
+  # имя отклонённого поля. Почты, суммы и ключи в них не попадают. Нужно,
+  # чтобы разобрать неудавшийся платёж, не заходя на сервер.
+  YKLOG=$(journalctl -u pravofin --since "-2 days" --no-pager -o cat 2>/dev/null | grep -iE "yookassa|webhook" | tail -8)
+  if [ -n "$YKLOG" ]; then printf '%s\n' "$YKLOG" | sed 's/^/  /'; else echo "  записей нет — отказов не было"; fi
+  echo "  платежей в базе: $(sqlite3 "$DIR/data/pravofin.db" "SELECT status || ' ' || COUNT(*) FROM payments WHERE source='yookassa' GROUP BY status" 2>/dev/null | paste -sd";" -)"
+  echo
   echo "--- переезд на другую машину ---"
   if [ -f "$REPO/worker/node/TRANSFER" ]; then
     echo "  просьба в репозитории: $(grep -vE '^[[:space:]]*(#|$)' "$REPO/worker/node/TRANSFER" | tr '\n' ' ')"
