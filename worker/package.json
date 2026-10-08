@@ -9,7 +9,8 @@
     "deploy:cf": "node deploy.mjs"
   },
   "dependencies": {
-    "node-sqlite3-wasm": "^0.8.60"
+    "node-sqlite3-wasm": "^0.8.60",
+    "nodemailer": "^7.0.13"
   },
   "optionalDependencies": {
     "better-sqlite3": "^11.8.1"

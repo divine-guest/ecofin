@@ -22,7 +22,13 @@
      MAIL_FROM_NAME  подпись отправителя, по умолчанию «ЭкоФин»
      MAIL_API_URL    адрес API, по умолчанию Unisender Go
 
-   Пока ключа нет, mailReady() отвечает «нет», и сервис ведёт себя так,
+   Второй путь — обычный почтовый ящик на нашем домене (SMTP). Его
+   собирает сервер при запуске и кладёт в окружение готовой функцией
+   MAIL_SEND: этот файл не знает про сетевые соединения и библиотеки и
+   знать не должен. Подробности — в worker/node/mail-smtp.mjs. Если заданы
+   оба пути, выбирается ящик: он настраивается осознанно и позже.
+
+   Пока нет ни ключа, ни ящика, mailReady() отвечает «нет», и сервис ведёт себя так,
    будто почты не существует: показывать форму «пришлём код», после
    которой ничего не приходит, хуже, чем честно отправить человека к
    ручному восстановлению.                                            */
@@ -32,7 +38,9 @@
 const DEFAULT_URL = "https://goapi.unisender.ru/ru/transactional/api/v1/email/send.json";
 
 export function mailReady(env) {
-  return Boolean(env && env.MAIL_API_KEY && env.MAIL_FROM);
+  if (!env) return false;
+  if (typeof env.MAIL_SEND === "function") return true;
+  return Boolean(env.MAIL_API_KEY && env.MAIL_FROM);
 }
 
 /* Возвращает { ok } и никогда не бросает: письмо — не та вещь, из-за
@@ -41,6 +49,18 @@ export function mailReady(env) {
    напоминанию — можно. */
 export async function sendMail(env, { to, subject, text }) {
   if (!mailReady(env)) return { ok: false, reason: "not_configured" };
+
+  /* Почтовый ящик. Функция сама ловит свои ошибки, но страхуемся:
+     письмо не должно уронить запрос, каким бы путём оно ни шло. */
+  if (typeof env.MAIL_SEND === "function") {
+    try {
+      const r = await env.MAIL_SEND({ to, subject, text });
+      return r && r.ok ? { ok: true } : { ok: false, reason: (r && r.reason) || "provider" };
+    } catch (e) {
+      console.error("mail: отправка через ящик", e && e.message ? e.message : "");
+      return { ok: false, reason: "provider" };
+    }
+  }
 
   const payload = {
     message: {

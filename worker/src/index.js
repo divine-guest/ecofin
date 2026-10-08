@@ -3,6 +3,7 @@
    клиент может врать о своём плане сколько угодно — это ни на что не влияет. */
 import { json, fail, corsHeaders, allowedOrigins, isSameOrigin, now,
          abroadPaused, telegramPaused } from "./lib.js";
+import { mailReady } from "./mail.js";
 import * as auth from "./auth.js";
 import * as ai from "./ai.js";
 import * as admin from "./admin.js";
@@ -279,6 +280,10 @@ export default {
         aiKey: Boolean(env.AI_API_KEY),
         db: Boolean(env.DB),
         billing: Boolean(env.YOOKASSA_SHOP_ID && env.YOOKASSA_SECRET_KEY),
+        /* Настроена ли отправка писем. Без неё не работает сброс пароля
+           по коду, и узнать об этом надо здесь, а не от человека,
+           который не дождался письма. */
+        mail: mailReady(env),
         telegram: Boolean(env.TELEGRAM_BOT_TOKEN) && !telegramPaused(env),
         /* Видно снаружи одним запросом: остановлено направление или
            просто сломалось. Без этого «ИИ не работает» пришлось бы

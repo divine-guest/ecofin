@@ -594,7 +594,9 @@ export async function resetRequest(request, env, origin) {
          expires = excluded.expires, tries = 0, created = excluded.created`
     ).bind(email, await codeHash(email, code), now() + RESET_TTL_MS, now()).run();
 
-    const site = env.SITE_URL || "https://ecofin26.ru";
+    /* Косую на конце срезаем: адрес сайта в настройках записан с ней, и
+       в письме выходило «ecofin26.ru//recovery.html». */
+    const site = String(env.SITE_URL || "https://ecofin26.ru").replace(/\/+$/, "");
     const sent = await sendMail(env, {
       to: email,
       subject: `Код для смены пароля: ${code}`,

@@ -138,6 +138,13 @@ const schema = await applySchema(DB, WORKER);
    плюс привязка базы под именем DB. */
 const env = { ...cfg, DB };
 
+/* Почта через обычный ящик: если он настроен, собираем функцию отправки
+   и отдаём её коду сервиса. Сам код про SMTP не знает — см. mail-smtp.mjs. */
+{
+  const { smtpConfigured, makeSmtpSender } = await import("./mail-smtp.mjs");
+  if (smtpConfigured(cfg)) env.MAIL_SEND = makeSmtpSender(cfg);
+}
+
 const server = createServer(async (req, res) => {
   let body;
   try {
