@@ -1196,7 +1196,13 @@ const PAY = {
     trackEvent("pay_click", { plan: planId, period: this.period });
     try {
       const res = await API.billing.create(planId, this.period);
-      if (res.confirmationUrl) { location.href = res.confirmationUrl; return; }
+      if (res.confirmationUrl) {
+        /* Помечаем, что человек ушёл платить: по возвращении сайт сам
+           спросит у ЮKassa, чем кончилось (см. PAY_RETURN ниже). */
+        try { localStorage.setItem(PAY_RETURN.KEY, String(Date.now())); } catch { /* без метки сработает уведомление */ }
+        location.href = res.confirmationUrl;
+        return;
+      }
       toast("Платёж создан, но ссылка не пришла. Напишите в поддержку", "error");
     } catch (e) {
       toast(e.message, "error");
@@ -2226,3 +2232,48 @@ function requireAuth() {
   if (!API.token()) { location.href = PF.href("auth.html"); return false; }
   return true;
 }
+
+
+/* ---------- Оплата: досчитать по возвращении из банка ----------
+
+   О прошедшей оплате сайт узнаёт двумя путями. Первый — уведомление
+   от ЮKassa серверу. Второй — запасной: сервер сам спрашивает у ЮKassa
+   про незакрытые платежи (/api/billing/check).
+
+   Запасной путь был написан на сервере и описан в его комментарии как
+   «кабинет дёргает при загрузке» — но ни одна страница его не вызывала.
+   Всё держалось на уведомлении: не настроено оно в кабинете ЮKassa или
+   потерялось по дороге — человек заплатил, вернулся в кабинет и увидел
+   прежний тариф. Найдено на аудите 08.10.2026, до первого платежа.
+
+   Спрашиваем не всегда, а только если человек с этого устройства уходил
+   платить: метку ставит PAY.submit. Сутки метка живёт — этого хватает
+   на любой банк; дальше досчитает уведомление. */
+const PAY_RETURN = {
+  KEY: "pf_pay_started",
+  TTL: 86400000,
+
+  async run() {
+    let at = 0;
+    try { at = Number(localStorage.getItem(this.KEY) || 0); } catch { return; }
+    if (!at || !API.token()) return;
+    if (Date.now() - at > this.TTL) { localStorage.removeItem(this.KEY); return; }
+
+    try {
+      const before = (API.cached() || {}).plan || "free";
+      const d = await API.billing.check();
+      if (!d.user) return;
+      API.setSession(null, d.user);
+      const paid = d.user.plan && d.user.plan !== "free";
+      if (!paid) return;                       /* ещё не прошло — спросим при следующем открытии */
+      localStorage.removeItem(this.KEY);
+      if (d.checked > 0 || d.user.plan !== before) {
+        toast(`Оплата прошла — тариф «${d.user.planTitle || d.user.plan}» включён`);
+        /* Страница уже нарисована со старым тарифом: замки, счётчики,
+           плашки. Перерисовать всё проще и надёжнее перезагрузкой. */
+        setTimeout(() => location.reload(), 1500);
+      }
+    } catch { /* нет связи — спросим при следующем открытии */ }
+  },
+};
+window.addEventListener("load", () => { PAY_RETURN.run(); });
