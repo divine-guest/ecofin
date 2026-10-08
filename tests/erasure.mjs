@@ -81,7 +81,11 @@ console.log("\n— Наполняем аккаунт данными —");
     method: "POST", token, body: { title: "Свой срок", due: "2026-12-01", repeat: "once" },
   });
   await call("/api/book/op", {
-    method: "POST", token, body: { day: "2026-09-01", kind: "income", amount: 5000, party: "Иванов И. И." },
+    /* День — сегодняшний, а не записанная дата. Бесплатный тариф отдаёт
+       записи только за текущий месяц; с датой «2026-09-01» проверка
+       работала в сентябре и молча сломалась первого октября: запись
+       создавалась, но в ответе её уже не было. */
+    method: "POST", token, body: { day: new Date().toISOString().slice(0, 10), kind: "income", amount: 5000, party: "Иванов И. И." },
   });
   await call("/api/counterparties", {
     method: "POST", token, body: { name: "ООО «Контрагент»", inn: "7707083893" },

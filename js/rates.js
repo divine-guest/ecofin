@@ -561,10 +561,34 @@ const RATES = {
   compareRegimes({ income = 0, expenses = 0, workers = 0, who = "ip",
                    psnPotential = 0, agro = false } = {}) {
     const out = [];
-    const contrib = this.contributions(income);
     const isIp = who === "ip" || who === "self";
-    /* Без работников взносы гасят налог полностью, с работниками — вдвое. */
-    const deductible = workers > 0 ? contrib / 2 : contrib;
+    const rub = n => Math.round(n).toLocaleString("ru-RU");
+    const profit = Math.max(0, income - expenses);
+
+    /* Взносы ИП за себя у разных режимов РАЗНЫЕ: 1% сверх 300 тыс. ₽
+       считается не с одной и той же суммы (п. 9 ст. 430 НК РФ):
+         УСН «Доходы»                   — со всей выручки;
+         УСН «Доходы − расходы», ЕСХН — с доходов минус расходы (с 2026
+                                          года прямо записано в кодексе,
+                                          закон от 28.11.2025 № 425-ФЗ);
+         ОСНО                           — с дохода минус профвычеты;
+         патент                         — с потенциального дохода региона,
+                                          а не с настоящего.
+       До октября 2026-го здесь была одна сумма на всех — со всей выручки,
+       и взносы нигде не уменьшали базу. «Доходы минус расходы», ОСНО и
+       патент выходили дороже, чем на самом деле: при доходе 3 млн и
+       расходах 2,25 млн сравнение советовало «Доходы» 6%, хотя «Доходы
+       минус расходы» дешевле на пятнадцать тысяч. */
+    const contrib = this.contributions(income);
+    const contribProfit = this.contributions(profit);
+
+    /* На сколько взносы уменьшают сам налог (УСН «Доходы» и патент):
+       без работников — на всю сумму, с работниками — не больше половины
+       НАЛОГА (п. 3.1 ст. 346.21, п. 1.2 ст. 346.51 НК РФ). Раньше при
+       работниках вычиталась половина взносов — это другое число. Взносы
+       за самих работников нам неизвестны, поэтому оценка с ними осторожная:
+       настоящий вычет не меньше этого. */
+    const cut = (tax, c) => Math.min(c, workers > 0 ? tax / 2 : tax);
 
     const add = (id, name, total, note, why) =>
       out.push({ id, name, total, note, available: total !== null, why });
@@ -580,23 +604,31 @@ const RATES = {
     }
 
     /* УСН «Доходы». */
+    const tax6 = income * this.usn.incomeRate;
     add("usn6", "УСН «Доходы» 6%",
-      Math.max(0, income * this.usn.incomeRate - (isIp ? deductible : 0)) + (isIp ? contrib : 0),
-      isIp ? `налог минус взносы ${workers > 0 ? "(до 50%)" : "(полностью)"} + сами взносы ${Math.round(contrib).toLocaleString("ru-RU")} ₽`
+      isIp ? tax6 - cut(tax6, contrib) + contrib : tax6,
+      isIp ? `налог минус взносы ${workers > 0 ? "(не больше половины налога)" : "(полностью)"} + сами взносы ${rub(contrib)} ₽`
            : "6% с выручки", "");
 
-    /* УСН «Доходы минус расходы» — с минимальным налогом 1%. */
-    const usn15 = Math.max((income - expenses) * this.usn.profitRate,
-                           income * this.usn.minTaxRate) + (isIp ? contrib : 0);
+    /* УСН «Доходы минус расходы» — с минимальным налогом 1%.
+       Взносы здесь не вычитаются из налога, а входят в расходы. */
+    const c15 = isIp ? contribProfit : 0;
+    const usn15 = Math.max((profit - c15) * this.usn.profitRate,
+                           income * this.usn.minTaxRate) + c15;
     add("usn15", "УСН «Доходы − расходы» 15%", usn15,
-      `не меньше 1% с дохода${isIp ? " + взносы" : ""}`, "");
+      isIp ? `не меньше 1% с дохода; взносы ${rub(c15)} ₽ входят в расходы`
+           : "не меньше 1% с дохода", "");
 
-    /* Патент — считается от потенциального дохода региона. */
+    /* Патент — считается от потенциального дохода региона, и 1% взносов
+       тоже от него. Сам патент уменьшается на взносы, как налог на УСН. */
     if (isIp) {
       const ok = income <= this.psn.incomeLimit && workers <= this.psn.workersLimit && psnPotential > 0;
+      const contribPsn = this.contributions(psnPotential);
+      const patent = psnPotential * this.psn.rate;
       add("psn", "Патент (ПСН)",
-        ok ? psnPotential * this.psn.rate + contrib : null,
-        `6% от потенциального дохода региона${psnPotential ? "" : " — введите его"} + взносы`,
+        ok ? patent - cut(patent, contribPsn) + contribPsn : null,
+        psnPotential ? `6% от потенциального дохода минус взносы + сами взносы ${rub(contribPsn)} ₽`
+                     : "6% от потенциального дохода региона — введите его",
         income > this.psn.incomeLimit ? `доход выше ${this.psn.incomeLimit / 1e6} млн ₽`
           : workers > this.psn.workersLimit ? `больше ${this.psn.workersLimit} работников`
           : psnPotential > 0 ? "" : "нужен потенциальный доход из закона региона");
@@ -616,8 +648,9 @@ const RATES = {
 
     /* ЕСХН — только сельхозпроизводителям. */
     if (agro) {
+      const cE = isIp ? contribProfit : 0;
       add("eshn", "ЕСХН 6%",
-        Math.max(0, income - expenses) * this.eshn.rate + (isIp ? contrib : 0),
+        Math.max(0, profit - cE) * this.eshn.rate + cE,
         `6% с прибыли${isIp ? " + взносы" : ""}. НДС можно не платить при доходе до ${this.eshn.vatExemptUpTo / 1e6} млн ₽`, "");
     }
 
@@ -632,11 +665,18 @@ const RATES = {
         Math.max(0, income - expenses) * this.osno.profitTaxRate,
         `${this.osno.profitTaxRate * 100}% с прибыли, ${vat}`, "");
     } else {
-      const base = expenses > 0 ? Math.max(0, income - expenses)
-                                : income * (1 - this.osno.proDeduction);
-      add("osno", "ОСНО (НДФЛ)", this.ndfl(base) + contrib,
-        expenses > 0 ? `НДФЛ с прибыли + взносы, ${vat}`
-                     : `НДФЛ с дохода за вычетом ${this.osno.proDeduction * 100}% профвычета + взносы, ${vat}`, "");
+      /* С подтверждёнными расходами взносы входят в профвычет и уменьшают
+         базу. С вычетом 20% без документов — нет: норматив уже заменяет
+         все расходы, и взносы поверх него не вычитаются. */
+      if (expenses > 0) {
+        add("osno", "ОСНО (НДФЛ)", this.ndfl(Math.max(0, profit - contribProfit)) + contribProfit,
+          `НДФЛ с прибыли за вычетом взносов + взносы ${rub(contribProfit)} ₽, ${vat}`, "");
+      } else {
+        const base = income * (1 - this.osno.proDeduction);
+        const cO = this.contributions(base);
+        add("osno", "ОСНО (НДФЛ)", this.ndfl(base) + cO,
+          `НДФЛ с дохода за вычетом ${this.osno.proDeduction * 100}% профвычета + взносы ${rub(cO)} ₽, ${vat}`, "");
+      }
     }
 
     return out;
@@ -881,7 +921,10 @@ const RATES = {
      заседаниями Банка России считается протухшим. */
   keyRate: {
     percent: 14,               // % годовых на дату сверки
-    source: "https://cbr.ru/hd_base/KeyRate/", checkedOn: "2026-09-06",
+    /* 08.10.2026: сверено по таблице Банка России — 14,00% на 07.10.2026.
+       Заседание 11.09 ставку не изменило. Следующее — 23.10.2026:
+       после него значение нужно проверить заново. */
+    source: "https://cbr.ru/hd_base/KeyRate/", checkedOn: "2026-10-08",
   },
 
   /* Пени по налогам, ст. 75 НК РФ.

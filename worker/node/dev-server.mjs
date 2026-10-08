@@ -34,6 +34,27 @@ const API_PORT = Number(process.env.API_PORT || 8771);
    что начинается с /api. Так его код остаётся нетронутым — то же
    самое, что работает на Cloudflare и на боевой машине. */
 process.env.PORT = String(API_PORT);
+
+/* Свой адрес — в разрешённые источники.
+
+   Сервер принимает запись только со страниц из списка ALLOWED_ORIGINS, а
+   в списке — боевые адреса. На стенде из-за этого страницы открывались,
+   но сохранить в браузере нельзя было ничего: регистрация, заметка,
+   операция в учёте — на всё ответ «Origin не разрешён». Проверить руками
+   получалось только чтение, а всё остальное проверяли на боевом сервере.
+   Добавляем адрес стенда к тому, что уже задано; боевого сервера это не
+   касается — он этот файл не запускает. */
+{
+  let listed = process.env.ALLOWED_ORIGINS || "";
+  if (!listed) {
+    try {
+      const env = await readFile(join(HERE, "..", ".env"), "utf8");
+      listed = (env.match(/^ALLOWED_ORIGINS=(.*)$/m) || [])[1]?.trim() || "";
+    } catch { /* файла нет — сервер возьмёт значение по умолчанию */ }
+  }
+  const own = [`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`];
+  process.env.ALLOWED_ORIGINS = [...listed.split(",").map(s => s.trim()).filter(Boolean), ...own].join(",");
+}
 await import("./server.mjs");
 
 const TYPES = {

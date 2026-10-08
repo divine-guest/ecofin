@@ -67,7 +67,46 @@ const API = {
     localStorage.removeItem(this.userKey);
   },
 
-  async request(path, { method = "GET", body, timeout = 90000 } = {}) {
+  /* Одинаковые запросы на чтение сливаются в один.
+
+     Кабинет собран из независимых блоков, и каждый сам спрашивает у
+     сервера то, что ему нужно. На открытие уходило 47 обращений вместо
+     18 разных: сроки запрашивались восемь раз, статус Telegram — восемь,
+     учёт и документы — по четыре. Сервер это выдерживает, но каждое
+     открытие кабинета стоило ему втрое больше работы, чем нужно, — а
+     кабинет открывают чаще всего остального.
+
+     Правило простое: тот же адрес с тем же токеном, пока идёт запрос и
+     ещё полторы секунды после ответа, получает тот же ответ. Любая
+     запись (не GET) память сбрасывает — прочитать устаревшее после
+     сохранения нельзя. Опрос фонового ИИ не трогаем: там важна свежесть
+     каждого ответа. Каждый получатель берёт свою копию данных, чтобы
+     один блок не мог испортить ответ другому. */
+  _shared: new Map(),
+  SHARE_MS: 1500,
+
+  request(path, opts = {}) {
+    const method = opts.method || "GET";
+    if (method !== "GET" || opts.body) {
+      this._shared.clear();
+      return this._request(path, opts).finally(() => this._shared.clear());
+    }
+    if (path.startsWith("/api/ai/")) return this._request(path, opts);
+
+    const copy = d => (typeof structuredClone === "function" ? structuredClone(d) : JSON.parse(JSON.stringify(d)));
+    const key = this.token() + "\n" + path;
+    const hit = this._shared.get(key);
+    if (hit && (hit.pending || Date.now() - hit.at < this.SHARE_MS)) return hit.promise.then(copy);
+
+    const entry = { pending: true, at: 0, promise: null };
+    entry.promise = this._request(path, opts).then(
+      d => { entry.pending = false; entry.at = Date.now(); return d; },
+      e => { if (this._shared.get(key) === entry) this._shared.delete(key); throw e; });
+    this._shared.set(key, entry);
+    return entry.promise.then(copy);
+  },
+
+  async _request(path, { method = "GET", body, timeout = 90000 } = {}) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeout);
     let res;

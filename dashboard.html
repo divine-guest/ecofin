@@ -23,8 +23,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=225">
-<link rel="stylesheet" href="css/style.css?v=225">
+<link rel="stylesheet" href="css/fonts.css?v=228">
+<link rel="stylesheet" href="css/style.css?v=228">
 </head>
 <body>
 <main class="section">
@@ -36,18 +36,18 @@
   </div>
 </main>
 
-<script src="js/rates.js?v=225"></script>
-<script src="js/book.js?v=225"></script>
-<script src="js/themes.js?v=225"></script>
-<script src="js/api.js?v=225"></script>
-<script src="js/app.js?v=225"></script>
-<script src="js/progress.js?v=225"></script>
-<script src="js/favorites.js?v=225"></script>
-<script src="js/palette.js?v=225"></script>
-<script src="js/ai.js?v=225"></script>
-<script src="js/knowledge.js?v=225"></script>
-<script src="js/competencies.js?v=225"></script>
-<script src="js/courses.js?v=225"></script>
+<script src="js/rates.js?v=228"></script>
+<script src="js/book.js?v=228"></script>
+<script src="js/themes.js?v=228"></script>
+<script src="js/api.js?v=228"></script>
+<script src="js/app.js?v=228"></script>
+<script src="js/progress.js?v=228"></script>
+<script src="js/favorites.js?v=228"></script>
+<script src="js/palette.js?v=228"></script>
+<script src="js/ai.js?v=228"></script>
+<script src="js/knowledge.js?v=228"></script>
+<script src="js/competencies.js?v=228"></script>
+<script src="js/courses.js?v=228"></script>
 <script>
 initPage("dashboard.html");
 
@@ -529,8 +529,8 @@ function renderCabinet() {
       <div class="card" data-tab="tasks">
         <h3>Сроки и напоминания</h3>
         <p class="hint" style="margin-bottom:12px">
-          Напомним заранее — за 3 дня, за день и в сам день. С подпиской «Про»
-          напоминания приходят ещё и в Telegram.
+          Напомним заранее — за 3 дня, за день и в сам день: отметкой у
+          колокольчика в шапке сайта.
         </p>
         <!-- Куда именно придут напоминания. Раньше об этом нигде не
              говорилось: человек ставил сроки и считал, что подписался
@@ -1124,7 +1124,7 @@ const TAXCAL = {
           </div>`).join("")}
         </div>
         ${limited ? `<p class="hint">На бесплатном тарифе поставим ${d.free} ближайших.
-          Остальные — с подпиской «Про», там же и доставка в Telegram.</p>` : ""}
+          Остальные — на платном тарифе.</p>` : ""}
         <button class="btn" onclick="TAXCAL.apply()">Поставить напоминания</button>`;
     } catch (e) {
       box.innerHTML = `<p class="hint">Не удалось посчитать: ${escapeHtml(e.message)}</p>`;
@@ -1152,7 +1152,7 @@ const TAXCAL = {
       else if (d.already) toast("Все ваши сроки уже стоят");
       else toast("Свободных мест для новых напоминаний нет");
       if (d.limited) {
-        showPaywall("Остальные сроки вашего календаря и доставка в Telegram — в подписке «Про»");
+        showPaywall("Остальные сроки вашего календаря — на платном тарифе");
       }
       await REM.load();
       this.card();
@@ -1251,7 +1251,7 @@ const REM = {
         </div>`;
     }).join("") + (d.limit !== null
       ? `<p class="hint">Использовано ${d.used} из ${d.limit} на бесплатном тарифе.
-         <a href="#" onclick="showPaywall('Больше напоминаний и доставка в Telegram — в подписке «Про»');return false">Снять лимит</a></p>`
+         <a href="#" onclick="showPaywall('Больше напоминаний — на платном тарифе');return false">Снять лимит</a></p>`
       : "");
   },
 

@@ -697,7 +697,7 @@ function renderTaxCal() {
       <button class="btn small secondary no-print print-btn" onclick="printPanel(this, 'Мой налоговый календарь')">Скачать / печать</button>
     </div>
     <p class="hint" style="margin-top:10px">Напомним за три дня, за день и в сам день —
-      на сайте, а на платных тарифах ещё и в Telegram. Повтор раз в год ставится
+      отметкой у колокольчика на сайте. Повтор раз в год ставится
       автоматически: налоговые даты возвращаются каждый год.</p>`;
 }
 

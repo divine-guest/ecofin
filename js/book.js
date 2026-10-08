@@ -68,14 +68,33 @@ const BOOK = (() => {
   }
 
   /* ---------- Взносы ИП «за себя» ---------- */
-  function ownContributions(profile, income) {
+  /* С какой суммы считается 1% сверх 300 тыс. ₽ — зависит от режима
+     (п. 9 ст. 430 НК РФ): на «Доходах» это вся выручка, на «Доходах минус
+     расходы» и ЕСХН — доходы минус расходы, на ОСНО — доход минус
+     профвычет, на патенте — потенциальный доход, а не настоящий.
+     Раньше 1% у всех брался со всей выручки, и тем, у кого расходы
+     велики, сервис называл взносы на тысячи рублей больше настоящих. */
+  function contributionBase(profile, year) {
+    const income = (year && year.income) || 0;
+    const expense = (year && year.expense) || 0;
+    const profit = Math.max(0, income - expense);
+    switch (profile.regime) {
+      case "usn15":
+      case "eshn": return profit;
+      case "osno": return Math.min(profit, income * (1 - RATES.osno.proDeduction));
+      case "psn":  return profile.psn || 0;
+      default:     return income;
+    }
+  }
+
+  function ownContributions(profile, year) {
     /* Платят только ИП, и только не на НПД и не на АУСН: там взносов
        за себя нет вовсе — это и есть их главное преимущество. */
     if (profile.form !== "ip") return 0;
     if (profile.regime === "npd" || profile.regime === "ausn") return 0;
-    const C = RATES.ipContributions;
-    const extra = Math.min(C.extraCap, Math.max(0, income - C.extraThreshold) * C.extraRate);
-    return C.fixed + extra;
+    /* Раньше сюда передавали число — доход. Оставляем это рабочим. */
+    if (typeof year === "number") year = { income: year };
+    return RATES.contributions(contributionBase(profile, year));
   }
 
   /* ---------- Оценка налога за год ----------
@@ -89,7 +108,7 @@ const BOOK = (() => {
     const expense = year.expense || 0;
     const fromPersons = year.incomeFromPersons || 0;
     const fromCompanies = Math.max(0, income - fromPersons);
-    const own = ownContributions(profile, income);
+    const own = ownContributions(profile, year);
     const notCounted = [];
 
     let tax = 0, how = "";
@@ -116,24 +135,29 @@ const BOOK = (() => {
         break;
       }
       case "usn15": {
-        const base = Math.max(0, income - expense);
+        const base = Math.max(0, income - expense - own);
         const normal = base * R.usn.profitRate;
         const minimal = income * R.usn.minTaxRate;
         tax = Math.max(normal, minimal);
         how = normal >= minimal
-          ? `15% с прибыли ${RUB(base)}.`
+          ? `15% с прибыли ${RUB(base)}` + (own > 0 ? ` — взносы ${RUB(own)} уже вычтены как расход.` : ".")
           : `Прибыль мала, поэтому платится минимальный налог — 1% с выручки. Так велит НК РФ.`;
-        notCounted.push("взносы за себя здесь не уменьшают налог, а входят в расходы");
         if (income > R.usn.vatThreshold) notCounted.push("НДС");
         break;
       }
       case "psn": {
-        tax = (profile.psn || 0) * R.psn.rate;
+        const patent = (profile.psn || 0) * R.psn.rate;
+        /* Патент уменьшается на взносы так же, как налог на «Доходах»:
+           без работников — до нуля, с работниками — не больше чем вдвое
+           (п. 1.2 ст. 346.51 НК РФ). */
+        const cut = profile.workers > 0 ? Math.min(patent / 2, own) : Math.min(patent, own);
+        tax = Math.max(0, patent - cut);
         how = profile.psn
-          ? `Патент считается не от выручки, а от потенциального дохода ${RUB(profile.psn)}: 6% с него.`
+          ? `Патент считается не от выручки, а от потенциального дохода ${RUB(profile.psn)}: 6% с него — ${RUB(patent)}, `
+            + `минус взносы ${RUB(cut)}` + (profile.workers > 0 ? " (с работниками — не больше половины)." : ".")
           : `Укажите потенциальный доход по патенту — без него стоимость патента не посчитать. `
             + `Точную цифру даёт калькулятор ФНС.`;
-        notCounted.push("взносы за себя — они уменьшают стоимость патента");
+        if (profile.psn) notCounted.push("чтобы уменьшить патент на взносы, в налоговую подают уведомление");
         break;
       }
       case "ausn": {
@@ -143,8 +167,9 @@ const BOOK = (() => {
         break;
       }
       case "eshn": {
-        tax = Math.max(0, income - expense) * R.eshn.rate;
-        how = `6% с прибыли ${RUB(Math.max(0, income - expense))}.`;
+        const base = Math.max(0, income - expense - own);
+        tax = base * R.eshn.rate;
+        how = `6% с прибыли ${RUB(base)}` + (own > 0 ? ` — взносы ${RUB(own)} уже вычтены как расход.` : ".");
         break;
       }
       case "osno": {
@@ -155,7 +180,7 @@ const BOOK = (() => {
           /* У ИП на ОСНО база — доход минус расходы, но если расходы не
              подтверждены, закон разрешает вычесть 20% дохода. Берём
              вариант выгоднее — так поступил бы и бухгалтер. */
-          const byDocs = Math.max(0, income - expense);
+          const byDocs = Math.max(0, income - expense - own);
           const byNorm = income * (1 - R.osno.proDeduction);
           const base = Math.min(byDocs, byNorm);
           tax = ndfl(base);
@@ -264,10 +289,8 @@ const BOOK = (() => {
     }
 
     if (profile.form === "ip" && profile.regime !== "npd" && profile.regime !== "ausn") {
-      const income = year.income || 0;
-      if (income > RATES.ipContributions.extraThreshold) {
-        const extra = Math.min(RATES.ipContributions.extraCap,
-          (income - RATES.ipContributions.extraThreshold) * RATES.ipContributions.extraRate);
+      const extra = RATES.contributions(contributionBase(profile, year)) - RATES.ipContributions.fixed;
+      if (extra > 0) {
         out.push({ when: new Date(y + 1, 6, 1), what: "1% с дохода свыше 300 000 ₽",
                    note: `По текущим данным — ${RUB(extra)}` });
       }
