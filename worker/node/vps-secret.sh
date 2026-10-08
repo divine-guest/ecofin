@@ -78,7 +78,15 @@ echo "Сервер виден, вход работает."
 
 # ---------- 2. Спрашиваем значения ----------
 
-LINES=""
+# Имя PAIRS выбрано не случайно: сначала переменная называлась LINES, а
+# это служебное имя bash — высота окна. В настоящем окне консоли оболочка
+# после каждой внешней команды сама записывает туда число строк, и вместо
+# ключей на сервер уезжало «30». Первый запуск у владельца на этом и
+# сорвался: ЮKassa ключ приняла, а запись не прошла. На проверке без
+# окна ошибка не видна — там оболочке нечего измерять. Так же нельзя
+# называть переменную COLUMNS.
+PAIRS=""
+COUNT=0
 for spec in "$@"; do
   name=${spec%%=*}
   def=""
@@ -117,10 +125,11 @@ for spec in "$@"; do
     val=""
   done
   [ -n "$val" ] || fail "значение для «$(label "$name")» так и не получено"
-  LINES="$LINES$name=$val"$'\n'
+  PAIRS="$PAIRS$name=$val"$'\n'
+  COUNT=$((COUNT + 1))
 done
 
-case "$LINES" in
+case "$PAIRS" in
   *YOOKASSA_SECRET_KEY=test_*)
     echo
     echo "ВНИМАНИЕ: ключ тестовый. Сайт будет принимать только пробные платежи," \
@@ -141,7 +150,7 @@ for spec in "$@"; do [ "${spec%%=*}" = "YOOKASSA_SECRET_KEY" ] && YK="да"; don
 
 if [ -n "$YK" ]; then
   CHECK='f=/opt/pravofin/env; in=$(cat); id=$(printf "%s\n" "$in" | grep -m1 "^YOOKASSA_SHOP_ID=" | cut -d= -f2-); key=$(printf "%s\n" "$in" | grep -m1 "^YOOKASSA_SECRET_KEY=" | cut -d= -f2-); [ -n "$id" ] || id=$(grep -m1 "^YOOKASSA_SHOP_ID=" "$f" | cut -d= -f2-); printf "user = \"%s:%s\"\n" "$id" "$key" | curl -s -m 20 -K - -w "\nHTTP %{http_code}\n" https://api.yookassa.ru/v3/me'
-  ANSWER=$(printf '%s' "$LINES" | run "$CHECK" 2>/dev/null)
+  ANSWER=$(printf '%s' "$PAIRS" | run "$CHECK" 2>/dev/null)
   CODE=$(printf '%s\n' "$ANSWER" | sed -n 's/^HTTP //p' | tail -1)
   echo
   case "$CODE" in
@@ -152,7 +161,7 @@ if [ -n "$YK" ]; then
         || echo "  Магазин боевой."
       ;;
     401)
-      LINES=""
+      PAIRS=""
       echo "ЮKassa ключ НЕ ПРИНЯЛА: номер магазина и ключ не подходят друг к другу."
       echo "На сервер ничего не записано. Проверьте оба значения в кабинете"
       echo "ЮKassa и запустите этот файл ещё раз."
@@ -168,10 +177,27 @@ fi
 # файле дважды: какой из двух прочтёт сервер — зависело бы от случая.
 # Пишем в тот же файл, а не подменяем его: так сохраняются права и
 # владелец.
-SAVE='set -e; umask 077; f=/opt/pravofin/env; in=$(mktemp); out=$(mktemp); cat > "$in"; keys=$(grep -oE "^[A-Z][A-Z0-9_]*" "$in" | paste -sd"|" -); [ -n "$keys" ]; { grep -vE "^($keys)=" "$f" || true; } > "$out"; cat "$in" >> "$out"; cat "$out" > "$f"; rm -f "$in" "$out"; echo "Записано на сервер."'
-printf '%s' "$LINES" | run "$SAVE" || fail "записать на сервер не удалось"
-LINES=""
+#
+# Сервер отвечает одной строкой: «SAVED число» или «ERR причина».
+# Молча он не выходит никогда: первая версия при пустом вводе просто
+# завершалась с ошибкой, и снаружи было не понять, на чём споткнулась.
+# Число — сколько из переданных настроек теперь лежит в файле непустыми;
+# сверяем его с тем, сколько отправили.
+SAVE='umask 077; f=/opt/pravofin/env; in=$(mktemp) && out=$(mktemp) || { echo "ERR mktemp"; exit 11; }; cat > "$in"; keys=$(grep -oE "^[A-Z][A-Z0-9_]*" "$in" | paste -sd"|" -); if [ -z "$keys" ]; then rm -f "$in" "$out"; echo "ERR empty-input"; exit 12; fi; { grep -vE "^($keys)=" "$f" 2>/dev/null || true; } > "$out"; cat "$in" >> "$out"; if ! cat "$out" > "$f"; then rm -f "$in" "$out"; echo "ERR write"; exit 13; fi; n=$(grep -cE "^($keys)=." "$f"); rm -f "$in" "$out"; echo "SAVED $n"'
+REPLY_SAVE=$(printf '%s' "$PAIRS" | run "$SAVE" 2>&1)
+RC=$?
+PAIRS=""
 val=""
+case "$REPLY_SAVE" in
+  *"SAVED $COUNT"*)
+    echo "Записано на сервер, настроек: $COUNT." ;;
+  *)
+    # В ответе сервера секретов нет — только слово и число, его можно
+    # показывать и присылать в чат.
+    echo
+    echo "Сервер ответил: ${REPLY_SAVE:-(ничего)} (код $RC)"
+    fail "записать на сервер не удалось — пришлите эти две строки в чат" ;;
+esac
 
 # ---------- 5. Просим сервер подхватить сейчас ----------
 #
