@@ -23,8 +23,8 @@
 <!-- seo:end -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="css/fonts.css?v=230">
-<link rel="stylesheet" href="css/style.css?v=230">
+<link rel="stylesheet" href="css/fonts.css?v=231">
+<link rel="stylesheet" href="css/style.css?v=231">
 </head>
 <body>
 <main class="section">
@@ -36,18 +36,18 @@
   </div>
 </main>
 
-<script src="js/rates.js?v=230"></script>
-<script src="js/book.js?v=230"></script>
-<script src="js/themes.js?v=230"></script>
-<script src="js/api.js?v=230"></script>
-<script src="js/app.js?v=230"></script>
-<script src="js/progress.js?v=230"></script>
-<script src="js/favorites.js?v=230"></script>
-<script src="js/palette.js?v=230"></script>
-<script src="js/ai.js?v=230"></script>
-<script src="js/knowledge.js?v=230"></script>
-<script src="js/competencies.js?v=230"></script>
-<script src="js/courses.js?v=230"></script>
+<script src="js/rates.js?v=231"></script>
+<script src="js/book.js?v=231"></script>
+<script src="js/themes.js?v=231"></script>
+<script src="js/api.js?v=231"></script>
+<script src="js/app.js?v=231"></script>
+<script src="js/progress.js?v=231"></script>
+<script src="js/favorites.js?v=231"></script>
+<script src="js/palette.js?v=231"></script>
+<script src="js/ai.js?v=231"></script>
+<script src="js/knowledge.js?v=231"></script>
+<script src="js/competencies.js?v=231"></script>
+<script src="js/courses.js?v=231"></script>
 <script>
 initPage("dashboard.html");
 
@@ -529,8 +529,7 @@ function renderCabinet() {
       <div class="card" data-tab="tasks">
         <h3>Сроки и напоминания</h3>
         <p class="hint" style="margin-bottom:12px">
-          Напомним заранее — за 3 дня, за день и в сам день: отметкой у
-          колокольчика в шапке сайта.
+          Напомним заранее — за 3 дня, за день и в сам день.
         </p>
         <!-- Куда именно придут напоминания. Раньше об этом нигде не
              говорилось: человек ставил сроки и считал, что подписался
@@ -668,7 +667,12 @@ const CABINET = {
       btn.onclick = () => this.show(id);
       bar.appendChild(btn);
     });
-    this.show(buckets[saved] && buckets[saved].length ? saved : "overview");
+    /* Ссылка из письма и из ленты уведомлений ведёт к срокам:
+       «dashboard.html#reminders» открывает вкладку «Дела», а не ту, что
+       была открыта в прошлый раз. Раньше решётка не значила ничего, и
+       человек из напоминания попадал на обзор. */
+    const byLink = location.hash === "#reminders" ? "tasks" : "";
+    this.show(byLink || (buckets[saved] && buckets[saved].length ? saved : "overview"));
   },
 
   show(id) {
@@ -1171,31 +1175,45 @@ const REM = {
   async renderChannel() {
     const box = document.getElementById("dlChannel");
     if (!box) return;
-    let tg;
-    try { tg = await API.telegram.status(); } catch { return; }
+    const line = html => `<p class="hint" style="margin-bottom:12px">${html}</p>`;
+    const frame = html => `
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px">${html}</div>`;
+    let out = "";
 
-    /* Остановлено намеренно — говорим об этом. Молча спрятать блок
-       значило бы оставить человека гадать, куда делись уведомления,
-       которые он подключал. */
-    if (tg.paused) {
-      box.innerHTML = `<p class="hint" style="margin-bottom:12px">
-        <span class="badge">Telegram на паузе</span> ${tg.paused}</p>`;
-      return;
+    /* Почта — главный канал: её не надо подключать, адрес уже есть.
+       Письмо приходит само, а отметку на сайте надо зайти и увидеть. */
+    let mail = null;
+    try { mail = await API.mail.status(); } catch { /* покажем остальное */ }
+    const mailOn = Boolean(mail && mail.enabled && !mail.off);
+    if (mailOn) {
+      out += line(`<span class="badge ok">Почта</span> Напоминание придёт письмом на
+        <b>${escapeHtml(mail.address)}</b> и отметкой у колокольчика в шапке.
+        <a href="#" onclick="SETTINGS.open('notify');return false">Настроить</a>`);
+    } else if (mail && mail.enabled) {
+      out += frame(`
+        <p style="margin:0 0 10px">Письма отключены: напоминания видны <b>только на сайте</b> —
+          их надо зайти и посмотреть.</p>
+        <button class="btn small" onclick="SETTINGS.setMail(false, this)">Включить письма</button>`);
+    } else {
+      out += line(`Напоминания видны на сайте — отметкой у колокольчика в шапке.${
+        mail && mail.foreign ? " Письма отправляем только на российскую почту." : ""}`);
     }
-    if (!tg.enabled) return;
 
-    if (tg.linked) {
-      box.innerHTML = `<p class="hint" style="margin-bottom:12px">
-        <span class="badge ok">Telegram подключён</span>
-        напоминания придут и сюда, и в мессенджер.</p>`;
-      return;
+    let tg = null;
+    try { tg = await API.telegram.status(); } catch { /* мессенджер не обязателен */ }
+    if (tg && tg.paused) {
+      /* Остановлено намеренно — говорим об этом тем, кто его подключал.
+         Молча спрятать значило бы оставить человека гадать, куда делись
+         сообщения. Остальным про выключенный канал знать незачем. */
+      if (tg.linked) out += line(`<span class="badge">Telegram на паузе</span> ${escapeHtml(tg.paused)}`);
+    } else if (tg && tg.enabled && tg.linked) {
+      out += line(`<span class="badge ok">Telegram подключён</span> напоминания придут и в мессенджер.`);
+    } else if (tg && tg.enabled && !mailOn) {
+      out += frame(`
+        <p style="margin:0 0 10px">Подключите Telegram, и напоминания придут сами.</p>
+        <button class="btn small" onclick="SETTINGS.open('notify')">Подключить Telegram</button>`);
     }
-    box.innerHTML = `
-      <div style="border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px">
-        <p style="margin:0 0 10px">Сейчас напоминания видны <b>только на сайте</b> —
-          их надо зайти и посмотреть. Подключите Telegram, и они придут сами.</p>
-        <button class="btn small" onclick="SETTINGS.open('notify')">Подключить Telegram</button>
-      </div>`;
+    box.innerHTML = out;
   },
 
   async load() {
@@ -1215,6 +1233,21 @@ const REM = {
       if (!this.presets.length) {
         this.presets = (await API.reminders.presets()).presets;
         this.renderPresets();
+      }
+      /* Пришли по ссылке из письма — показываем сами сроки, а не верх
+         вкладки: карточка стоит под календарём, и до неё надо листать.
+         С задержкой: блоки выше ещё дорисовываются. Карточку ищем
+         заново, а не берём из замыкания: кабинет при входе рисуется
+         дважды, и первая разметка к этому моменту уже выброшена. */
+      if (location.hash === "#reminders" && !this._shown) {
+        setTimeout(() => {
+          const list = document.getElementById("dlList");
+          const card = list && list.closest(".card");
+          if (this._shown || !card || card.offsetParent === null) return;
+          this._shown = true;
+          card.style.scrollMarginTop = "96px";   // шапка сайта закреплена и закрыла бы заголовок
+          card.scrollIntoView({ block: "start", behavior: "instant" });
+        }, 400);
       }
     } catch (e) {
       box.innerHTML = `<p class="hint">Не удалось загрузить: ${escapeHtml(e.message)}</p>`;
@@ -1502,8 +1535,9 @@ const RENEW = {
       return;
     }
     box.innerHTML = d.autoRenew
-      ? `<p class="hint">Продлится автоматически <b>${until}</b>. Спишется столько же,
-           сколько при оформлении.</p>
+      ? `<p class="hint">Оплачено до <b>${until}</b>. В последние сутки срока подписка
+           продлится автоматически: спишется столько же, сколько при оформлении.
+           Предупредим за три дня.</p>
          <button class="btn secondary small" onclick="RENEW.set(false, this)">Отменить подписку</button>`
       : `<p class="hint">Автопродление отключено. Доступ сохранится до <b>${until}</b>,
            дальше ничего не спишется.</p>

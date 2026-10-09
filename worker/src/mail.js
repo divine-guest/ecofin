@@ -33,9 +33,21 @@
    которой ничего не приходит, хуже, чем честно отправить человека к
    ручному восстановлению.                                            */
 
+import { ruEmail, normEmail } from "./lib.js";
+
 /* Unisender Go: российский сервис, письма уходят с наших серверов
    через их API. Ключ выдаётся в личном кабинете, раздел безопасности. */
 const DEFAULT_URL = "https://goapi.unisender.ru/ru/transactional/api/v1/email/send.json";
+
+/* Можно ли писать на этот адрес. Правило то же, что при регистрации:
+   письмо на зарубежную почту — это передача данных за границу, которой
+   мы не заявляли. Адреса владельца — исключение там же, где и вход.
+   Решение принимается по самому адресу, без обращения к базе. */
+export function canMailTo(env, email) {
+  if (ruEmail(email)) return true;
+  return String((env && env.OWNER_EMAILS) || "").split(",").map(normEmail).filter(Boolean)
+    .includes(normEmail(email));
+}
 
 export function mailReady(env) {
   if (!env) return false;
@@ -47,14 +59,17 @@ export function mailReady(env) {
    которой должен падать запрос целиком. Решение, что делать с неудачей,
    принимает вызывающий: коду сброса пароля молчать нельзя, а
    напоминанию — можно. */
-export async function sendMail(env, { to, subject, text }) {
+export async function sendMail(env, { to, subject, text, headers }) {
   if (!mailReady(env)) return { ok: false, reason: "not_configured" };
 
   /* Почтовый ящик. Функция сама ловит свои ошибки, но страхуемся:
      письмо не должно уронить запрос, каким бы путём оно ни шло. */
   if (typeof env.MAIL_SEND === "function") {
     try {
-      const r = await env.MAIL_SEND({ to, subject, text });
+      /* headers — служебные строки письма: по ним почтовый сервис
+         показывает свою кнопку «Отписаться». Сервис рассылок ниже их
+         не получает: там отписку ведёт сам провайдер. */
+      const r = await env.MAIL_SEND({ to, subject, text, headers });
       return r && r.ok ? { ok: true } : { ok: false, reason: (r && r.reason) || "provider" };
     } catch (e) {
       console.error("mail: отправка через ящик", e && e.message ? e.message : "");

@@ -246,6 +246,15 @@ const API = {
     link() { return API.request("/api/telegram/link", { method: "POST" }); },
     unlink() { return API.request("/api/telegram/unlink", { method: "POST" }); },
   },
+  /* Письма на почту: напоминания о сроках и сводка недели. */
+  mail: {
+    status() { return API.request("/api/mail"); },
+    set(off) { return API.request("/api/mail", { method: "POST", body: { off } }); },
+    /* Отказ по ссылке из письма — без входа, по ключу из самой ссылки. */
+    unsubscribe(token, on = false) {
+      return API.request("/api/mail/unsubscribe", { method: "POST", body: { token, on } });
+    },
+  },
   referralCheck(code) { return this.request("/api/referral/check?code=" + encodeURIComponent(code)); },
   logoutEverywhere() { return this.request("/api/auth/logout-all", { method: "POST" }); },
 

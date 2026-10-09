@@ -12,6 +12,7 @@
 
 import { now } from "./lib.js";
 import { isPaid } from "./plans.js";
+import { sendLetter } from "./letters.js";
 
 /* Утро понедельника по местному времени. Час выбран так, чтобы письмо
    пришло к началу рабочего дня, а не разбудило ночью. */
@@ -86,7 +87,41 @@ async function buildFor(env, user) {
   lines.push("<b>Совет недели</b>");
   lines.push(TIPS[weekNumber() % TIPS.length]);
 
+  /* Письмо собирается отдельно, и в нём нет ни слова о покупке: только
+     сроки человека, его подписка и совет. Предложение пробного периода
+     и «продлить» — это уже реклама, а на рекламу по почте нужно
+     согласие, которого никто не давал. Если кроме предложения сказать
+     нечего, письма нет вовсе. */
+  let mail = null;
+  if (items.length || expiring) {
+    const m = [];
+    if (items.length) {
+      m.push("На этой неделе:");
+      for (const r of items) {
+        const days = Math.round((Date.parse(r.due) - Date.parse(today)) / 86400000);
+        const when = days === 0 ? "сегодня" : days === 1 ? "завтра" : `через ${days} дн.`;
+        m.push(`• ${r.title} — ${r.due.split("-").reverse().join(".")} (${when})`);
+      }
+      m.push("");
+    }
+    if (expiring) {
+      m.push(left === 0 ? "Оплаченный срок подписки заканчивается сегодня."
+                        : `Оплаченный срок подписки заканчивается через ${left} дн.`);
+      m.push("");
+    }
+    m.push("Совет недели", TIPS[weekNumber() % TIPS.length]);
+    mail = {
+      subject: items.length
+        ? `На этой неделе: ${items.length} ${items.length === 1 ? "срок" : items.length < 5 ? "срока" : "сроков"}`
+        : "Сводка недели",
+      lines: m,
+      link: "dashboard.html",
+      linkLabel: "Открыть кабинет",
+    };
+  }
+
   return {
+    mail,
     text: lines.join("\n"),
     title: items.length ? `На этой неделе: ${items.length} ${
       items.length === 1 ? "срок" : items.length < 5 ? "срока" : "сроков"}`
@@ -107,11 +142,12 @@ export async function runDigest(env, send) {
   const week = weekNumber();
 
   const rows = await env.DB.prepare(
-    `SELECT email, name, tg_chat_id, tz_offset, plan, pro_until, role, digest_week
+    `SELECT email, name, tg_chat_id, tz_offset, plan, pro_until, role, digest_week,
+            mail_off, mail_token
        FROM users WHERE digest_off IS NULL OR digest_off = 0`
   ).all();
 
-  let sent = 0;
+  let sent = 0, mailed = 0;
   for (const u of rows.results || []) {
     const local = localNow(u.tz_offset);
     /* getUTCDay, потому что local уже сдвинут на часовой пояс человека. */
@@ -133,7 +169,13 @@ export async function runDigest(env, send) {
     if (u.tg_chat_id && send) {
       await send(env, u.tg_chat_id, d.text).catch(() => {});
     }
+    /* На почту — тем, кто писем не отключал. Без письма сводка жила бы
+       только в ленте, а её смысл как раз в том, чтобы прийти самой. */
+    if (d.mail) {
+      const r = await sendLetter(env, u, d.mail).catch(() => ({ ok: false }));
+      if (r.ok) mailed++;
+    }
     sent++;
   }
-  return { sent, week };
+  return { sent, mailed, week };
 }

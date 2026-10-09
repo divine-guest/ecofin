@@ -65,7 +65,7 @@ export function makeSmtpSender(cfg) {
     return transport;
   }
 
-  return async function send({ to, subject, text }) {
+  return async function send({ to, subject, text, headers }) {
     try {
       const t = await getTransport();
       const from = cfg.MAIL_FROM || cfg.MAIL_SMTP_USER;
@@ -75,6 +75,7 @@ export function makeSmtpSender(cfg) {
         subject,
         text,
         ...(cfg.MAIL_REPLY_TO ? { replyTo: cfg.MAIL_REPLY_TO } : {}),
+        ...(headers && typeof headers === "object" ? { headers } : {}),
       });
       return { ok: true };
     } catch (e) {

@@ -644,6 +644,15 @@ DIAG="$REPO/diag-8f3a2c.txt"
   if [ -n "$YKLOG" ]; then printf '%s\n' "$YKLOG" | sed 's/^/  /'; else echo "  записей нет — отказов не было"; fi
   echo "  платежей в базе: $(sqlite3 "$DIR/data/pravofin.db" "SELECT status || ' ' || COUNT(*) FROM payments WHERE source='yookassa' GROUP BY status" 2>/dev/null | paste -sd";" -)"
   echo
+  echo "--- почта: письма о сроках и отказы за двое суток ---"
+  # Только счёт: рассылка напоминаний раз в час пишет, сколько писем ушло,
+  # а отправка при отказе — код ответа почтового сервера. Адресов и текста
+  # писем в этих строках нет. Строка «не поместилось» значит, что ящика
+  # уже мало и пора подключать сервис рассылок.
+  MAILLOG=$(journalctl -u pravofin --since "-2 days" --no-pager -o cat 2>/dev/null | grep -E "^reminders: .*писем [1-9]|^mail:" | tail -8)
+  if [ -n "$MAILLOG" ]; then printf '%s\n' "$MAILLOG" | sed 's/^/  /'; else echo "  писем о сроках не уходило, отказов почты нет"; fi
+  echo "  отключили письма: $(sqlite3 "$DIR/data/pravofin.db" "SELECT COUNT(*) FROM users WHERE mail_off = 1" 2>/dev/null || echo "?") из $(sqlite3 "$DIR/data/pravofin.db" "SELECT COUNT(*) FROM users" 2>/dev/null || echo "?")"
+  echo
   echo "--- переезд на другую машину ---"
   if [ -f "$REPO/worker/node/TRANSFER" ]; then
     echo "  просьба в репозитории: $(grep -vE '^[[:space:]]*(#|$)' "$REPO/worker/node/TRANSFER" | tr '\n' ' ')"

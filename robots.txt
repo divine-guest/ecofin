@@ -13,6 +13,7 @@ Disallow: /admin.html
 Disallow: /dashboard.html
 Disallow: /auth.html
 Disallow: /onboarding.html
+Disallow: /unsubscribe.html
 
 # Отдельные страницы статей — то, ради чего сайт вообще ищут.
 Allow: /st/

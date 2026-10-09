@@ -29,7 +29,7 @@ export const CFG = {
      отметкой о согласии: через год будет видно не только «согласился»,
      но и на какой именно текст. Меняется вместе с датой в legal.html —
      за тем, чтобы они не разошлись, следит проверка в content.mjs. */
-  POLICY_VERSION: "2026-09-13",
+  POLICY_VERSION: "2026-10-09",
 };
 
 /* ---------- Кому разрешено показывать данные ---------- */
@@ -120,7 +120,7 @@ export const PAUSED_AI =
   "Расчёты, документы, напоминания и база знаний работают как обычно.";
 export const PAUSED_TG =
   "Уведомления в Telegram временно недоступны. " +
-  "Напоминания продолжают приходить на сайте.";
+  "Напоминания продолжают приходить на сайте и на почту.";
 
 /* Домены, которым разрешено обращаться к API. Задаётся переменной ALLOWED_ORIGINS
    (через запятую) — чтобы при переезде на домен не пересобирать воркер. */
@@ -288,6 +288,7 @@ export function publicUser(row) {
     tier: tierOf(row),
     planTitle: planOf(row).title,
     digestOff: Boolean(row.digest_off),
+    mailOff: Boolean(row.mail_off),
     features: planOf(row).features,
     themeAccent: row.theme_accent || "",
     points: row.points || 0,

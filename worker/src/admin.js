@@ -288,7 +288,8 @@ export async function resetPassword(request, env, origin, admin) {
    Обычно её запускает крон раз в час; ручной запуск нужен, чтобы проверить
    настройку и чтобы не ждать час после правки сроков. */
 export async function runRemindersNow(request, env, origin, admin) {
-  const r = await runReminders(env);
+  /* Ручной прогон — «сейчас»: ночное молчание на него не действует. */
+  const r = await runReminders(env, { force: true });
   await logAction(env, admin.email, `Ручной прогон напоминаний: отправлено ${r.sent}`);
   return json(env, origin, r);
 }

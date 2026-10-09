@@ -1343,10 +1343,20 @@ const SETTINGS = {
   /* --- Вкладка «Уведомления» --- */
   render_notify() {
     return `
-      <h4>Telegram</h4>
-      <p class="hint">Напоминания о сроках приходят в мессенджер — его открывают
-      чаще, чем почту. Там же можно спросить консультанта и посмотреть ближайшие сроки.</p>
-      <div id="tgBox" style="margin:14px 0">Загружаем…</div>
+      <h4>Письма на почту</h4>
+      <p class="hint">Напоминание о сроке приходит утром — заранее и в сам день.
+      По понедельникам — короткая сводка недели, если есть что сказать.</p>
+      <div id="mailBox" style="margin:14px 0">Загружаем…</div>
+
+      <!-- Блок мессенджера скрыт, пока канал не работает: заголовок
+           «Telegram» над пустым местом читался как обещание. -->
+      <div id="tgSection" hidden>
+        <hr>
+        <h4>Telegram</h4>
+        <p class="hint">Напоминания о сроках приходят и в мессенджер. Там же можно
+        спросить консультанта и посмотреть ближайшие сроки.</p>
+        <div id="tgBox" style="margin:14px 0">Загружаем…</div>
+      </div>
 
       <hr>
       <h4>Лента уведомлений</h4>
@@ -1358,12 +1368,58 @@ const SETTINGS = {
       </div>`;
   },
 
+  /* Письма: одна настройка на напоминания и сводку. Человек, который
+     отключает письма, хочет, чтобы их не было, а не выбирать из видов. */
+  async loadMail() {
+    const box = document.getElementById("mailBox");
+    if (!box) return;
+    try {
+      const d = await API.mail.status();
+      const addr = `<span class="hint">на ${escapeHtml(d.address)}</span>`;
+      if (!d.enabled) {
+        box.innerHTML = `<p class="hint">${d.foreign
+          ? `Письма отправляем только на российскую почту: адрес за рубежом — это передача
+             данных за границу. <a href="recovery.html#email">Как сменить адрес</a>.`
+          : "Письма пока не подключены."}
+          Напоминания видны на сайте — у колокольчика в шапке.</p>`;
+        return;
+      }
+      box.innerHTML = d.off
+        ? `<p><span class="badge">отключены</span> ${addr}</p>
+           <p class="hint" style="margin:8px 0">Напоминания видны только на сайте — их надо зайти и посмотреть.</p>
+           <button class="btn small" onclick="SETTINGS.setMail(false, this)">Включить письма</button>`
+        : `<p><span class="badge ok">включены</span> ${addr}</p>
+           <p class="hint" style="margin:8px 0">Код для смены пароля и предупреждение о списании
+             приходят независимо от этой настройки.</p>
+           <button class="btn small secondary" onclick="SETTINGS.setMail(true, this)">Отключить письма</button>`;
+    } catch (e) {
+      box.innerHTML = `<p class="hint">Не удалось загрузить: ${escapeHtml(e.message)}</p>`;
+    }
+  },
+
+  async setMail(off, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Сохраняем…"; }
+    try {
+      await API.mail.set(off);
+      toast(off ? "Письма отключены" : "Письма включены");
+      trackEvent(off ? "mail_off" : "mail_on");
+    } catch (e) { toast(e.message, "error"); }
+    this.loadMail();
+    /* Тот же выключатель показан в разделе сроков кабинета. */
+    if (typeof REM !== "undefined" && REM.renderChannel) REM.renderChannel();
+  },
+
   async loadTelegram() {
     const box = document.getElementById("tgBox");
     if (!box) return;
     try {
       const d = await API.telegram.status();
-      if (!d.enabled) { box.innerHTML = `<p class="hint">Бот пока не подключён к сервису.</p>`; return; }
+      /* Канал выключен — блок остаётся скрытым. Тем, кто успел его
+         подключить, говорим, куда делись сообщения. */
+      if (!d.enabled && !(d.paused && d.linked)) return;
+      const section = document.getElementById("tgSection");
+      if (section) section.hidden = false;
+      if (!d.enabled) { box.innerHTML = `<p class="hint">${escapeHtml(d.paused)}</p>`; return; }
 
       if (d.linked) {
         box.innerHTML = `
@@ -1716,7 +1772,7 @@ const _settingsRender = SETTINGS.render.bind(SETTINGS);
 SETTINGS.render = function () {
   _settingsRender();
   if (this._tab === "security") this.loadSessions();
-  if (this._tab === "notify") { this.loadTelegram(); NOTIFY.render(); }
+  if (this._tab === "notify") { this.loadMail(); this.loadTelegram(); NOTIFY.render(); }
   if (this._tab === "look") this.loadThemes();
   if (this._tab === "subscription" && !PF.quota) {
     /* Остатки могли ещё не приехать — тянем и перерисовываем вкладку,

@@ -5,7 +5,7 @@ import {
 } from "./lib.js";
 import { attachReferral } from "./referral.js";
 import { penalize, forgive } from "./ratelimit.js";
-import { mailReady, sendMail } from "./mail.js";
+import { mailReady, sendMail, canMailTo } from "./mail.js";
 
 /* Три уровня доступа:
      owner — задан в OWNER_EMAILS, может выдавать и снимать админку через сайт;
@@ -579,6 +579,10 @@ export async function resetRequest(request, env, origin) {
   const email = normEmail(b.email);
   if (!validEmail(email)) return fail(env, origin, "Неверный адрес почты");
   if (!mailReady(env)) return json(env, origin, { sent: false, mail: false });
+  /* На зарубежный адрес код не шлём: письмо туда — передача данных за
+     границу. Решаем по самому адресу, а не по базе, поэтому ответ
+     ничего не говорит о том, есть ли такой аккаунт. */
+  if (!canMailTo(env, email)) return json(env, origin, { sent: false, mail: false, foreign: true });
 
   const row = await env.DB.prepare("SELECT email, name FROM users WHERE email = ?")
     .bind(email).first();

@@ -4,7 +4,8 @@
    чем почту, поэтому именно он делает напоминания по-настоящему работающими. */
 import { json, fail, now, isPro, normEmail, telegramPaused, PAUSED_TG } from "./lib.js";
 import { logAction } from "./auth.js";
-import { notify, localDay, addDays, nextDue } from "./reminders.js";
+import { notify, localDay, localHour, addDays, nextDue } from "./reminders.js";
+import { sendLetter } from "./letters.js";
 import { aiQuota, spendAI, toolQuota, analyzeQuota } from "./quota.js";
 import { PLANS, planOf, tierOf } from "./plans.js";
 import { balanceOf } from "./points.js";
@@ -592,19 +593,62 @@ ${siteUrl(env)}book.html`);
 
 /* Запускается по крону раз в час. Смотрит, кому сегодня пора напомнить,
    пишет в ленту на сайте и, если подключён Telegram и оплачен Pro, шлёт туда. */
-export async function runReminders(env) {
+/* С какого часа по времени человека напоминаем. Раньше напоминание
+   уходило в первый час суток, то есть в полночь: в ленте сайта этого
+   никто не замечал, а письмо или сообщение в полночь — уже будильник. */
+const REMIND_FROM_HOUR = 8;
+
+/* Сколько писем уходит за один часовой прогон. Почтовый ящик — не
+   служба рассылок: у хостера суточный предел около трёх тысяч писем,
+   и исчерпать его напоминаниями значит оставить людей без кода для
+   смены пароля. Непоместившиеся увидят срок в ленте на сайте. */
+const MAIL_PER_RUN = 300;
+
+function plural(n, one, few, many) {
+  const a = n % 10, b = n % 100;
+  return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
+}
+
+/* Письмо о сроках одному человеку. Сроки одного утра собраны в одно
+   письмо: пять писем подряд учат не открывать ни одного. */
+function reminderLetter(items) {
+  const one = items.length === 1 ? items[0] : null;
+  const lines = [one ? "Напоминаем о сроке:" : "Напоминаем о сроках:", ""];
+  for (const it of items) {
+    lines.push(`• ${it.title} — ${it.when}, ${it.dateRu}`);
+    if (it.note) lines.push(`  ${it.note}`);
+  }
+  return {
+    subject: one
+      ? `${one.title} — ${one.when}`
+      : `${items.length} ${plural(items.length, "срок", "срока", "сроков")} на подходе`,
+    lines,
+    link: "dashboard.html#reminders",
+    linkLabel: "Все сроки и календарь",
+  };
+}
+
+/* force — ручной прогон из админки: «сейчас» значит сейчас, а не утром. */
+export async function runReminders(env, { force = false } = {}) {
   const rows = await env.DB.prepare(
-    `SELECT r.*, u.tg_chat_id, u.tz_offset, u.plan, u.pro_until, u.role
+    `SELECT r.*, u.name, u.mail_off, u.mail_token,
+            u.tg_chat_id, u.tz_offset, u.plan, u.pro_until, u.role
        FROM reminders r JOIN users u ON u.email = r.email
       WHERE r.active = 1`
   ).all();
 
   let sent = 0, rolled = 0;
+  const letters = new Map();   // адрес → сроки этого прогона
 
   for (const r of rows.results || []) {
     const tz = r.tz_offset ?? 3;
     const today = localDay(tz);
-    const offsets = r.notify_days.split(",").map(Number).filter(n => Number.isInteger(n));
+    /* Ночью молчим: всё, что не ушло до утра, уйдёт в первый же прогон
+       после него — условие ниже проверяет дату, а не час. */
+    const awake = force || localHour(tz) >= REMIND_FROM_HOUR;
+    const offsets = awake
+      ? r.notify_days.split(",").map(Number).filter(n => Number.isInteger(n))
+      : [];
 
     for (const off of offsets) {
       /* Дата, в которую надо предупредить: срок минус offset дней. */
@@ -632,6 +676,17 @@ export async function runReminders(env) {
         "INSERT OR IGNORE INTO reminder_sent (reminder_id, due, offset_days, sent_at) VALUES (?, ?, ?, ?)"
       ).bind(r.id, r.due, off, now()).run();
       sent++;
+
+      /* Письмо — всем, а не только платным: оно возвращает человека на
+         сайт, а без него бесплатный срок живёт только в ленте, куда
+         надо зайти самому. Отправляем после цикла, одним письмом. */
+      if (!letters.has(r.email)) {
+        letters.set(r.email, {
+          user: { email: r.email, name: r.name, mail_off: r.mail_off, mail_token: r.mail_token },
+          items: [],
+        });
+      }
+      letters.get(r.email).items.push({ title: r.title, when, dateRu, note: r.note || "", due: r.due });
     }
 
     /* Срок прошёл — либо переносим повторяющееся, либо гасим разовое. */
@@ -655,6 +710,25 @@ export async function runReminders(env) {
     .bind(now() - 180 * 86400000).run().catch(() => {});
   await env.DB.prepare("DELETE FROM tg_link_codes WHERE expires_at < ?").bind(now()).run().catch(() => {});
 
-  console.log(`reminders: отправлено ${sent}, перенесено ${rolled}`);
-  return { sent, rolled };
+  /* Письма. Отметка о напоминании уже стоит: если почта сейчас не
+     ответит, письмо не повторится — срок останется в ленте. Напоминанию
+     молчать можно, а слать его дважды нельзя. */
+  let mailed = 0, held = 0, failedInRow = 0;
+  const cap = Number(env.MAIL_PER_RUN) || MAIL_PER_RUN;
+  for (const { user, items } of letters.values()) {
+    if (mailed >= cap || failedInRow >= 5) { held++; continue; }
+    items.sort((a, b) => a.due.localeCompare(b.due));
+    const r = await sendLetter(env, user, reminderLetter(items)).catch(() => ({ ok: false, reason: "provider" }));
+    if (r.ok) { mailed++; failedInRow = 0; }
+    /* Подряд отказывает сама почта — дальше не стучимся: скорее всего,
+       исчерпан суточный предел ящика. Отключивших письма и зарубежные
+       адреса за отказ не считаем. */
+    else if (r.reason === "provider" || r.reason === "auth" || r.reason === "network") failedInRow++;
+  }
+
+  /* Адресов в журнале нет — только счёт. Строка «не поместилось» —
+     сигнал, что ящика уже мало и пора подключать сервис рассылок. */
+  console.log(`reminders: отправлено ${sent}, перенесено ${rolled}, писем ${mailed}` +
+              (held ? `, не поместилось ${held}` : ""));
+  return { sent, rolled, mailed };
 }

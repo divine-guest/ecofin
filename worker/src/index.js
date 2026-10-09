@@ -4,6 +4,7 @@
 import { json, fail, corsHeaders, allowedOrigins, isSameOrigin, now,
          abroadPaused, telegramPaused } from "./lib.js";
 import { mailReady } from "./mail.js";
+import * as letters from "./letters.js";
 import * as auth from "./auth.js";
 import * as ai from "./ai.js";
 import * as admin from "./admin.js";
@@ -76,6 +77,12 @@ const ROUTES = [
   /* Публичная лента: читают все, предлагают вошедшие, решает владелец. */
   /* Кабинет: сохранённые расчёты и история вопросов. */
   ["POST", "/api/digest", auth.setDigest, "user"],
+  /* Письма на почту: напоминания о сроках и сводка недели. Отказ по
+     ссылке из письма — без входа: человек, который хочет отписаться,
+     не обязан вспоминать пароль. */
+  ["GET", "/api/mail", letters.status, "user"],
+  ["POST", "/api/mail", letters.setMail, "user"],
+  ["POST", "/api/mail/unsubscribe", letters.unsubscribe, "public"],
   ["GET", "/api/saved", saved.list, "user"],
   ["POST", "/api/saved", saved.save, "user"],
   ["POST", "/api/saved/delete", saved.remove, "user"],
@@ -262,6 +269,9 @@ export default {
     /* Автопродление подписок. Сама себя выключает, пока эквайринг
        не подключён, — на пустых ключах не делает ни одного запроса. */
     ctx.waitUntil(billing.runRenewals(env).catch(e => console.error("renew", e.message)));
+    /* Предупреждение о списании — за несколько дней, письмом и в ленту.
+       Списание, о котором не предупредили, человек оспаривает в банке. */
+    ctx.waitUntil(billing.runRenewNotices(env).catch(e => console.error("renew-notice", e.message)));
   },
 
   async fetch(request, env, ctx) {

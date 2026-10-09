@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Письма от ЭкоФина — отключить</title>
+<!-- seo:start -->
+<meta name="description" content="Отключить письма ЭкоФина: напоминания о сроках и сводку недели.">
+<link rel="canonical" href="https://ecofin26.ru/unsubscribe.html">
+<meta name="theme-color" content="#0e8f86">
+<meta name="robots" content="noindex, nofollow">
+<!-- seo:end -->
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="css/fonts.css?v=231">
+<link rel="stylesheet" href="css/style.css?v=231">
+</head>
+<body>
+<main class="section">
+  <div class="container" style="max-width:560px;text-align:center">
+    <!-- Сюда ведёт ссылка «Отключить письма» из каждого письма. Входить
+         не нужно: ключ лежит в самой ссылке, после решётки, поэтому не
+         попадает ни в журнал сервера, ни в историю запросов. Кнопка, а не
+         отключение по открытию страницы: почтовые сервисы заранее
+         открывают ссылки из писем, и человек отписался бы, ничего не нажав. -->
+    <div class="card">
+      <h1 style="margin:0 0 10px;font-size:var(--t-xl)">Письма от ЭкоФина</h1>
+      <p id="unsubText" style="color:var(--muted)">Отключить напоминания о сроках и сводку недели на почту?</p>
+      <p class="hint" id="unsubNote">Напоминания останутся на сайте — у колокольчика в шапке.
+        Код для смены пароля и предупреждение о списании с карты продолжат
+        приходить: это служебные письма.</p><br>
+      <div id="unsubActions" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+        <button class="btn" onclick="UNSUB.set(false, this)">Отключить письма</button>
+        <a href="index.html" class="btn secondary">Оставить как есть</a>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="js/themes.js?v=231"></script>
+<script src="js/api.js?v=231"></script>
+<script src="js/app.js?v=231"></script>
+<script src="js/progress.js?v=231"></script>
+<script src="js/palette.js?v=231"></script>
+<script src="js/ai.js?v=231"></script>
+<script>
+const UNSUB = {
+  /* Ключ — после решётки; запасной вариант — в адресе, если почтовая
+     программа решётку потеряла. */
+  token: ((location.hash || "").replace(/^#/, "")
+          || new URLSearchParams(location.search).get("t") || "").trim(),
+
+  show(text, actions, note) {
+    document.getElementById("unsubText").textContent = text;
+    document.getElementById("unsubActions").innerHTML = actions;
+    if (note !== undefined) document.getElementById("unsubNote").textContent = note;
+  },
+
+  broken(message) {
+    this.show(message || "Ссылка неполная или устарела.",
+      `<a href="dashboard.html" class="btn">Открыть кабинет</a>
+       <a href="index.html" class="btn secondary">На главную</a>`,
+      "Отключить письма можно и в кабинете: «Настройки» → «Уведомления».");
+  },
+
+  async set(on, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Сохраняем…"; }
+    try {
+      const d = await API.mail.unsubscribe(this.token, on);
+      if (d.off) {
+        this.show("Письма отключены.",
+          `<a href="index.html" class="btn">На главную</a>
+           <button class="btn secondary" onclick="UNSUB.set(true, this)">Вернуть письма</button>`,
+          "Напоминания о сроках остались на сайте — у колокольчика в шапке. " +
+          "Нажали по ошибке — письма можно вернуть этой же кнопкой.");
+      } else {
+        this.show("Письма снова включены.",
+          `<a href="index.html" class="btn">На главную</a>
+           <button class="btn secondary" onclick="UNSUB.set(false, this)">Отключить письма</button>`,
+          "Напоминание о сроке придёт утром — заранее и в сам день.");
+      }
+    } catch (e) {
+      this.broken(e.message);
+    }
+  },
+};
+initPage("");
+if (!/^[0-9a-f]{36}$/i.test(UNSUB.token)) UNSUB.broken();
+/* Ссылку открыли в той же вкладке второй раз: меняется только часть
+   после решётки, и страница сама не перечитывается. */
+addEventListener("hashchange", () => location.reload());
+</script>
+</body>
+</html>

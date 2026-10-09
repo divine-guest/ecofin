@@ -7,6 +7,7 @@ import { extendUntil } from "./quota.js";
 import { logAction } from "./auth.js";
 import { balanceOf, applyToPrice, grant, POINTS, RULES_TEXT } from "./points.js";
 import { rewardOnPayment } from "./referral.js";
+import { sendLetter } from "./letters.js";
 
 /* Адрес ЮKassa. Переменная YOOKASSA_API_URL нужна только проверкам: они
    поднимают подставной платёжный сервис и направляют сервер на него.
@@ -552,6 +553,83 @@ function nextPriceOf(user) {
    отметка auto_last. */
 const RENEW_WINDOW = 24 * 3600 * 1000;
 const RENEW_COOLDOWN = 20 * 3600 * 1000;
+
+/* За сколько до конца оплаченного срока предупреждаем о списании.
+   Списание идёт за сутки до конца, значит у человека остаётся двое
+   суток, чтобы передумать. */
+const NOTICE_AHEAD = 3 * 24 * 3600 * 1000;
+/* Раньше этого часа по времени человека не пишем: письмо о деньгах,
+   пришедшее в три ночи, читают как тревогу. */
+const NOTICE_FROM_HOUR = 9;
+
+const dateRu = (ts, tz) => new Date(ts + (tz ?? 3) * 3600000).toISOString().slice(0, 10)
+  .split("-").reverse().join(".");
+
+/* Предупреждение о скором автопродлении: в ленту и письмом.
+
+   Письмо служебное и приходит даже тем, кто отключил напоминания:
+   отказаться от писем о сроках — не значит согласиться на списание
+   без предупреждения. Отметка renew_notice хранит срок, о котором уже
+   сказали, поэтому на одно продление приходит одно предупреждение.   */
+export async function runRenewNotices(env) {
+  if (!configured(env)) return { skipped: "billing-off" };
+  const t = now();
+  const rows = await env.DB.prepare(
+    `SELECT * FROM users
+      WHERE auto_renew = 1 AND auto_method <> '' AND auto_plan <> ''
+        AND pro_until IS NOT NULL
+        AND pro_until > ? AND pro_until < ?
+        AND (renew_notice IS NULL OR renew_notice <> pro_until)`
+  ).bind(t + RENEW_WINDOW, t + NOTICE_AHEAD).all();
+
+  let told = 0, mailed = 0;
+  for (const user of rows.results || []) {
+    const tz = user.tz_offset ?? 3;
+    if (new Date(t + tz * 3600000).getUTCHours() < NOTICE_FROM_HOUR) continue;
+
+    const [planId, period] = String(user.auto_plan).split(":");
+    const plan = PLANS[planId];
+    const price = nextPriceOf(user);
+    if (!plan || !price) continue;
+
+    /* Отметку ставим ДО отправки — как и при списании: упавшее на
+       полпути предупреждение не должно повторяться каждый час. */
+    await env.DB.prepare("UPDATE users SET renew_notice = ? WHERE email = ?")
+      .bind(user.pro_until, user.email).run();
+
+    const until = dateRu(user.pro_until, tz);
+    const chargeDay = dateRu(user.pro_until - RENEW_WINDOW, tz);
+    const span = period === "year" ? "год" : "месяц";
+
+    await env.DB.prepare(
+      `INSERT INTO notifications (email, title, body, kind, link, created_at)
+       VALUES (?, ?, ?, 'info', 'dashboard.html', ?)`
+    ).bind(user.email, `Подписка продлится ${chargeDay}`,
+           `Тариф «${plan.title}» оплачен до ${until}. ${chargeDay} он продлится на ${span}: ` +
+           `с сохранённой карты спишется до ${price} ₽. Отключить автопродление можно в кабинете.`,
+           now()).run().catch(() => {});
+
+    const r = await sendLetter(env, user, {
+      service: true,
+      subject: `Подписка продлится ${chargeDay}: спишется до ${price} ₽`,
+      lines: [
+        `Ваш тариф «${plan.title}» в ЭкоФине оплачен до ${until}.`,
+        `${chargeDay} подписка продлится автоматически на ${span}: с сохранённой`,
+        `карты спишется ${price} ₽. Если у вас есть баллы, они уменьшат сумму сами.`,
+        "",
+        "Если продлевать не хотите — нажмите «Отменить подписку» в кабинете,",
+        `в карточке «Подписка и ИИ». Доступ останется до ${until}, деньги не спишутся.`,
+        "Если всё устраивает, делать ничего не нужно.",
+      ],
+      link: "dashboard.html",
+      linkLabel: "Кабинет",
+    }).catch(() => ({ ok: false }));
+
+    told++;
+    if (r.ok) mailed++;
+  }
+  return { told, mailed, looked: (rows.results || []).length };
+}
 
 export async function runRenewals(env) {
   if (!configured(env)) return { skipped: "billing-off" };

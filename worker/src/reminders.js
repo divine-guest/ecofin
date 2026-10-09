@@ -22,6 +22,11 @@ export function localDay(tzOffset = 3, ts = Date.now()) {
   return new Date(ts + tzOffset * 3600000).toISOString().slice(0, 10);
 }
 
+/* Который час у человека. Нужен, чтобы не напоминать ночью. */
+export function localHour(tzOffset = 3, ts = Date.now()) {
+  return new Date(ts + tzOffset * 3600000).getUTCHours();
+}
+
 export function addDays(day, n) {
   const d = new Date(day + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + n);
@@ -119,7 +124,7 @@ export async function create(request, env, origin, user) {
     if (!far) {
       return json(env, origin, {
         error: `На бесплатном тарифе доступно ${FREE_REMINDERS} напоминания. ` +
-               "Удалите ненужное или снимите лимит подпиской «Про» — там же и доставка в Telegram",
+               "Удалите ненужное или снимите лимит платным тарифом",
         paywall: true, kind: "reminders",
       }, 402);
     }
