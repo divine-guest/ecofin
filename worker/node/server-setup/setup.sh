@@ -573,13 +573,19 @@ fi
 # отметка хранит адрес, на который уже отправлено.
 #
 # Адрес проверяется по форме до запуска: файл читает root.
+#
+# Настройки образец берёт из worker/.env — того же файла, что читает
+# служба, а не из машинного /opt/pravofin/env. В машинном лежит адрес
+# сайта времён GitHub Pages; служба его не видит (открытые настройки
+# накладываются поверх), а первый образец увидел — и ушёл со ссылками на
+# старый адрес. Проверять надо то письмо, которое получат люди.
 
 PROBE_MARK=$DIR/mail-probe.done
 PROBE_TO=$(grep -vE '^[[:space:]]*(#|$)' "$REPO/worker/node/MAIL-PROBE" 2>/dev/null | head -1 | tr -d '[:space:]')
 if [ -n "$PROBE_TO" ] && [ "$PROBE_TO" != "$(sed -n 1p "$PROBE_MARK" 2>/dev/null)" ]; then
   if printf '%s' "$PROBE_TO" | grep -qE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
     log "просят отправить образец письма — отправляю"
-    PROBE_OUT=$( cd "$REPO/worker" && node node/mail-test.mjs "$DIR/env" "$PROBE_TO" sample 2>/dev/null | tail -1 )
+    PROBE_OUT=$( cd "$REPO/worker" && node node/mail-test.mjs "$REPO/worker/.env" "$PROBE_TO" sample 2>/dev/null | tail -1 )
     printf '%s\n%s %s\n' "$PROBE_TO" "$(date -Is)" "${PROBE_OUT:-нет ответа}" > "$PROBE_MARK"
     log "образец письма: ${PROBE_OUT:-нет ответа}"
   else

@@ -2,7 +2,7 @@
 
      node worker/node/mail-test.mjs /opt/pravofin/env [кому]
      … | node worker/node/mail-test.mjs - [кому]
-     node worker/node/mail-test.mjs /opt/pravofin/env кому sample
+     node worker/node/mail-test.mjs worker/.env кому sample
 
    Отвечает одной строкой: MAIL_OK, MAIL_FAIL причина или NOT_CONFIGURED.
 
