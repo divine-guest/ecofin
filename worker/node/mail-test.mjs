@@ -2,6 +2,7 @@
 
      node worker/node/mail-test.mjs /opt/pravofin/env [кому]
      … | node worker/node/mail-test.mjs - [кому]
+     node worker/node/mail-test.mjs /opt/pravofin/env кому sample
 
    Отвечает одной строкой: MAIL_OK, MAIL_FAIL причина или NOT_CONFIGURED.
 
@@ -14,12 +15,19 @@
    Первый способ читает сохранённый файл настроек, второй (с дефисом) —
    настройки из потока, ещё не сохранённые. Разбор строк тот же, что у
    сервера (server.mjs, loadEnvFile): проверка должна видеть значение
-   ровно таким, каким его потом увидит сервис. */
+   ровно таким, каким его потом увидит сервис.
+
+   Третий способ (слово sample) шлёт не короткую заглушку, а образец
+   настоящего письма о сроках — тем же кодом, каким его шлёт сервис.
+   Нужен, чтобы показать письмо службе проверки: дошло ли оно до чужого
+   почтового сервера, подписано ли доменом и не похоже ли на спам.
+   Запускает его сервер по просьбе из репозитория — файл MAIL-PROBE,
+   см. server-setup/setup.sh. */
 
 import { readFile } from "node:fs/promises";
 import { smtpConfigured, makeSmtpSender } from "./mail-smtp.mjs";
 
-const [source = "", to = ""] = process.argv.slice(2);
+const [source = "", to = "", mode = ""] = process.argv.slice(2);
 
 async function text() {
   if (source !== "-") return readFile(source, "utf8");
@@ -51,7 +59,33 @@ if (!smtpConfigured(cfg)) {
 }
 
 const send = makeSmtpSender(cfg);
-const r = await send({
+
+/* Образец письма о сроках. Людей в нём нет: имя не подставляется, сроки
+   выдуманы, ключ отказа ни к кому не привязан. Адрес получателя здесь
+   назван адресом владельца — только так письмо уйдёт на почту службы
+   проверки, которая не российская; на настройки сервиса это не влияет. */
+async function sample(dest) {
+  await import("./polyfill.mjs");
+  const { sendLetter } = await import("../src/letters.js");
+  const day = n => new Date(Date.now() + 3 * 3600000 + n * 86400000).toISOString().slice(0, 10)
+    .split("-").reverse().join(".");
+  return sendLetter(
+    { MAIL_SEND: send, SITE_URL: cfg.SITE_URL, OWNER_EMAILS: dest },
+    { email: dest, name: "", mail_off: 0, mail_token: "0".repeat(36) },
+    {
+      subject: "2 срока на подходе",
+      lines: [
+        "Напоминаем о сроках:",
+        "",
+        `• Аванс по УСН за 9 месяцев — завтра, ${day(1)}`,
+        `• Страховые взносы за работников — через 3 дн., ${day(3)}`,
+      ],
+      link: "dashboard.html#reminders",
+      linkLabel: "Все сроки и календарь",
+    });
+}
+
+const r = mode === "sample" ? await sample(to || cfg.MAIL_SMTP_USER) : await send({
   to: to || cfg.MAIL_SMTP_USER,
   subject: "ЭкоФин: почта подключена",
   text: [

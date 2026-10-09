@@ -97,9 +97,9 @@ console.log("\n— Когда что-то не так —");
 
 /* mail-test.mjs запускается на сервере из vps-secret.sh: настройки ящика
    приходят потоком, ещё не сохранённые, и проверяются настоящим письмом. */
-function probe(settings, to = "") {
+function probe(settings, to = "", mode = "") {
   return new Promise(resolve => {
-    const p = spawn(process.execPath, [join(ROOT, "worker", "node", "mail-test.mjs"), "-", ...(to ? [to] : [])],
+    const p = spawn(process.execPath, [join(ROOT, "worker", "node", "mail-test.mjs"), "-", ...(to ? [to] : []), ...(mode ? [mode] : [])],
       { stdio: ["pipe", "pipe", "pipe"] });
     let out = "";
     p.stdout.on("data", d => (out += d));
@@ -127,6 +127,21 @@ console.log("\n— Пробное письмо до сохранения нас�
      пароль таким же, иначе она пропустит то, что потом не заработает. */
   const quoted = await probe({ ...cfg, MAIL_SMTP_PASS: `"${BOX_PASS}"` });
   ok(quoted.line === "MAIL_OK", "значение в кавычках читается так же, как его прочтёт сервер", quoted);
+}
+
+console.log("\n— Образец письма о сроках для службы проверки —");
+{
+  const before = inbox.length;
+  const tester = "test-abc123@srv1.proverka-pisem.com";
+  const sent = await probe(cfg, tester, "sample");
+  ok(sent.line === "MAIL_OK" && sent.code === 0, "образец уходит, ответ MAIL_OK", sent);
+  const l = inbox.at(-1), m = read(l), body = m.body.replace(/\r\n/g, "\n");
+  ok(inbox.length === before + 1 && l.to.length === 1 && l.to[0] === tester, "ровно одно письмо, на адрес службы проверки", l && l.to);
+  ok(m.subject === "2 срока на подходе", "тема — как у настоящего письма о сроках", m.subject);
+  ok(body.startsWith("Здравствуйте.") && body.includes("• Аванс по УСН за 9 месяцев — завтра"), "текст собран тем же кодом, что и письма людям", body.slice(0, 120));
+  ok(body.includes("unsubscribe.html#" + "0".repeat(36)) && /One-Click/i.test(m.header("List-Unsubscribe-Post")),
+     "есть ссылка «отключить» и служебные строки — служба оценит письмо целиком");
+  ok(!/@(mail|yandex|bk|gmail)\./.test(body), "чужих адресов в образце нет");
 }
 
 /* ---------------- 2. Ради чего всё: сброс пароля письмом ---------------- */

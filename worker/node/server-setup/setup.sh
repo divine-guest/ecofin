@@ -563,6 +563,31 @@ if [ -n "$WANT" ] && [ "$WANT" != "$(cat "$MARK" 2>/dev/null)" ]; then
   log "проверки закончены, результат в /tests-8f3a2c.txt"
 fi
 
+# ---------- Образец письма по требованию ----------
+#
+# Дошло ли письмо сервиса до чужого почтового сервера и что тот о нём
+# думает, изнутри не видно, а зайти на машину нельзя. Поэтому просьба
+# тоже идёт через репозиторий: в файле MAIL-PROBE — адрес, на который
+# отправить образец письма о сроках. Обычно это адрес службы проверки
+# писем: она показывает отчёт по ссылке. Одна просьба — одно письмо:
+# отметка хранит адрес, на который уже отправлено.
+#
+# Адрес проверяется по форме до запуска: файл читает root.
+
+PROBE_MARK=$DIR/mail-probe.done
+PROBE_TO=$(grep -vE '^[[:space:]]*(#|$)' "$REPO/worker/node/MAIL-PROBE" 2>/dev/null | head -1 | tr -d '[:space:]')
+if [ -n "$PROBE_TO" ] && [ "$PROBE_TO" != "$(sed -n 1p "$PROBE_MARK" 2>/dev/null)" ]; then
+  if printf '%s' "$PROBE_TO" | grep -qE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
+    log "просят отправить образец письма — отправляю"
+    PROBE_OUT=$( cd "$REPO/worker" && node node/mail-test.mjs "$DIR/env" "$PROBE_TO" sample 2>/dev/null | tail -1 )
+    printf '%s\n%s %s\n' "$PROBE_TO" "$(date -Is)" "${PROBE_OUT:-нет ответа}" > "$PROBE_MARK"
+    log "образец письма: ${PROBE_OUT:-нет ответа}"
+  else
+    printf '%s\n%s адрес не похож на почтовый\n' "$PROBE_TO" "$(date -Is)" > "$PROBE_MARK"
+    log "в MAIL-PROBE не почтовый адрес — письмо не отправлено"
+  fi
+fi
+
 # ---------- Итог ----------
 
 # Временная страница диагностики.
@@ -652,6 +677,8 @@ DIAG="$REPO/diag-8f3a2c.txt"
   MAILLOG=$(journalctl -u pravofin --since "-2 days" --no-pager -o cat 2>/dev/null | grep -E "^reminders: .*писем [1-9]|^mail:" | tail -8)
   if [ -n "$MAILLOG" ]; then printf '%s\n' "$MAILLOG" | sed 's/^/  /'; else echo "  писем о сроках не уходило, отказов почты нет"; fi
   echo "  отключили письма: $(sqlite3 "$DIR/data/pravofin.db" "SELECT COUNT(*) FROM users WHERE mail_off = 1" 2>/dev/null || echo "?") из $(sqlite3 "$DIR/data/pravofin.db" "SELECT COUNT(*) FROM users" 2>/dev/null || echo "?")"
+  # Адрес не печатаем — только когда отправляли и что ответила почта.
+  echo "  образец письма по просьбе: $(sed -n 2p "$DIR/mail-probe.done" 2>/dev/null | grep . || echo "не просили")"
   echo
   echo "--- переезд на другую машину ---"
   if [ -f "$REPO/worker/node/TRANSFER" ]; then
